@@ -1,0 +1,12 @@
+{
+  "projectId": "semix-ai-stdio",
+  "appId": "1:312890264856:web:48517354007f37690ee26d",
+  "apiKey": "AIzaSyAVaZJB98FlMUDeuuO_qqIw3EukBGdcFxQ",
+  "authDomain": "semix-ai-stdio.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "semix-ai-stdio.firebasestorage.app",
+  "messagingSenderId": "312890264856",
+  "measurementId": "G-D4N1QLV5C6",
+  "oAuthClientId": "",
+  "recaptchaSiteKey": ""
+}

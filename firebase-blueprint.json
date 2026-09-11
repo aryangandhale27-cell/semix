@@ -1,0 +1,245 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Electronic hardware component, module, sensor, or development board",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "sku": { "type": "string", "maxLength": 50 },
+        "category": { "type": "string", "maxLength": 100 },
+        "price": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "stockCount": { "type": "number" },
+        "description": { "type": "string", "maxLength": 2000 },
+        "image": { "type": "string", "maxLength": 1000 },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "brand": { "type": "string", "maxLength": 100 },
+        "locationBin": { "type": "string", "maxLength": 50 },
+        "leadTimeDays": { "type": "number" },
+        "inStock": { "type": "boolean" },
+        "isNew": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" }
+      },
+      "required": ["id", "name", "sku", "category", "price", "stockCount"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer purchase order for hardware components",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "shippingFee": { "type": "number" },
+        "tax": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending_assignment", "processing", "packed", "shipped", "delivered", "cancelled"] },
+        "paymentMethod": { "type": "string", "enum": ["UPI", "Card", "NetBanking", "COD", "MakersCredit"] },
+        "paymentStatus": { "type": "string", "enum": ["Pending", "Paid", "Refunded"] },
+        "createdAt": { "type": "string" },
+        "assignedSellerId": { "type": "string" },
+        "assignedSellerName": { "type": "string" }
+      },
+      "required": ["id", "totalAmount", "status", "paymentMethod"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and role metadata",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "role": { "type": "string", "enum": ["admin", "team", "seller", "customer"] },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "role", "status"]
+    },
+    "CustomProject": {
+      "title": "CustomProject",
+      "description": "Custom PCB fabrication or 3D printing engineering request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "projectType": { "type": "string", "enum": ["pcb", "3dprint", "firmware", "turnkey"] },
+        "description": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["Pending Review", "Under Engineering Review", "Quoted", "In Production", "Delivered", "Rejected"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "projectType", "status"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Promotional discount voucher code with validity, caps, and usage limits",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 30 },
+        "discountType": { "type": "string", "enum": ["percentage", "fixed"] },
+        "discountValue": { "type": "number" },
+        "minOrderValue": { "type": "number" },
+        "maxDiscount": { "type": ["number", "null"] },
+        "startDate": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "totalUsageLimit": { "type": "number" },
+        "perCustomerLimit": { "type": "number" },
+        "timesUsed": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["code", "discountType", "discountValue", "minOrderValue", "startDate", "expiryDate", "totalUsageLimit", "perCustomerLimit", "timesUsed", "status"]
+    },
+    "CouponUsage": {
+      "title": "CouponUsage",
+      "description": "Per-customer usage log tracking individual redemptions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "orderId": { "type": "string" },
+        "usageCount": { "type": "number" },
+        "lastUsedAt": { "type": "string" }
+      },
+      "required": ["userId", "usageCount"]
+    },
+    "MailMessage": {
+      "title": "MailMessage",
+      "description": "Transactional email message queued for delivery via Firebase Trigger Email extension or SMTP",
+      "type": "object",
+      "properties": {
+        "to": { "type": "array", "items": { "type": "string" } },
+        "recipientType": { "type": "string", "enum": ["customer", "seller", "admin"] },
+        "recipientName": { "type": "string" },
+        "orderId": { "type": "string" },
+        "status": { "type": "string", "enum": ["queued", "sent", "delivered", "error"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["to", "recipientType", "orderId"]
+    },
+    "Banner": {
+      "title": "Banner",
+      "description": "Homepage front/hero banner with desktop and mobile ratio images",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "description": { "type": "string" },
+        "desktopImage": { "type": "string" },
+        "mobileImage": { "type": "string" },
+        "linkUrl": { "type": "string" },
+        "tabLabel": { "type": "string" },
+        "shortLabel": { "type": "string" },
+        "telemetry": { "type": "string" },
+        "badge": { "type": "string" },
+        "order": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "desktopImage", "order", "isActive"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Hardware product category with icon and showcase image",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "iconName": { "type": "string" },
+        "description": { "type": "string" },
+        "count": { "type": "number" },
+        "color": { "type": "string" },
+        "image": { "type": "string" },
+        "popularItems": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name", "slug", "image"]
+    },
+    "SellerBonus": {
+      "title": "SellerBonus",
+      "description": "Seller incentive and performance bonus allocated by platform administrators",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerEmail": { "type": "string" },
+        "bonusAmount": { "type": "number" },
+        "previousBonus": { "type": "number" },
+        "updatedBy": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["sellerId", "bonusAmount", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable audit trail recording administrative and seller state modifications",
+      "type": "object",
+      "properties": {
+        "logId": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userRole": { "type": "string", "enum": ["admin", "seller"] },
+        "actionType": { "type": "string", "enum": ["CREATE", "UPDATE", "DELETE", "STATUS_CHANGE", "ASSIGNMENT", "BONUS_ALLOCATION"] },
+        "targetEntity": { "type": "string" },
+        "targetId": { "type": "string" },
+        "changes": { "type": "object" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["logId", "timestamp", "userId", "userRole", "actionType", "targetEntity", "targetId"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Public catalog of electronics hardware components"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer purchase orders and fulfillment tracking"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User account profiles with RBAC role definitions"
+    },
+    "/customProjects/{projectId}": {
+      "schema": "CustomProject",
+      "description": "Custom hardware engineering and fabrication requests"
+    },
+    "/coupons/{couponCode}": {
+      "schema": "Coupon",
+      "description": "Promotional discounts with limits and usage counters"
+    },
+    "/coupons/{couponCode}/usages/{userId}": {
+      "schema": "CouponUsage",
+      "description": "Per-customer coupon redemption tracking subcollection"
+    },
+    "/mail/{mailId}": {
+      "schema": "MailMessage",
+      "description": "Transactional email queue for customer, admin, and seller automated notifications"
+    },
+    "/banners/{bannerId}": {
+      "schema": "Banner",
+      "description": "Homepage hero banners with responsive desktop and mobile image support"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Component categories with customizable showcase images"
+    },
+    "/seller_bonuses/{sellerId}": {
+      "schema": "SellerBonus",
+      "description": "Seller bonuses and reward balances managed by administrators"
+    },
+    "/activity_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable, append-only activity and audit logs capturing entity diffs and author metadata"
+    }
+  }
+}

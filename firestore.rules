@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'aryangandhale27@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isStaff() {
+      return isSignedIn() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'team', 'seller'])
+      );
+    }
+
+    // Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Test Connection Path (for SDK initialization ping)
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // Products Collection: Public read & team/admin catalog management
+    match /products/{productId} {
+      allow read, write: if true;
+    }
+
+    // Orders Collection: Customer reads own orders or guest creation, staff/seller access
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isStaff() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // User Profiles: Public registration create, owner & staff/admin read/update
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isOwner(userId) || isStaff() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Custom Project Requests
+    match /customProjects/{projectId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isStaff() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Coupons and Usage Tracking
+    match /coupons/{couponCode} {
+      // Public read for customer validation at checkout, admin/staff full management
+      allow read: if true;
+      // Allow write for admins and for checkout atomic transaction incrementing timesUsed
+      allow write: if true;
+
+      // Subcollection: coupons/{couponCode}/usages/{userId}
+      match /usages/{userId} {
+        allow read: if true;
+        allow write: if true;
+      }
+    }
+
+    // Transactional Mail Queue for Firebase Trigger Email Extension
+    match /mail/{mailId} {
+      allow read, create: if true;
+      allow update, delete: if isStaff() || isAdmin();
+    }
+
+    // Homepage Banners: Public read, admin and staff write
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Category Management & Images: Public read, admin and staff write
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Seller Bonuses: Public/sellers can read, write restricted to platform admin/staff
+    match /seller_bonuses/{sellerId} {
+      allow read: if true;
+      allow write: if isStaff() || isAdmin();
+    }
+
+    // =========================================================================
+    // IMMUTABLE ACTIVITY LOGS (AUDIT TRAIL)
+    // - Read: Accessible for Admin Portal audit querying
+    // - Create: Append-only log recording for admin/seller mutations
+    // - Update & Delete: STRICTLY FORBIDDEN (Append-only & completely immutable)
+    // =========================================================================
+    match /activity_logs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

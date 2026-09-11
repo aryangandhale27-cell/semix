@@ -1,0 +1,6 @@
+{
+  "name": "SEMIX LABS",
+  "description": "SEMIX LABS - Modern electronics component e-commerce platform featuring technical hardware catalog, BOM tool, multi-tiered bulk pricing, fulfillment desk, Seller dashboard with pack lists and revenue analytics, and role-based portals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
