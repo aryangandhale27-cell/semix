@@ -407,6 +407,7 @@ export interface AdminReplyMessage {
 
 export interface CustomProjectSubmission {
   id: string; // e.g. "PRJ-2026-8942"
+  userId?: string;
   projectName: string;
   category: CustomProjectCategory;
   quantity: CustomProjectQuantity | string;
@@ -444,6 +445,7 @@ export interface AdminProjectNotification {
 
 export interface BulkEnquirySubmission {
   id: string; // e.g. "ENQ-2026-8942"
+  userId?: string;
   fullName: string;
   email: string;
   phone: string;

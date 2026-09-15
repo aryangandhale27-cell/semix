@@ -25,6 +25,18 @@ export function sanitizeForFirestore<T>(data: T): T {
   }
   return JSON.parse(JSON.stringify(data, (_, v) => (v === undefined ? null : v)));
 }
+export async function syncRecordToFirestore(
+  collectionName: string,
+  recordId: string,
+  data: Record<string, unknown>
+): Promise<void> {
+  const path = `${collectionName}/${recordId}`;
+  try {
+    await setDoc(doc(db, collectionName, recordId), sanitizeForFirestore(data), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
 
 /**
  * Products Firestore Sync & Realtime Listener

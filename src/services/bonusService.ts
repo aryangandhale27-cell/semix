@@ -3,7 +3,6 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { SellerBonusRecord, AvailableSeller } from '../types';
 import { AVAILABLE_SELLERS } from '../mockData/sellerData';
 
-const LOCAL_STORAGE_BONUSES_KEY = 'semix_seller_bonuses_v1';
 
 export const INITIAL_BONUS_RECORDS: Record<string, SellerBonusRecord> = {
   'usr-seller-01': {
@@ -93,32 +92,17 @@ export function formatInrBonus(amount: number | undefined | null): string {
 }
 
 /**
- * Helper to get cached bonuses from localStorage
+ * Legacy compatibility helper; Firestore is authoritative.
  */
 export function getLocalBonuses(): Record<string, SellerBonusRecord> {
-  try {
-    const saved = localStorage.getItem(LOCAL_STORAGE_BONUSES_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed && typeof parsed === 'object') {
-        return { ...INITIAL_BONUS_RECORDS, ...parsed };
-      }
-    }
-  } catch (e) {
-    console.warn('[BonusService] Failed to parse local bonuses:', e);
-  }
-  return { ...INITIAL_BONUS_RECORDS };
+  return {};
 }
 
 /**
- * Helper to save cached bonuses to localStorage
+ * Legacy compatibility helper; Firestore is authoritative.
  */
 export function setLocalBonuses(bonuses: Record<string, SellerBonusRecord>) {
-  try {
-    localStorage.setItem(LOCAL_STORAGE_BONUSES_KEY, JSON.stringify(bonuses));
-  } catch (e) {
-    console.warn('[BonusService] Failed to save local bonuses:', e);
-  }
+  void bonuses;
 }
 
 /**
@@ -139,7 +123,6 @@ export async function fetchAllSellerBonuses(adminRole: string = 'admin'): Promis
         json.data.forEach((item: SellerBonusRecord) => {
           bonusMap[item.sellerId] = item;
         });
-        setLocalBonuses(bonusMap);
         return json.data;
       }
     }
@@ -152,20 +135,17 @@ export async function fetchAllSellerBonuses(adminRole: string = 'admin'): Promis
     const snapshot = await getDocs(collection(db, 'seller_bonuses'));
     if (!snapshot.empty) {
       const remoteList: SellerBonusRecord[] = [];
-      const bonusMap = getLocalBonuses();
       snapshot.forEach((d) => {
         const data = d.data() as SellerBonusRecord;
-        bonusMap[data.sellerId] = data;
         remoteList.push(data);
       });
-      setLocalBonuses(bonusMap);
       return remoteList;
     }
   } catch (fsErr) {
     console.warn('[BonusService] Firestore fetch failed:', fsErr);
   }
 
-  return Object.values(getLocalBonuses());
+  return [];
 }
 
 /**
@@ -205,9 +185,7 @@ export async function fetchSellerBonus(
     console.warn('[BonusService] Firestore seller bonus fetch error:', err);
   }
 
-  const local = getLocalBonuses();
-  return (
-    local[sellerId] || {
+  return {
       sellerId,
       sellerName: 'Seller Hub',
       sellerEmail: 'seller@semixlabs.com',
@@ -215,8 +193,7 @@ export async function fetchSellerBonus(
       previousBonus: 0,
       updatedBy: 'Admin Controller',
       updatedAt: new Date().toISOString(),
-    }
-  );
+    };
 }
 
 /**
@@ -292,17 +269,14 @@ export async function saveSellerBonus(
     history: history.slice(0, 30),
   };
 
-  // 3. Update localStorage cache
-  localMap[sellerId] = finalRecord;
-  setLocalBonuses(localMap);
-
-  // 4. Synchronize to Firestore collection 'seller_bonuses'
+  // Firestore is the commit point for shared bonus data.
   try {
     const docRef = doc(db, 'seller_bonuses', sellerId);
     await setDoc(docRef, finalRecord, { merge: true });
     console.log(`[BonusService] Bonus for ${sellerId} synced to Firestore: ₹${amount}`);
   } catch (fsErr) {
-    console.warn('[BonusService] Firestore bonus sync notice:', fsErr);
+    console.error('[BonusService] Firestore bonus sync failed:', fsErr);
+    return { success: false, error: 'Unable to save seller bonus to Firestore.' };
   }
 
   return {
@@ -322,12 +296,11 @@ export function subscribeToSellerBonuses(
     colRef,
     (snapshot) => {
       if (!snapshot.empty) {
-        const bonusMap = getLocalBonuses();
+        const bonusMap: Record<string, SellerBonusRecord> = {};
         snapshot.forEach((d) => {
           const item = d.data() as SellerBonusRecord;
           bonusMap[item.sellerId] = item;
         });
-        setLocalBonuses(bonusMap);
         onUpdate(bonusMap);
       }
     },

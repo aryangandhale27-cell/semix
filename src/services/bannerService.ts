@@ -15,51 +15,31 @@ import { HomepageBanner } from '../types';
 import { INITIAL_HOMEPAGE_BANNERS } from '../mockData/banners';
 import { sanitizeForFirestore } from './firebaseService';
 
-const STORAGE_KEY = 'semix_homepage_banners_v2';
 const COLLECTION_NAME = 'banners';
 
 /**
- * Get cached banners from localStorage or fall back to INITIAL_HOMEPAGE_BANNERS
+ * Legacy compatibility helper. Shared banners are loaded from Firestore.
  */
 export function getLocalBanners(): HomepageBanner[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      }
-    }
-  } catch (e) {
-    console.warn('[BannerService] Failed to read local banners:', e);
-  }
-  return INITIAL_HOMEPAGE_BANNERS;
+  return [];
 }
 
 /**
- * Save banners to localStorage
+ * Legacy compatibility helper. Firestore snapshots update consumers directly.
  */
 export function setLocalBanners(banners: HomepageBanner[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(banners));
-  } catch (e) {
-    console.warn('[BannerService] Failed to save local banners:', e);
-  }
+  void banners;
 }
 
 /**
- * Fetch all banners from Firestore, or initialize with initial banners if empty
+ * Fetch all banners from Firestore. An empty collection is valid production state.
  */
 export async function fetchBannersFromFirestore(): Promise<HomepageBanner[]> {
   try {
     const q = query(collection(db, COLLECTION_NAME), orderBy('order', 'asc'));
     const snapshot = await getDocs(q);
 
-    if (snapshot.empty) {
-      console.log('[BannerService] No banners in Firestore. Seeding initial banners...');
-      await seedInitialBanners();
-      return INITIAL_HOMEPAGE_BANNERS;
-    }
+    if (snapshot.empty) return [];
 
     const banners: HomepageBanner[] = [];
     snapshot.forEach((docSnap) => {
@@ -67,11 +47,10 @@ export async function fetchBannersFromFirestore(): Promise<HomepageBanner[]> {
     });
 
     const sorted = banners.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    setLocalBanners(sorted);
     return sorted;
   } catch (err) {
-    console.warn('[BannerService] Firestore fetch error, falling back to local/initial:', err);
-    return getLocalBanners();
+    console.error('[BannerService] Firestore fetch failed:', err);
+    handleFirestoreError(err, OperationType.GET, COLLECTION_NAME);
   }
 }
 
@@ -136,7 +115,7 @@ export function subscribeToBanners(
     q,
     (snapshot) => {
       if (snapshot.empty) {
-        onData(getLocalBanners());
+        onData([]);
         return;
       }
       const items: HomepageBanner[] = [];
@@ -144,13 +123,11 @@ export function subscribeToBanners(
         items.push({ id: docSnap.id, ...docSnap.data() } as HomepageBanner);
       });
       const sorted = items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      setLocalBanners(sorted);
       onData(sorted);
     },
     (err) => {
       console.warn('[BannerService] Realtime banner subscription notice:', err.message);
       if (onError) onError(err);
-      onData(getLocalBanners());
     }
   );
 }

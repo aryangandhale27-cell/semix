@@ -1,5 +1,7 @@
 // Intelligent Search Engine Configuration & Analytics
 // Provides synonyms, field weights, normalizations, and query tracking
+import { addDoc, collection, deleteDoc, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export interface SearchConfig {
   weights: {
@@ -108,7 +110,6 @@ export const ELECTRONICS_SYNONYMS: Record<string, string[]> = {
   bldc: ['brushless motor', 'brushless dc', 'outrunner'],
 };
 
-// Search analytics entry stored in localStorage
 export interface SearchAnalyticsRecord {
   query: string;
   normalizedQuery: string;
@@ -118,7 +119,7 @@ export interface SearchAnalyticsRecord {
   clickedProductName?: string;
 }
 
-const ANALYTICS_STORAGE_KEY = 'semix_search_analytics_v1';
+const ANALYTICS_COLLECTION = 'search_analytics';
 
 export function recordSearchQuery(
   query: string, 
@@ -126,40 +127,30 @@ export function recordSearchQuery(
   resultCount: number,
   clickedProductId?: string,
   clickedProductName?: string
-): void {
-  try {
-    if (!query || query.trim().length < 2) return;
-    const existing: SearchAnalyticsRecord[] = JSON.parse(
-      localStorage.getItem(ANALYTICS_STORAGE_KEY) || '[]'
-    );
-    const newRecord: SearchAnalyticsRecord = {
+ ): void {
+  if (!query || query.trim().length < 2) return;
+  const newRecord: SearchAnalyticsRecord = {
       query: query.trim(),
       normalizedQuery,
       resultCount,
       timestamp: Date.now(),
       clickedProductId,
       clickedProductName
-    };
-    // Keep last 150 records
-    const updated = [newRecord, ...existing.slice(0, 149)];
-    localStorage.setItem(ANALYTICS_STORAGE_KEY, JSON.stringify(updated));
-  } catch (err) {
-    // Ignore localStorage failures
-  }
+  };
+  void addDoc(collection(db, ANALYTICS_COLLECTION), newRecord).catch((error) => {
+    console.error('[SearchAnalytics] Firestore write failed:', error);
+  });
 }
 
-export function getSearchAnalytics(): SearchAnalyticsRecord[] {
-  try {
-    return JSON.parse(localStorage.getItem(ANALYTICS_STORAGE_KEY) || '[]');
-  } catch (err) {
-    return [];
-  }
+export async function getSearchAnalytics(): Promise<SearchAnalyticsRecord[]> {
+  const snapshot = await getDocs(collection(db, ANALYTICS_COLLECTION));
+  return snapshot.docs
+    .map((item) => item.data() as SearchAnalyticsRecord)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 150);
 }
 
-export function clearSearchAnalytics(): void {
-  try {
-    localStorage.removeItem(ANALYTICS_STORAGE_KEY);
-  } catch (err) {
-    // ignore
-  }
+export async function clearSearchAnalytics(): Promise<void> {
+  const snapshot = await getDocs(collection(db, ANALYTICS_COLLECTION));
+  await Promise.all(snapshot.docs.map((item) => deleteDoc(item.ref)));
 }

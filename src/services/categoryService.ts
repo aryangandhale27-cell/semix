@@ -13,62 +13,41 @@ import { Category } from '../types';
 import { CATEGORIES } from '../mockData/products';
 import { sanitizeForFirestore } from './firebaseService';
 
-const STORAGE_KEY = 'semix_categories_v2';
 const COLLECTION_NAME = 'categories';
 
 /**
- * Get cached categories from localStorage or fall back to CATEGORIES
+ * Legacy compatibility helper. Shared categories are loaded from Firestore.
  */
 export function getLocalCategories(): Category[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('[CategoryService] Failed to read local categories:', e);
-  }
-  return CATEGORIES;
+  return [];
 }
 
 /**
- * Save categories to localStorage
+ * Legacy compatibility helper. Firestore snapshots update consumers directly.
  */
 export function setLocalCategories(categories: Category[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
-  } catch (e) {
-    console.warn('[CategoryService] Failed to save local categories:', e);
-  }
+  void categories;
 }
 
 /**
- * Fetch all categories from Firestore or seed if empty
+ * Fetch all categories from Firestore. An empty collection is valid production state.
  */
 export async function fetchCategoriesFromFirestore(): Promise<Category[]> {
   try {
     const q = query(collection(db, COLLECTION_NAME));
     const snapshot = await getDocs(q);
 
-    if (snapshot.empty) {
-      console.log('[CategoryService] No categories in Firestore. Seeding defaults...');
-      await seedDefaultCategories();
-      return CATEGORIES;
-    }
+    if (snapshot.empty) return [];
 
     const items: Category[] = [];
     snapshot.forEach((docSnap) => {
       items.push({ id: docSnap.id, ...docSnap.data() } as Category);
     });
 
-    setLocalCategories(items);
     return items;
   } catch (err) {
-    console.warn('[CategoryService] Firestore fetch error, falling back to local/defaults:', err);
-    return getLocalCategories();
+    console.error('[CategoryService] Firestore fetch failed:', err);
+    handleFirestoreError(err, OperationType.GET, COLLECTION_NAME);
   }
 }
 
@@ -130,20 +109,18 @@ export function subscribeToCategories(
     q,
     (snapshot) => {
       if (snapshot.empty) {
-        onData(getLocalCategories());
+        onData([]);
         return;
       }
       const items: Category[] = [];
       snapshot.forEach((docSnap) => {
         items.push({ id: docSnap.id, ...docSnap.data() } as Category);
       });
-      setLocalCategories(items);
       onData(items);
     },
     (err) => {
       console.warn('[CategoryService] Realtime categories notice:', err.message);
       if (onError) onError(err);
-      onData(getLocalCategories());
     }
   );
 }

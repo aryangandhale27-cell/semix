@@ -38,14 +38,13 @@ import {
   fetchOrdersFromFirestore,
   subscribeToOrders,
   syncCustomProjectToFirestore 
+  , syncRecordToFirestore
 } from '../services/firebaseService';
 import {
   fetchBannersFromFirestore,
   subscribeToBanners,
   syncBannerToFirestore,
   deleteBannerFromFirestore,
-  getLocalBanners,
-  setLocalBanners,
   seedInitialBanners
 } from '../services/bannerService';
 import {
@@ -53,8 +52,6 @@ import {
   subscribeToCategories,
   syncCategoryToFirestore,
   updateCategoryImageInFirestore,
-  getLocalCategories,
-  setLocalCategories
 } from '../services/categoryService';
 import {
   validateAndCalculateCoupon,
@@ -68,11 +65,11 @@ import {
   fetchAllSellerBonuses,
   saveSellerBonus,
   subscribeToSellerBonuses,
-  getLocalBonuses,
   formatInrBonus
 } from '../services/bonusService';
-import { recordActivityLog } from '../services/auditService';
-import { testFirestoreConnection } from '../lib/firebase';
+import { logActivity, recordActivityLog } from '../services/auditService';
+import { auth, onAuthStateChanged, testFirestoreConnection } from '../lib/firebase';
+import { saveUserAppState, subscribeToUserAppState } from '../services/userStateService';
 
 export interface ToastItem {
   id: string;
@@ -91,10 +88,10 @@ interface AppContextType {
   categories: Category[];
   updateCategoryImage: (categoryId: string, imageUrl: string) => Promise<void>;
   resetCategoryImage: (categoryId: string) => Promise<void>;
-  updateProductStock: (productId: string, newStock: number) => void;
-  updateProduct: (product: Product) => void;
-  addProduct: (product: Omit<Product, 'id'>) => void;
-  deleteProduct: (productId: string) => void;
+  updateProductStock: (productId: string, newStock: number) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
   isProductSyncing: boolean;
   syncAllProductsToFirebase: () => Promise<void>;
 
@@ -299,68 +296,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Role state
   const [currentRole, setCurrentRoleState] = useState<UserRole>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ROLE);
-    return (saved as UserRole) || 'customer';
+    return 'customer';
   });
 
   const setCurrentRole = (role: UserRole) => {
     setCurrentRoleState(role);
-    localStorage.setItem(STORAGE_KEYS.ROLE, role);
     showToast(`Switched Role to ${role.toUpperCase()}`, `Now viewing workspace with ${role} permissions`, 'info');
   };
 
   // Products
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    if (saved !== null) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.map(normalizeProduct);
-        }
-      } catch {
-        return INITIAL_PRODUCTS.map(normalizeProduct);
-      }
-    }
-    return INITIAL_PRODUCTS.map(normalizeProduct);
-  });
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [isProductSyncing, setIsProductSyncing] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-  }, [products]);
-
-  // Synchronize products with Firebase Firestore (default database in semix-ai-stdio)
+  // Firestore is authoritative for the shared product catalog.
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Initial fetch from Firestore to merge with local catalog
     fetchProductsFromFirestore()
-      .then(async (remoteProducts) => {
+      .then((remoteProducts) => {
         if (!isMounted) return;
-        if (remoteProducts && remoteProducts.length > 0) {
-          setProducts((prev) => {
-            const productMap = new Map<string, Product>();
-            prev.forEach((p) => productMap.set(p.id, p));
-            remoteProducts.forEach((rp) => productMap.set(rp.id, normalizeProduct(rp)));
-            return Array.from(productMap.values());
-          });
-        }
+        setProducts(remoteProducts.map(normalizeProduct));
       })
       .catch((err) => {
         console.warn('[Firestore] Product load notice:', err?.message || err);
       });
 
-    // 2. Real-time snapshot listener: any team member adding/updating products reflects immediately
     const unsubscribe = subscribeToProducts((remoteProducts) => {
-      if (!isMounted || !remoteProducts || remoteProducts.length === 0) return;
-      setProducts((prev) => {
-        const productMap = new Map<string, Product>();
-        prev.forEach((p) => productMap.set(p.id, p));
-        remoteProducts.forEach((rp) => productMap.set(rp.id, normalizeProduct(rp)));
-        return Array.from(productMap.values());
-      });
+      if (!isMounted) return;
+      setProducts(remoteProducts.map(normalizeProduct));
     });
 
     return () => {
@@ -370,59 +334,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Cart
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.CART);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return []; }
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
-  }, [cart]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [userStateReady, setUserStateReady] = useState(false);
 
   // Wishlist
-  const [wishlist, setWishlist] = useState<string[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.WISHLIST);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return ['prod-001', 'prod-003']; }
-    }
-    return ['prod-001', 'prod-003'];
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify(wishlist));
-  }, [wishlist]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
 
   // Compare List
-  const [compareList, setCompareList] = useState<string[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.COMPARE);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return []; }
-    }
-    return [];
-  });
+  const [compareList, setCompareList] = useState<string[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.COMPARE, JSON.stringify(compareList));
-  }, [compareList]);
+    let unsubscribeState: (() => void) | undefined;
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      unsubscribeState?.();
+      setCart([]);
+      setWishlist([]);
+      setCompareList([]);
+      setUserStateReady(!firebaseUser);
+      if (!firebaseUser) return;
+      unsubscribeState = subscribeToUserAppState(firebaseUser.uid, (state) => {
+        setCart(state.cart || []);
+        setWishlist(state.wishlist || []);
+        setCompareList(state.compareList || []);
+        setUserStateReady(true);
+      });
+    });
+    return () => {
+      unsubscribeState?.();
+      unsubscribeAuth();
+    };
+  }, []);
+
+  useEffect(() => {
+    const userId = auth.currentUser?.uid;
+    if (userId && userStateReady) void saveUserAppState(userId, { cart, wishlist, compareList }).catch((error) => {
+      console.error('[UserState] Could not save customer state:', error);
+    });
+  }, [cart, wishlist, compareList, userStateReady]);
 
   // Categories State & Management
-  const [categories, setCategories] = useState<Category[]>(() => getLocalCategories());
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     let isMounted = true;
     fetchCategoriesFromFirestore()
       .then((data) => {
-        if (isMounted && data && data.length > 0) {
+        if (isMounted) {
           setCategories(data);
         }
       })
       .catch((err) => console.warn('[CategoryService] Init error:', err));
 
     const unsub = subscribeToCategories((data) => {
-      if (isMounted && data && data.length > 0) {
+      if (isMounted) {
         setCategories(data);
       }
     });
@@ -434,19 +398,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const updateCategoryImage = async (categoryId: string, imageUrl: string) => {
-    setCategories((prev) => {
-      const updated = prev.map((c) => (c.id === categoryId ? { ...c, image: imageUrl } : c));
-      setLocalCategories(updated);
-      return updated;
-    });
-
-    try {
-      await updateCategoryImageInFirestore(categoryId, imageUrl);
-      showToast('Category Image Updated', 'New category image saved and live across store', 'success');
-    } catch (err: any) {
-      console.warn('[CategoryService] Remote sync notice, cached locally:', err);
-      showToast('Category Image Saved', 'Saved locally in store catalog', 'info');
-    }
+    await updateCategoryImageInFirestore(categoryId, imageUrl);
+    setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, image: imageUrl } : c)));
+    showToast('Category Image Updated', 'New category image saved and live across store', 'success');
   };
 
   const resetCategoryImage = async (categoryId: string) => {
@@ -458,7 +412,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Homepage Banners State & Management
-  const [banners, setBanners] = useState<HomepageBanner[]>(() => getLocalBanners());
+  const [banners, setBanners] = useState<HomepageBanner[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -471,7 +425,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch((err) => console.warn('[BannerService] Init error:', err));
 
     const unsub = subscribeToBanners((data) => {
-      if (isMounted && data && data.length > 0) {
+      if (isMounted) {
         setBanners(data);
       }
     });
@@ -491,18 +445,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString(),
     };
 
-    setBanners((prev) => {
-      const updated = [...prev, newBanner].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      setLocalBanners(updated);
-      return updated;
-    });
-
-    try {
-      await syncBannerToFirestore(newBanner);
-      showToast('Banner Added', `Added banner "${newBanner.title}" to homepage`, 'success');
-    } catch (err) {
-      showToast('Banner Added', `Saved banner locally`, 'info');
-    }
+    await syncBannerToFirestore(newBanner);
+    setBanners((prev) => [...prev, newBanner].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+    showToast('Banner Added', `Added banner "${newBanner.title}" to homepage`, 'success');
 
     return newBanner;
   };
@@ -513,33 +458,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString(),
     };
 
-    setBanners((prev) => {
-      const updated = prev.map((b) => (b.id === updatedBanner.id ? withTimestamp : b));
-      setLocalBanners(updated);
-      return updated;
-    });
-
-    try {
-      await syncBannerToFirestore(withTimestamp);
-      showToast('Banner Updated', `Updated banner "${updatedBanner.title}"`, 'success');
-    } catch (err) {
-      showToast('Banner Updated', `Saved banner changes locally`, 'info');
-    }
+    await syncBannerToFirestore(withTimestamp);
+    setBanners((prev) => prev.map((b) => (b.id === updatedBanner.id ? withTimestamp : b)));
+    showToast('Banner Updated', `Updated banner "${updatedBanner.title}"`, 'success');
   };
 
   const deleteBanner = async (bannerId: string) => {
-    setBanners((prev) => {
-      const updated = prev.filter((b) => b.id !== bannerId);
-      setLocalBanners(updated);
-      return updated;
-    });
-
-    try {
-      await deleteBannerFromFirestore(bannerId);
-      showToast('Banner Deleted', 'Banner removed from homepage slides', 'info');
-    } catch (err) {
-      showToast('Banner Removed', 'Removed from local banner catalog', 'info');
-    }
+    await deleteBannerFromFirestore(bannerId);
+    setBanners((prev) => prev.filter((b) => b.id !== bannerId));
+    showToast('Banner Deleted', 'Banner removed from homepage slides', 'info');
   };
 
   const reorderBanners = async (orderedBanners: HomepageBanner[]) => {
@@ -549,12 +476,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString(),
     }));
 
+    await Promise.all(updatedWithOrder.map((b) => syncBannerToFirestore(b)));
     setBanners(updatedWithOrder);
-    setLocalBanners(updatedWithOrder);
-
-    for (const b of updatedWithOrder) {
-      syncBannerToFirestore(b).catch(() => {});
-    }
     showToast('Banners Reordered', 'New slide sequence saved', 'success');
   };
 
@@ -566,44 +489,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetBannersToDefault = async () => {
-    setBanners(INITIAL_HOMEPAGE_BANNERS);
-    setLocalBanners(INITIAL_HOMEPAGE_BANNERS);
     await seedInitialBanners();
     showToast('Banners Reset', 'Restored default homepage hero slides', 'info');
   };
 
   // Orders
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(normalizeOrder);
-        }
-      } catch {
-        return INITIAL_ORDERS.map(normalizeOrder);
-      }
-    }
-    return INITIAL_ORDERS.map(normalizeOrder);
-  });
+  const [orders, setOrders] = useState<Order[]>([]);
 
-  const [availableSellers, setAvailableSellers] = useState<AvailableSeller[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.SELLERS);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch {
-        return AVAILABLE_SELLERS;
-      }
-    }
-    return AVAILABLE_SELLERS;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SELLERS, JSON.stringify(availableSellers));
-  }, [availableSellers]);
+  const [availableSellers, setAvailableSellers] = useState<AvailableSeller[]>([]);
 
   const addAvailableSeller = (seller: AvailableSeller) => {
     setAvailableSellers((prev) => {
@@ -624,7 +517,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Seller Bonuses state and persistence
-  const [sellerBonuses, setSellerBonuses] = useState<Record<string, SellerBonusRecord>>(() => getLocalBonuses());
+  const [sellerBonuses, setSellerBonuses] = useState<Record<string, SellerBonusRecord>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -726,10 +619,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return found?.bonusAmount || 0;
   };
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-  }, [orders]);
-
   // Synchronize orders with Firebase Firestore (initial load and realtime listener)
   useEffect(() => {
     let isMounted = true;
@@ -737,27 +626,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchOrdersFromFirestore()
       .then((remoteOrders) => {
         if (!isMounted) return;
-        if (remoteOrders && remoteOrders.length > 0) {
-          setOrders((prev) => {
-            const orderMap = new Map<string, Order>();
-            prev.forEach((o) => orderMap.set(o.id, o));
-            remoteOrders.forEach((ro) => orderMap.set(ro.id, normalizeOrder(ro)));
-            return Array.from(orderMap.values());
-          });
-        }
+        setOrders(remoteOrders.map(normalizeOrder));
       })
       .catch((err) => {
         console.warn('[Firestore] Orders load notice:', err?.message || err);
       });
 
     const unsubscribe = subscribeToOrders((remoteOrders) => {
-      if (!isMounted || !remoteOrders || remoteOrders.length === 0) return;
-      setOrders((prev) => {
-        const orderMap = new Map<string, Order>();
-        prev.forEach((o) => orderMap.set(o.id, o));
-        remoteOrders.forEach((ro) => orderMap.set(ro.id, normalizeOrder(ro)));
-        return Array.from(orderMap.values());
-      });
+      if (!isMounted) return;
+      setOrders(remoteOrders.map(normalizeOrder));
     });
 
     return () => {
@@ -767,43 +644,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Escalations
-  const [escalations, setEscalations] = useState<EscalationIssue[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ESCALATIONS);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return INITIAL_ESCALATIONS; }
-    }
-    return INITIAL_ESCALATIONS;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ESCALATIONS, JSON.stringify(escalations));
-  }, [escalations]);
+  const [escalations, setEscalations] = useState<EscalationIssue[]>([]);
 
   // Staff
-  const [staff, setStaff] = useState<StaffMember[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.STAFF);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return INITIAL_STAFF; }
-    }
-    return INITIAL_STAFF;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(staff));
-  }, [staff]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
 
   // Bulk Enquiries
-  const [bulkEnquiries, setBulkEnquiries] = useState<BulkEnquirySubmission[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.BULK_ENQUIRIES);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return INITIAL_BULK_ENQUIRIES; }
-    }
-    return INITIAL_BULK_ENQUIRIES;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BULK_ENQUIRIES, JSON.stringify(bulkEnquiries));
-  }, [bulkEnquiries]);
+  const [bulkEnquiries, setBulkEnquiries] = useState<BulkEnquirySubmission[]>([]);
 
   const submitBulkEnquiry = (enquiryData: Omit<BulkEnquirySubmission, 'id' | 'createdAt' | 'status'>): BulkEnquirySubmission => {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -813,66 +660,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: newId,
       status: 'submitted',
       createdAt: new Date().toISOString().split('T')[0],
+      userId: auth.currentUser?.uid || '',
     };
     setBulkEnquiries((prev) => [newEnquiry, ...prev]);
+    void syncRecordToFirestore('bulk_enquiries', newId, newEnquiry as unknown as Record<string, unknown>);
+    logCustomerActivity('SUBMIT_BULK_ENQUIRY', newId, { itemCount: newEnquiry.items.length, totalQuantity: newEnquiry.totalQuantity });
     showToast('Bulk Enquiry Submitted!', `Quotation ticket #${newId} logged for priority evaluation.`, 'success');
     return newEnquiry;
   };
 
   // Custom Projects State & Actions
-  const [customProjects, setCustomProjects] = useState<CustomProjectSubmission[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.CUSTOM_PROJECTS);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return INITIAL_CUSTOM_PROJECTS; }
-    }
-    return INITIAL_CUSTOM_PROJECTS;
-  });
+  const [customProjects, setCustomProjects] = useState<CustomProjectSubmission[]>([]);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_PROJECTS, JSON.stringify(customProjects));
-  }, [customProjects]);
-
-  const [adminNotifications, setAdminNotifications] = useState<AdminProjectNotification[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ADMIN_NOTIFICATIONS);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return INITIAL_ADMIN_NOTIFICATIONS; }
-    }
-    return INITIAL_ADMIN_NOTIFICATIONS;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_NOTIFICATIONS, JSON.stringify(adminNotifications));
-  }, [adminNotifications]);
+  const [adminNotifications, setAdminNotifications] = useState<AdminProjectNotification[]>([]);
 
   const submitCustomProject = async (payload: CustomProjectInquiryPayload): Promise<CustomProjectSubmission> => {
-    const newSubmission = await submitCustomProjectInquiry(payload);
-    setCustomProjects((prev) => [newSubmission, ...prev]);
+    const newSubmission = await submitCustomProjectInquiry({
+      ...payload,
+      userId: auth.currentUser?.uid || undefined,
+    } as CustomProjectInquiryPayload & { userId?: string });
+    const ownedSubmission = {
+      ...newSubmission,
+      userId: auth.currentUser?.uid || undefined,
+    } as CustomProjectSubmission;
+    setCustomProjects((prev) => [ownedSubmission, ...prev]);
 
     // Create persistent Admin notification
     const notifId = 'notif-' + Date.now();
     const newNotification: AdminProjectNotification = {
       id: notifId,
-      projectId: newSubmission.id,
-      projectTitle: newSubmission.projectName,
-      clientName: newSubmission.clientName,
-      timestamp: newSubmission.createdAt,
+      projectId: ownedSubmission.id,
+      projectTitle: ownedSubmission.projectName,
+      clientName: ownedSubmission.clientName,
+      timestamp: ownedSubmission.createdAt,
       read: false,
       message: `New custom engineering project "${newSubmission.projectName}" (${newSubmission.category}) submitted by ${newSubmission.clientName} (${newSubmission.companyName}).`
     };
     setAdminNotifications((prev) => [newNotification, ...prev]);
 
     // Asynchronously sync to Firebase Firestore
-    syncCustomProjectToFirestore(newSubmission).catch((err) => {
-      console.warn('Firebase Custom Project sync deferred:', err);
-    });
+    await syncCustomProjectToFirestore(ownedSubmission);
+    if (auth.currentUser) {
+      await logActivity({
+        userId: auth.currentUser.uid,
+        role: currentRole as 'customer' | 'seller' | 'team' | 'admin',
+        action: 'SUBMIT_CUSTOM_REQUEST',
+        targetCollection: 'customProjects',
+        targetId: ownedSubmission.id,
+      });
+    }
 
     showToast('Project Submitted to Admin', `Custom Project Ticket #${newSubmission.id} registered for technical review.`, 'success');
-    return newSubmission;
+    return ownedSubmission;
   };
 
   const updateCustomProjectStatus = (id: string, status: CustomProjectStatus, adminNotes?: string) => {
     const now = new Date();
     const dateStr = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const project = customProjects.find((item) => item.id === id);
     setCustomProjects((prev) =>
       prev.map((proj) =>
         proj.id === id
@@ -885,6 +730,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : proj
       )
     );
+    if (project) void syncRecordToFirestore('customProjects', id, { ...project, status, updatedAt: dateStr, ...(adminNotes !== undefined ? { adminNotes } : {}) });
     showToast('Project Status Updated', `Ticket #${id} status changed to ${status}`, 'info');
   };
 
@@ -900,6 +746,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: dateStr
     };
 
+    const project = customProjects.find((item) => item.id === id);
     setCustomProjects((prev) =>
       prev.map((proj) =>
         proj.id === id
@@ -913,6 +760,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : proj
       )
     );
+    if (project) void syncRecordToFirestore('customProjects', id, { ...project, replies: [...(project.replies || []), replyItem], status: quoteAmount ? 'Quoted' : 'In Discussion', quoteAmount: quoteAmount || project.quoteAmount, updatedAt: dateStr });
     showToast('Quote / Communication Sent', `Quotation dispatched to client for #${id}`, 'success');
   };
 
@@ -955,6 +803,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return product.price;
   };
 
+  const logCustomerActivity = (action: string, resourceId: string, metadata?: Record<string, unknown>) => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) return;
+    void logActivity({
+      userId: firebaseUser.uid,
+      role: 'customer',
+      action,
+      targetCollection: 'users',
+      targetId: resourceId,
+      metadata,
+    }).catch((error) => console.error('[ActivityLog] Customer activity write failed:', error));
+  };
+
   // Cart operations
   const addToCart = (product: Product, quantity = 1) => {
     setCart((prev) => {
@@ -972,6 +833,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...prev, { product, quantity, appliedUnitPrice }];
       }
     });
+    logCustomerActivity('ADD_TO_CART', auth.currentUser?.uid || product.id, { productId: product.id, quantity });
     showToast('Added to Cart', `${quantity} × ${product.name}`, 'success');
   };
 
@@ -989,17 +851,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return item;
       })
     );
+    logCustomerActivity('UPDATE_CART_QUANTITY', productId, { quantity });
   };
 
   const removeFromCart = (productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
     showToast('Item Removed', 'Product removed from your cart', 'info');
+    logCustomerActivity('REMOVE_FROM_CART', auth.currentUser?.uid || productId, { productId });
   };
 
   const clearCart = () => {
     setCart([]);
     setAppliedCoupon(null);
     setCouponDiscount(0);
+    logCustomerActivity('CLEAR_CART', auth.currentUser?.uid || 'cart');
   };
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -1036,6 +901,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (res.isValid && res.coupon) {
       setAppliedCoupon(res.coupon);
       setCouponDiscount(res.discount);
+      logCustomerActivity('APPLY_COUPON', res.coupon.code, { discount: res.discount });
       showToast(
         'Coupon Applied!',
         `Voucher ${res.coupon.code} applied. Saved ₹${Math.round(res.discount).toLocaleString('en-IN')}`,
@@ -1050,6 +916,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponDiscount(0);
+    logCustomerActivity('REMOVE_COUPON', auth.currentUser?.uid || 'checkout');
     showToast('Coupon Removed', 'Standard item pricing restored.', 'info');
   };
 
@@ -1065,6 +932,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...prev, productId];
       }
     });
+    logCustomerActivity('TOGGLE_WISHLIST', productId, { productName: prod?.name });
   };
 
   const isInWishlist = (productId: string) => wishlist.includes(productId);
@@ -1080,6 +948,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     setCompareList((prev) => [...prev, productId]);
+    logCustomerActivity('ADD_TO_COMPARE', productId);
     const prod = products.find((p) => p.id === productId);
     showToast('Added to Comparison', prod ? prod.name : '', 'info');
     return true;
@@ -1087,46 +956,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const removeFromCompare = (productId: string) => {
     setCompareList((prev) => prev.filter((id) => id !== productId));
+    logCustomerActivity('REMOVE_FROM_COMPARE', productId);
   };
 
   const clearCompare = () => {
     setCompareList([]);
+    logCustomerActivity('CLEAR_COMPARE', auth.currentUser?.uid || 'compare');
   };
 
   const isComparing = (productId: string) => compareList.includes(productId);
 
   // Product inventory updates
-  const updateProductStock = (productId: string, newStock: number) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === productId
-          ? { ...p, stockCount: Math.max(0, newStock), inStock: newStock > 0 }
-          : p
-      )
-    );
+  const updateProductStock = async (productId: string, newStock: number) => {
+    const current = products.find((p) => p.id === productId);
+    if (!current) throw new Error('Product not found');
+    const updated = { ...current, stockCount: Math.max(0, newStock), inStock: newStock > 0 };
+    await syncProductToFirestore(updated);
+    setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'UPDATE_INVENTORY', targetCollection: 'products', targetId: productId, metadata: { stockCount: updated.stockCount } });
     showToast('Inventory Updated', `Stock count updated to ${newStock} units`, 'success');
   };
 
-  const updateProduct = (updated: Product) => {
+  const updateProduct = async (updated: Product) => {
     const nowIso = new Date().toISOString();
     const normalized = normalizeProduct({
       ...updated,
       updatedAt: nowIso,
     });
-    setProducts((prev) =>
-      prev.map((p) => (p.id === normalized.id ? normalized : p))
-    );
-    syncProductToFirestore(normalized)
-      .then(() => {
-        console.log(`[Firestore] Product "${normalized.name}" updated in Cloud Firestore`);
-      })
-      .catch((err) => {
-        console.warn('Firestore product update deferred:', err);
-      });
+    await syncProductToFirestore(normalized);
+    setProducts((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
+    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'UPDATE_PRODUCT', targetCollection: 'products', targetId: normalized.id });
     showToast('Product Updated', `${normalized.name} changes synced to Firebase`, 'success');
   };
 
-  const addProduct = (productData: Omit<Product, 'id'>) => {
+  const addProduct = async (productData: Omit<Product, 'id'>) => {
     const id = productData.sku 
       ? `prod-${productData.sku.toLowerCase().replace(/[^a-z0-9]/g, '-')}` 
       : `prod-${Date.now().toString().slice(-6)}`;
@@ -1147,15 +1010,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addedByRole: (productData as any).addedByRole || currentRole,
     });
 
+    await syncProductToFirestore(normalized);
     setProducts((prev) => [normalized, ...prev.filter((p) => p.id !== id)]);
-    
-    syncProductToFirestore(normalized)
-      .then(() => {
-        console.log(`[Firestore] New hardware component "${normalized.name}" (${normalized.id}) saved to Firestore 'products'`);
-      })
-      .catch((err) => {
-        console.warn('Firestore product creation deferred:', err);
-      });
+    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'CREATE_PRODUCT', targetCollection: 'products', targetId: id });
 
     showToast('Product Stored in Firebase', `${normalized.name} successfully published to catalog & Firestore`, 'success');
   };
@@ -1172,26 +1029,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const deleteProduct = (productId: string) => {
-    setProducts((prev) => {
-      const updated = prev.filter((p) => p.id !== productId);
-      try {
-        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updated));
-      } catch (err) {
-        console.error('Error saving updated products after deletion:', err);
-      }
-      return updated;
-    });
-    deleteProductFromFirestore(productId).catch((err) => {
-      console.warn('Firestore product deletion deferred:', err);
-    });
+  const deleteProduct = async (productId: string) => {
+    await deleteProductFromFirestore(productId);
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'DELETE_PRODUCT', targetCollection: 'products', targetId: productId });
     setCart((prev) => {
       const updatedCart = prev.filter((item) => item.product.id !== productId);
-      try {
-        localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(updatedCart));
-      } catch (err) {
-        console.error(err);
-      }
       return updatedCart;
     });
     setWishlist((prev) => prev.filter((id) => id !== productId));
@@ -1217,6 +1060,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assignedSellerId: orderData.assignedSellerId ?? null,
       assignedSellerName: orderData.assignedSellerName ?? null,
       assignedAt: orderData.assignedAt ?? null,
+      userId: auth.currentUser?.uid || orderData.customer.email,
       createdAt: now.toISOString(),
       statusTimeline: [
         {
@@ -1234,6 +1078,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     syncOrderToFirestore(newOrder).catch((err) => {
       console.warn('Firestore Order sync deferred:', err);
     });
+    logCustomerActivity('CREATE_ORDER', newOrder.id, { totalAmount: newOrder.totalAmount, itemCount: newOrder.items.length });
 
     // Decrement stock
     orderData.items.forEach((item) => {
@@ -1295,6 +1140,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!txResult.success) {
+      logCustomerActivity('CHECKOUT_FAILED', preparedOrder.id, { error: txResult.error });
       return { success: false, order: preparedOrder, error: txResult.error };
     }
 
@@ -1323,6 +1169,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     clearCart();
     setAppliedCoupon(null);
     setCouponDiscount(0);
+    logCustomerActivity('CREATE_ORDER', finalizedOrder.id, {
+      totalAmount: finalizedOrder.totalAmount,
+      itemCount: finalizedOrder.items.length,
+      couponCode: finalizedOrder.couponCode,
+    });
 
     // Trigger automated emails: Customer confirmation + Admin alert
     sendOrderPlacedEmails(finalizedOrder).catch((e) => {
@@ -1541,6 +1392,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastActive: 'Just added'
     };
     setStaff((prev) => [...prev, newMember]);
+    void syncRecordToFirestore('staff', id, newMember as unknown as Record<string, unknown>);
     showToast('Staff Access Granted', `${newMember.name} added as ${newMember.role.toUpperCase()}`, 'success');
   };
 
@@ -1548,31 +1400,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStaff((prev) =>
       prev.map((m) => (m.id === id ? { ...m, active: !m.active } : m))
     );
+    const member = staff.find((item) => item.id === id);
+    if (member) void syncRecordToFirestore('staff', id, { ...member, active: !member.active });
   };
 
   // Reset
   const resetDemoData = () => {
-    localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
-    localStorage.removeItem(STORAGE_KEYS.ORDERS);
-    localStorage.removeItem(STORAGE_KEYS.SELLERS);
-    localStorage.removeItem(STORAGE_KEYS.ESCALATIONS);
-    localStorage.removeItem(STORAGE_KEYS.STAFF);
-    localStorage.removeItem(STORAGE_KEYS.CART);
-    localStorage.removeItem(STORAGE_KEYS.WISHLIST);
-    localStorage.removeItem(STORAGE_KEYS.COMPARE);
-    localStorage.removeItem(STORAGE_KEYS.BULK_ENQUIRIES);
-    localStorage.removeItem(STORAGE_KEYS.CUSTOM_PROJECTS);
-    localStorage.removeItem(STORAGE_KEYS.ADMIN_NOTIFICATIONS);
-    setProducts(INITIAL_PRODUCTS);
-    setOrders(INITIAL_ORDERS);
-    setAvailableSellers(AVAILABLE_SELLERS);
-    setEscalations(INITIAL_ESCALATIONS);
-    setStaff(INITIAL_STAFF);
-    setBulkEnquiries(INITIAL_BULK_ENQUIRIES);
-    setCustomProjects(INITIAL_CUSTOM_PROJECTS);
-    setAdminNotifications(INITIAL_ADMIN_NOTIFICATIONS);
     setCart([]);
-    setWishlist(['prod-001', 'prod-003']);
+    setWishlist([]);
     setCompareList([]);
     showToast('Reset Complete', 'Default hardware catalog, projects & demo orders restored', 'info');
   };

@@ -327,52 +327,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Load registered users and always ensure default users are merged and fresh
   const [registeredUsers, setRegisteredUsers] = useState<Array<AuthUser & { passwordHash: string }>>(() => {
-    let saved: Array<AuthUser & { passwordHash: string }> = [];
-    try {
-      const raw = localStorage.getItem(AUTH_STORAGE_KEYS.REGISTERED_USERS) || localStorage.getItem('rietz_registered_accounts_v5');
-      if (raw) saved = JSON.parse(raw);
-    } catch {
-      saved = [];
-    }
-
     const map = new Map<string, AuthUser & { passwordHash: string }>();
     DEFAULT_USERS.forEach((u) => map.set(u.email.toLowerCase(), u));
-    if (Array.isArray(saved)) {
-      saved.forEach((u) => {
-        if (u && u.email && !map.has(u.email.toLowerCase())) {
-          map.set(u.email.toLowerCase(), u);
-        }
-      });
-    }
-
-    const merged = Array.from(map.values());
-    localStorage.setItem(AUTH_STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(merged));
-    return merged;
+    return Array.from(map.values());
   });
 
   // Current session user
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    const saved = localStorage.getItem(AUTH_STORAGE_KEYS.CURRENT_USER) || localStorage.getItem('rietz_auth_user_v5');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   // Modal states
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'signin' | 'register'>('signin');
   const [authRedirectUrl, setAuthRedirectUrl] = useState<string | null>(null);
   const [authNoticeMessage, setAuthNoticeMessage] = useState<string | null>(null);
-
-  // Save registered users & push updates to Firestore
-  useEffect(() => {
-    localStorage.setItem(AUTH_STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registeredUsers));
-  }, [registeredUsers]);
 
   // Initial sync: fetch any users from Firestore and back-populate Firestore
   useEffect(() => {
@@ -434,13 +401,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, [registeredUsers, user]);
 
-  // Sync user state to localStorage and AppContext role
+  // Firebase Auth owns session persistence; React only mirrors the current session.
   useEffect(() => {
     if (user) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
       setCurrentRole(user.role);
     } else {
-      localStorage.removeItem(AUTH_STORAGE_KEYS.CURRENT_USER);
       setCurrentRole('customer');
     }
   }, [user]);
@@ -1089,7 +1054,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentRole(target.role);
     setIsAuthModalOpen(false);
     setAuthNoticeMessage(null);
-    localStorage.setItem(AUTH_STORAGE_KEYS.CURRENT_USER, JSON.stringify(authPayload));
 
     showToast(
       'Account Switched',
@@ -1102,7 +1066,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const previousName = user?.name || 'User';
     signOutUser().catch(() => {});
     setUser(null);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.CURRENT_USER);
     showToast('Logged Out', `Goodbye ${previousName}, see you soon!`, 'info');
   };
 

@@ -31,13 +31,12 @@ import {
   toggleCouponStatus,
   deleteCouponFromFirestore,
   seedInitialCoupons,
-  DEFAULT_INITIAL_COUPONS
 } from '../../services/couponService';
 import { useApp } from '../../context/AppContext';
 
 export const AdminCouponManagementTab: React.FC = () => {
   const { showToast } = useApp();
-  const [coupons, setCoupons] = useState<Coupon[]>(DEFAULT_INITIAL_COUPONS);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'expired'>('all');

@@ -403,12 +403,7 @@ export async function fetchAllCoupons(): Promise<Coupon[]> {
     const q = query(collection(db, 'coupons'));
     const snapshot = await getDocs(q);
 
-    if (snapshot.empty) {
-      // Seed default initial coupons if collection is empty
-      console.log('[Firestore] Seeding initial electronics store coupons...');
-      await seedInitialCoupons();
-      return DEFAULT_INITIAL_COUPONS;
-    }
+    if (snapshot.empty) return [];
 
     const list: Coupon[] = [];
     snapshot.forEach((d) => {
@@ -419,7 +414,7 @@ export async function fetchAllCoupons(): Promise<Coupon[]> {
   } catch (error) {
     console.error('[Firestore] Error fetching coupons:', error);
     handleFirestoreError(error, OperationType.LIST, path);
-    return DEFAULT_INITIAL_COUPONS;
+    throw error;
   }
 }
 
@@ -435,9 +430,7 @@ export function subscribeToCoupons(
     q,
     (snapshot) => {
       if (snapshot.empty) {
-        // Seed initial coupons
-        seedInitialCoupons().catch(console.error);
-        onData(DEFAULT_INITIAL_COUPONS);
+        onData([]);
         return;
       }
       const list: Coupon[] = [];

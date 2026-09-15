@@ -4,7 +4,8 @@ export type AuditActionType =
   | 'DELETE'
   | 'STATUS_CHANGE'
   | 'ASSIGNMENT'
-  | 'BONUS_ALLOCATION';
+  | 'BONUS_ALLOCATION'
+  | string;
 
 export type AuditTargetEntity =
   | 'products'
@@ -48,7 +49,7 @@ export interface AuditLog {
   userId: string;
   userEmail: string;
   userName?: string;
-  userRole: 'admin' | 'seller';
+  userRole: 'admin' | 'seller' | 'team' | 'customer';
   actionType: AuditActionType;
   targetEntity: AuditTargetEntity;
   targetId: string;
@@ -60,7 +61,7 @@ export interface AuditLogQueryFilter {
   targetEntity?: AuditTargetEntity | 'all';
   targetId?: string;
   userId?: string;
-  userRole?: 'admin' | 'seller' | 'all';
+  userRole?: 'admin' | 'seller' | 'team' | 'customer' | 'all';
   actionType?: AuditActionType | 'all';
   searchQuery?: string;
   startDate?: string;

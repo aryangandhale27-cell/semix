@@ -115,7 +115,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const sentEmailsList = getLocalSentEmails();
 
-  const handleSaveNewProduct = (e: React.FormEvent) => {
+  const handleSaveNewProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProduct.name || !newProduct.sku) return;
 
@@ -150,16 +150,14 @@ export const AdminDashboardPage: React.FC = () => {
       ]
     };
 
-    addProduct(fullProduct);
-    showToast('Product Added', `${fullProduct.name} successfully published to catalog`, 'success');
+    await addProduct(fullProduct);
     setIsAddProductOpen(false);
   };
 
-  const handleUpdateProduct = (e: React.FormEvent) => {
+  const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
-    updateProduct(editingProduct);
-    showToast('Product Updated', `${editingProduct.name} changes saved`, 'info');
+    await updateProduct(editingProduct);
     setEditingProduct(null);
   };
 

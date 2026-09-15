@@ -22,8 +22,30 @@ import {
   FieldDiff,
 } from '../types/audit';
 
-const AUDIT_STORAGE_KEY = 'semix_activity_logs_v1';
 const FIRESTORE_COLLECTION = 'activity_logs';
+
+export interface ActivityLogInput {
+  userId: string;
+  role: 'customer' | 'seller' | 'team' | 'admin';
+  action: string;
+  targetCollection: string;
+  targetId: string;
+  metadata?: Record<string, unknown>;
+}
+
+export async function logActivity(input: ActivityLogInput): Promise<void> {
+  await setDoc(doc(db, FIRESTORE_COLLECTION, `activity_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`), {
+    userId: input.userId,
+    userRole: input.role,
+    actionType: input.action,
+    resourceId: input.targetId,
+    targetId: input.targetId,
+    targetCollection: input.targetCollection,
+    targetEntity: input.targetCollection,
+    metadata: input.metadata || {},
+    timestamp: serverTimestamp(),
+  });
+}
 
 /**
  * Utility to calculate field-level diffs between old and new state
@@ -58,32 +80,6 @@ export function computeFieldDiffs(
     diffs,
     affectedFields: Object.keys(diffs),
   };
-}
-
-/**
- * Get local cached logs
- */
-export function getLocalAuditLogs(): AuditLog[] {
-  try {
-    const raw = localStorage.getItem(AUDIT_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (err) {
-    console.warn('[AuditService] Failed to read local cache:', err);
-    return [];
-  }
-}
-
-/**
- * Save to local cache
- */
-function saveLocalAuditLogs(logs: AuditLog[]) {
-  try {
-    // Keep max 500 logs locally
-    const trimmed = logs.slice(0, 500);
-    localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(trimmed));
-  } catch (err) {
-    console.warn('[AuditService] Failed to save local cache:', err);
-  }
 }
 
 /**
@@ -124,35 +120,15 @@ export async function recordActivityLog(params: {
     metadata: fullMetadata,
   };
 
-  // 1. Save to Local Storage Cache immediately
-  const existingLocal = getLocalAuditLogs();
-  const updatedLocal = [logEntry, ...existingLocal.filter((l) => l.logId !== logId)];
-  saveLocalAuditLogs(updatedLocal);
-
-  // 2. Persist to Firestore activity_logs collection (Append-Only)
+  // Persist directly to the append-only Firestore collection.
   try {
     const docRef = doc(db, FIRESTORE_COLLECTION, logId);
     await setDoc(docRef, {
       ...logEntry,
-      _firestoreTimestamp: serverTimestamp(),
+      timestamp: serverTimestamp(),
     });
   } catch (err) {
-    console.warn('[AuditService] Firestore write error (fallback to backend):', err);
-  }
-
-  // 3. Post to backend server API for persistent archiving in /data/activity-logs.json
-  try {
-    await fetch('/api/admin/audit-logs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-role': params.userRole,
-        'x-user-id': params.userId,
-      },
-      body: JSON.stringify(logEntry),
-    });
-  } catch (err) {
-    console.warn('[AuditService] Server API write error:', err);
+    throw err;
   }
 
   return logEntry;
@@ -214,25 +190,8 @@ export async function fetchAuditLogs(
     console.warn('[AuditService] Firestore fetch failed, trying backend API:', err);
   }
 
-  // Fallback to Express backend if Firestore returned empty or failed
-  if (fetchedLogs.length === 0) {
-    try {
-      const resp = await fetch('/api/admin/audit-logs');
-      if (resp.ok) {
-        const json = await resp.json();
-        if (json.success && Array.isArray(json.data)) {
-          fetchedLogs = json.data;
-        }
-      }
-    } catch (err) {
-      console.warn('[AuditService] Server API fetch failed:', err);
-    }
-  }
-
-  // Merge with local storage logs to ensure zero loss
-  const localLogs = getLocalAuditLogs();
   const map = new Map<string, AuditLog>();
-  [...fetchedLogs, ...localLogs].forEach((l) => map.set(l.logId, l));
+  fetchedLogs.forEach((l) => map.set(l.logId, l));
   let merged = Array.from(map.values()).sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
@@ -304,10 +263,7 @@ export function subscribeToAuditLogs(
           } as AuditLog;
         });
 
-        const localLogs = getLocalAuditLogs();
-        const map = new Map<string, AuditLog>();
-        [...firestoreLogs, ...localLogs].forEach((l) => map.set(l.logId, l));
-        const merged = Array.from(map.values()).sort(
+        const merged = firestoreLogs.sort(
           (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
 

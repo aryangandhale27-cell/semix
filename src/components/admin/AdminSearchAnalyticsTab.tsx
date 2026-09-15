@@ -18,17 +18,17 @@ import {
 export const AdminSearchAnalyticsTab: React.FC = () => {
   const [records, setRecords] = useState<SearchAnalyticsRecord[]>([]);
 
-  const loadData = () => {
-    setRecords(getSearchAnalytics());
+  const loadData = async () => {
+    setRecords(await getSearchAnalytics());
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (window.confirm('Are you sure you want to clear search query logs?')) {
-      clearSearchAnalytics();
+      await clearSearchAnalytics();
       setRecords([]);
     }
   };

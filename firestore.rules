@@ -28,6 +28,18 @@ service cloud.firestore {
       );
     }
 
+    function isTeam() {
+      return isAdmin() || (isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'team');
+    }
+
+    function isSeller() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller';
+    }
+
     // Default Deny Catch-All
     match /{document=**} {
       allow read, write: if false;
@@ -40,44 +52,61 @@ service cloud.firestore {
 
     // Products Collection: Public read & team/admin catalog management
     match /products/{productId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isAdmin() || isTeam() || (isSeller() && request.resource.data.sellerId == request.auth.uid);
+      allow update: if isAdmin() || isTeam() || (isSeller() && resource.data.sellerId == request.auth.uid && request.resource.data.sellerId == request.auth.uid);
+      allow delete: if isAdmin() || isTeam() || (isSeller() && resource.data.sellerId == request.auth.uid);
     }
 
     // Orders Collection: Customer reads own orders or guest creation, staff/seller access
     match /orders/{orderId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if isStaff() || isAdmin();
+      allow read: if isAdmin() || isTeam() || (isSignedIn() && resource.data.userId == request.auth.uid) || (isSeller() && resource.data.assignedSellerId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || isTeam() || (isSeller() && resource.data.assignedSellerId == request.auth.uid && request.resource.data.assignedSellerId == request.auth.uid);
       allow delete: if isAdmin();
     }
 
     // User Profiles: Public registration create, owner & staff/admin read/update
     match /users/{userId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isOwner(userId) || isStaff();
+      allow create: if isOwner(userId) || isAdmin();
       allow update: if isOwner(userId) || isStaff() || isAdmin();
       allow delete: if isAdmin();
     }
 
     // Custom Project Requests
     match /customProjects/{projectId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if isStaff() || isAdmin();
+      allow read: if isAdmin() || isTeam() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || isTeam() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow delete: if isAdmin();
+    }
+
+    match /bulk_enquiries/{enquiryId} {
+      allow read: if isStaff() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isStaff() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow delete: if isStaff();
+    }
+
+    match /staff/{staffId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
     // Coupons and Usage Tracking
     match /coupons/{couponCode} {
       // Public read for customer validation at checkout, admin/staff full management
-      allow read: if true;
+      allow read: if isSignedIn();
       // Allow write for admins and for checkout atomic transaction incrementing timesUsed
-      allow write: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timesUsed', 'updatedAt']));
 
       // Subcollection: coupons/{couponCode}/usages/{userId}
       match /usages/{userId} {
-        allow read: if true;
-        allow write: if true;
+        allow read: if isOwner(userId) || isStaff();
+        allow write: if isOwner(userId) || isStaff();
       }
     }
 
@@ -90,18 +119,18 @@ service cloud.firestore {
     // Homepage Banners: Public read, admin and staff write
     match /banners/{bannerId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isStaff();
     }
 
     // Category Management & Images: Public read, admin and staff write
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isStaff();
     }
 
     // Seller Bonuses: Public/sellers can read, write restricted to platform admin/staff
     match /seller_bonuses/{sellerId} {
-      allow read: if true;
+      allow read: if isStaff() || (isSeller() && sellerId == request.auth.uid);
       allow write: if isStaff() || isAdmin();
     }
 
@@ -112,10 +141,20 @@ service cloud.firestore {
     // - Update & Delete: STRICTLY FORBIDDEN (Append-only & completely immutable)
     // =========================================================================
     match /activity_logs/{logId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isStaff();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if false;
       allow delete: if false;
+    }
+
+    match /users/{userId}/private/{documentId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /search_analytics/{recordId} {
+      allow read: if isStaff();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
   }
 }

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { saveUserAppState, subscribeToUserAppState } from '../../services/userStateService';
 import { Order, OrderStatus, SellerProfile, SellerNotification } from '../../types';
 import { 
   INITIAL_SELLER_PROFILE, 
@@ -79,17 +80,14 @@ export const SellerDashboardPage: React.FC = () => {
   );
 
   // Seller Profile State (FR-5.5)
-  const [profile, setProfile] = useState<SellerProfile>(() => {
-    const saved = localStorage.getItem('rietz_seller_profile_v1');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_SELLER_PROFILE;
-      }
-    }
-    return INITIAL_SELLER_PROFILE;
-  });
+  const [profile, setProfile] = useState<SellerProfile>(INITIAL_SELLER_PROFILE);
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+    return subscribeToUserAppState(user.id, (state) => {
+      if (state.profile) setProfile((current) => ({ ...current, ...state.profile } as SellerProfile));
+    });
+  }, [user?.id]);
 
   // Sync profile when currentSeller or real-time KPIs change
   React.useEffect(() => {
@@ -144,9 +142,11 @@ export const SellerDashboardPage: React.FC = () => {
   const unreadNotifCount = notifications.filter((n) => !n.isRead).length;
 
   // Handle saving profile changes
-  const handleSaveProfile = (updated: SellerProfile) => {
+  const handleSaveProfile = async (updated: SellerProfile) => {
     setProfile(updated);
-    localStorage.setItem('rietz_seller_profile_v1', JSON.stringify(updated));
+    if (user?.id) {
+      await saveUserAppState(user.id, { profile: updated as unknown as Record<string, unknown> });
+    }
     showToast('Profile Updated', 'Warehouse hub & contact details saved successfully.', 'success');
   };
 

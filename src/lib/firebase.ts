@@ -9,6 +9,8 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   sendEmailVerification,
+  setPersistence,
+  browserLocalPersistence,
   signOut as fbSignOut,
   onAuthStateChanged
 } from 'firebase/auth';
@@ -33,6 +35,9 @@ export const db = getFirestore(app);
 
 // Initialize Firebase Auth & Providers
 export const auth = getAuth(app);
+void setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error('[Firebase Auth] Could not configure Auth persistence:', error);
+});
 export const googleProvider = new GoogleAuthProvider();
 export const emailAuthProvider = new EmailAuthProvider();
 export { EmailAuthProvider, GoogleAuthProvider, onAuthStateChanged, fbSignOut as signOut };
