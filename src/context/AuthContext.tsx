@@ -11,6 +11,7 @@ import {
 } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { syncUserToFirestore, fetchUsersFromFirestore } from '../services/firebaseService';
+import { createAdminManagedUser } from '../services/adminUserService';
 import { sendWelcomeEmail } from '../services/emailService';
 
 export interface DemoCredential {
@@ -826,35 +827,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Shipping Address is required for customer accounts.' };
     }
 
-    const userId = `usr-${payload.role}-${Date.now().toString().slice(-6)}`;
-    const newUserRecord: AuthUser & { passwordHash: string } = {
-      id: userId,
-      name: cleanName,
-      email: cleanEmail,
-      role: payload.role,
-      phone: formattedPhone,
-      status: payload.status || 'active',
+    let newUserRecord: AuthUser;
+    try {
+      newUserRecord = await createAdminManagedUser({
+        ...payload,
+        email: cleanEmail,
+        name: cleanName,
+        phone: formattedPhone,
+        password: cleanPassword,
+      });
+    } catch (error: any) {
+      console.error('[AuthContext] Admin user creation failed:', error);
+      const code = error?.code || '';
+      if (code === 'auth/email-already-in-use') {
+        return { success: false, error: 'An account with this email already exists in Firebase Authentication.' };
+      }
+      if (code === 'auth/weak-password') {
+        return { success: false, error: 'Firebase rejected the password because it is too weak.' };
+      }
+      if (code === 'permission-denied' || error?.message?.includes('permission-denied')) {
+        return { success: false, error: 'Firebase Auth succeeded, but Firestore denied the user profile write. Verify deployed rules and Admin permissions.' };
+      }
+      return { success: false, error: error?.message || 'Firebase could not create this user account.' };
+    }
+
+    const userId = newUserRecord.id;
+    const newUserRecordWithPassword: AuthUser & { passwordHash: string } = {
+      ...newUserRecord,
       passwordHash: cleanPassword,
       password: cleanPassword,
-      createdAt: new Date().toISOString().slice(0, 10),
-      // Seller
-      businessName: payload.businessName?.trim(),
-      gstin: payload.gstin?.trim() || '29AAECS0000Z1Z1',
-      warehouseHub: payload.warehouseHub?.trim() || 'Central Dispatch Hub, Electronic City, Bengaluru',
-      commissionRate: payload.commissionRate?.trim() || '7.5% Platform Fee',
-      settlementTerms: payload.settlementTerms?.trim() || 'Net 7 Weekly Cycle',
-      // Team
-      department: payload.department?.trim() || 'Warehouse & Fulfillment',
-      designation: payload.designation?.trim() || 'Fulfillment Specialist',
-      permissionLevel: payload.permissionLevel || 'Standard Operator',
-      // Customer
-      shippingAddress: payload.shippingAddress?.trim(),
-      city: payload.city?.trim() || 'Bengaluru',
-      state: payload.state?.trim() || 'Karnataka',
-      pincode: payload.pincode?.trim() || '560001',
     };
 
-    setRegisteredUsers((prev) => [newUserRecord, ...prev]);
+    setRegisteredUsers((prev) => [newUserRecordWithPassword, ...prev]);
 
     // If Seller: add to availableSellers immediately for order assignments
     if (payload.role === 'seller') {
@@ -887,11 +891,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         active: true,
       });
     }
-
-    // Sync newly created user to Firestore collection 'users'
-    syncUserToFirestore(newUserRecord).catch((err) => {
-      console.warn('[Firestore] Admin created user sync notice:', err);
-    });
 
     if (payload.role === 'customer') {
       sendWelcomeEmail({ name: cleanName, email: cleanEmail }).catch(() => {});
