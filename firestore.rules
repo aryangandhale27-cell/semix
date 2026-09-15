@@ -58,6 +58,11 @@ service cloud.firestore {
       allow delete: if isAdmin() || isTeam() || (isSeller() && resource.data.sellerId == request.auth.uid);
     }
 
+    match /components/{componentId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() || isTeam();
+    }
+
     // Orders Collection: Customer reads own orders or guest creation, staff/seller access
     match /orders/{orderId} {
       allow read: if isAdmin() || isTeam() || (isSignedIn() && resource.data.userId == request.auth.uid) || (isSeller() && resource.data.assignedSellerId == request.auth.uid);

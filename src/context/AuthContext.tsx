@@ -436,15 +436,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Guaranteed Demo Account Matching (handles aliases, lowercase passwords, shorthand role names)
     const demoUser = matchDemoUser(cleanEmail, cleanPass);
     if (demoUser) {
-      setUser(demoUser);
-      setIsAuthModalOpen(false);
-      setAuthNoticeMessage(null);
-      showToast(
-        `Welcome back, ${demoUser.name}!`,
-        `Signed in as ${demoUser.role.toUpperCase()} (${demoUser.email})`,
-        'success'
-      );
-      return { success: true, role: demoUser.role };
+      try {
+        let firebaseUser;
+        try {
+          firebaseUser = await signInWithEmailPassword(demoUser.email, cleanPass);
+        } catch (demoSignInError: any) {
+          if (demoSignInError?.code !== 'auth/user-not-found' || cleanPass.length < 6) {
+            throw demoSignInError;
+          }
+          firebaseUser = await registerWithEmailPassword(demoUser.email, cleanPass, demoUser.name);
+        }
+
+        const authPayload: AuthUser = {
+          ...demoUser,
+          id: firebaseUser.uid,
+          email: demoUser.email,
+        };
+        setUser(authPayload);
+        setIsAuthModalOpen(false);
+        setAuthNoticeMessage(null);
+        await syncUserToFirestore(authPayload);
+        showToast(
+          `Welcome back, ${authPayload.name}!`,
+          `Signed in via Firebase Auth (${authPayload.role.toUpperCase()})`,
+          'success'
+        );
+        return { success: true, role: authPayload.role };
+      } catch (demoAuthError: any) {
+        console.error('[Auth] Demo role Firebase sign-in failed:', demoAuthError);
+        return {
+          success: false,
+          error: 'This role must be signed in through Firebase Authentication before it can manage catalog data.',
+        };
+      }
     }
 
     // 2. Try Firebase Authentication using Email/Gmail and Password

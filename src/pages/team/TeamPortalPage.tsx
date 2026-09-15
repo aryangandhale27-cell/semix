@@ -191,11 +191,11 @@ export const TeamPortalPage: React.FC = () => {
   };
 
   // Product modal save
-  const handleSaveProduct = (productData: any) => {
+  const handleSaveProduct = async (productData: any) => {
     if (editingProduct) {
-      updateProduct(productData);
+      await updateProduct(productData);
     } else {
-      addProduct(productData);
+      await addProduct(productData);
     }
   };
 

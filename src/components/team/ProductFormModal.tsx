@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Product, ProductSpec } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { TechnicalSpecificationManager } from './TechnicalSpecificationManager';
+import { CATEGORIES } from '../../mockData/products';
 import { 
   X, 
   Upload, 
@@ -31,7 +32,7 @@ interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialProduct?: Product | null;
-  onSave: (productData: Omit<Product, 'id'> | Product) => void;
+  onSave: (productData: Omit<Product, 'id'> | Product) => void | Promise<void>;
   onDelete?: (productId: string) => void;
 }
 
@@ -103,7 +104,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setName('');
       setSku(`SKU-${Math.floor(1000 + Math.random() * 9000)}`);
       setBrand('Texas Instruments');
-      setCategory(categories[0]?.name || 'Microcontrollers & Dev Boards');
+      setCategory(categories[0]?.name || CATEGORIES[0]?.name || 'Electronic Components');
       setSubcategory('Integrated Circuits');
       setPrice(250);
       setOriginalPrice(299);
@@ -124,7 +125,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       ]);
       setErrors({});
     }
-  }, [initialProduct, isOpen, categories]);
+  }, [initialProduct, isOpen]);
 
   // Handle multiple file uploads
   const handleMultipleFiles = (files: FileList | File[]) => {
@@ -243,7 +244,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
       showToast('Validation Error', 'Please complete all required fields', 'error');
@@ -283,8 +284,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       locationBin: locationBin.trim().toUpperCase() || 'BIN-A01'
     };
 
-    onSave(productPayload as any);
-    onClose();
+    try {
+      await onSave(productPayload as any);
+      onClose();
+    } catch (error) {
+      console.error('[Team] Product save failed:', error);
+      showToast('Product Save Failed', 'Firestore rejected the product. Check your team permissions and try again.', 'error');
+    }
   };
 
   return (
@@ -389,9 +395,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
+                      required
+                      className="w-full h-10 appearance-auto bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium text-slate-900 focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
                     >
-                      {categories.map((c) => (
+                      <option value="" disabled>Select a category</option>
+                      {(categories.length > 0 ? categories : CATEGORIES).map((c) => (
                         <option key={c.id} value={c.name}>
                           {c.name}
                         </option>

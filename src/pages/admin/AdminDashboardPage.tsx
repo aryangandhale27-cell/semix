@@ -37,6 +37,7 @@ import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
 import { getLocalSentEmails } from '../../services/emailService';
 import { Tag, Mail, SlidersHorizontal, FolderTree, Image as ImageIcon, Award, ShieldAlert } from 'lucide-react';
+import { CATEGORIES } from '../../mockData/products';
 
 export const AdminDashboardPage: React.FC = () => {
   const { 
@@ -117,7 +118,10 @@ export const AdminDashboardPage: React.FC = () => {
 
   const handleSaveNewProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProduct.name || !newProduct.sku) return;
+    if (!newProduct.name?.trim() || !newProduct.sku?.trim() || !newProduct.category?.trim()) {
+      showToast('Validation Error', 'Name, SKU, and category are required.', 'error');
+      return;
+    }
 
     const fullProduct: Omit<Product, 'id'> = {
       name: newProduct.name!,
@@ -150,15 +154,25 @@ export const AdminDashboardPage: React.FC = () => {
       ]
     };
 
-    await addProduct(fullProduct);
-    setIsAddProductOpen(false);
+    try {
+      await addProduct(fullProduct);
+      setIsAddProductOpen(false);
+    } catch (error) {
+      console.error('[Admin] Product creation failed:', error);
+      showToast('Product Save Failed', 'Firestore rejected the product. Check your account permissions and try again.', 'error');
+    }
   };
 
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
-    await updateProduct(editingProduct);
-    setEditingProduct(null);
+    try {
+      await updateProduct(editingProduct);
+      setEditingProduct(null);
+    } catch (error) {
+      console.error('[Admin] Product update failed:', error);
+      showToast('Product Update Failed', 'Firestore rejected the update. Check your account permissions and try again.', 'error');
+    }
   };
 
   const handleAddStaff = (e: React.FormEvent) => {
@@ -720,11 +734,13 @@ export const AdminDashboardPage: React.FC = () => {
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Category</label>
                   <select
-                    value={newProduct.category}
+                    value={newProduct.category || ''}
                     onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg p-2"
+                    required
+                    className="w-full h-10 appearance-auto bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900"
                   >
-                    {categories.map((c) => (
+                    <option value="" disabled>Select a category</option>
+                    {(categories.length > 0 ? categories : CATEGORIES).map((c) => (
                       <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
                   </select>
