@@ -500,6 +500,7 @@ export const AdminBannerManagementTab: React.FC = () => {
               uploadTarget.type === 'desktop' ? 'desktopImage' : 'mobileImage'
             ]
           }
+          resourceId={uploadTarget.bannerId}
         />
       )}
 

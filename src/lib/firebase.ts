@@ -15,6 +15,7 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // Explicit Firebase Project Configuration for semix-ai-stdio
 export const firebaseConfig = {
@@ -32,6 +33,7 @@ export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Firestore (default database in semix-ai-stdio)
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 // Initialize Firebase Auth & Providers
 export const auth = getAuth(app);

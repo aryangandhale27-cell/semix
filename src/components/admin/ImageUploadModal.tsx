@@ -15,6 +15,7 @@ import {
   optimizeAndProcessImage, 
   OptimizedImageResult 
 } from '../../utils/imageOptimizer';
+import { uploadImageDataUrl } from '../../services/storageService';
 
 interface ImageUploadModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ interface ImageUploadModalProps {
   aspectRatioType?: 'desktop-banner' | 'mobile-banner' | 'category';
   folder?: 'banners' | 'categories';
   currentImageUrl?: string;
+  resourceId?: string;
 }
 
 export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
@@ -39,7 +41,8 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
   aspectRatioHint,
   aspectRatioType = 'desktop-banner',
   folder = 'banners',
-  currentImageUrl
+  currentImageUrl,
+  resourceId
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [optimized, setOptimized] = useState<OptimizedImageResult | null>(null);
@@ -114,27 +117,11 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     setErrorMessage(null);
 
     try {
-      // 1. Attempt upload to server endpoint
-      const response = await fetch('/api/admin/upload-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-role': 'admin'
-        },
-        body: JSON.stringify({
-          imageBase64: optimized.dataUrl,
-          filename: optimized.filename,
-          folder
-        })
+      const finalUrl = await uploadImageDataUrl(optimized.dataUrl, {
+        folder,
+        resourceId: resourceId || 'unassigned',
+        filename: optimized.filename,
       });
-
-      let finalUrl = optimized.dataUrl; // Fallback to base64 if server unavailable
-      if (response.ok) {
-        const json = await response.json();
-        if (json.success && json.url) {
-          finalUrl = json.url;
-        }
-      }
 
       // 2. Call parent onSave
       await onSave(finalUrl, {
@@ -143,21 +130,10 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         filename: optimized.filename
       });
 
-      // Close modal
       handleClose();
     } catch (err: any) {
       console.error('Error saving image:', err);
-      // Even if network fails, fallback to local base64
-      try {
-        await onSave(optimized.dataUrl, {
-          width: optimized.width,
-          height: optimized.height,
-          filename: optimized.filename
-        });
-        handleClose();
-      } catch (fallbackErr: any) {
-        setErrorMessage(fallbackErr.message || 'Failed to apply image.');
-      }
+      setErrorMessage(err.message || 'Failed to upload image to Firebase Storage.');
     } finally {
       setIsUploading(false);
     }

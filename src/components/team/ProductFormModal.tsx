@@ -4,6 +4,8 @@ import { Product, ProductSpec } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { TechnicalSpecificationManager } from './TechnicalSpecificationManager';
 import { CATEGORIES } from '../../mockData/products';
+import { uploadImageDataUrl } from '../../services/storageService';
+import { validateImageFile } from '../../utils/imageOptimizer';
 import { 
   X, 
   Upload, 
@@ -77,6 +79,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dragActive, setDragActive] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   useEffect(() => {
     if (initialProduct) {
@@ -130,7 +133,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   // Handle multiple file uploads
   const handleMultipleFiles = (files: FileList | File[]) => {
     const fileArray = Array.from(files);
-    const validFiles = fileArray.filter((f) => f.type.startsWith('image/'));
+    const validFiles = fileArray.filter((file) => {
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        showToast('Invalid Image', validation.error || 'Please select a valid image.', 'warning');
+        return false;
+      }
+      return true;
+    });
     
     if (validFiles.length === 0) {
       showToast('Invalid Files', 'Please select valid image files (PNG, JPG, WebP)', 'warning');
@@ -285,11 +295,27 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     };
 
     try {
-      await onSave(productPayload as any);
+      setIsUploadingImages(true);
+      const permanentImages = await Promise.all(validImages.map((image, index) => {
+        if (!image.startsWith('data:image/')) return Promise.resolve(image);
+        return uploadImageDataUrl(image, {
+          folder: 'products',
+          resourceId: initialProduct?.id || sku.trim().toUpperCase(),
+          filename: `${sku.trim().toUpperCase()}-${index}.${image.startsWith('data:image/png') ? 'png' : 'webp'}`,
+        });
+      }));
+      const permanentCoverImage = permanentImages[0] || coverImage;
+      await onSave({
+        ...productPayload,
+        image: permanentCoverImage,
+        images: permanentImages.length > 0 ? permanentImages : [permanentCoverImage],
+      } as any);
       onClose();
     } catch (error) {
       console.error('[Team] Product save failed:', error);
-      showToast('Product Save Failed', 'Firestore rejected the product. Check your team permissions and try again.', 'error');
+      showToast('Product Save Failed', error instanceof Error ? error.message : 'Image upload or Firestore save failed.', 'error');
+    } finally {
+      setIsUploadingImages(false);
     }
   };
 
@@ -899,6 +925,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
+                    disabled={isUploadingImages}
                     className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                   >
                     Cancel
@@ -909,10 +936,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     id="save-product-submit-btn"
+                    disabled={isUploadingImages}
                     className="bg-[#561269] hover:bg-[#460e56] text-white px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer"
                   >
                     <Save className="w-4 h-4 text-[#FF6B00]" />
-                    <span>{isEditMode ? 'Save Changes' : 'Create & Publish Product'}</span>
+                    <span>{isUploadingImages ? 'Uploading & Saving...' : isEditMode ? 'Save Changes' : 'Create & Publish Product'}</span>
                   </motion.button>
                 </div>
               </div>

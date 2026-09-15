@@ -212,6 +212,7 @@ export const AdminCategoryManagementTab: React.FC = () => {
           aspectRatioType="category"
           folder="categories"
           currentImageUrl={selectedCat.image}
+          resourceId={selectedCat.id}
         />
       )}
 
