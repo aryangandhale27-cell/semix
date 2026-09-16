@@ -293,7 +293,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               onClick={handleAddToCart}
               whileTap={{ scale: 0.96 }}
               disabled={!product.inStock || product.stockCount <= 0}
-              className={`w-full sm:flex-1 font-bold text-[11px] sm:text-xs py-1.5 sm:py-2 px-1.5 sm:px-2.5 rounded-md sm:rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-2xs cursor-pointer ${
+              className={`w-full sm:flex-1 min-h-10 font-bold text-[11px] sm:text-xs py-2.5 sm:py-2 px-2.5 sm:px-2.5 rounded-md sm:rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-2xs cursor-pointer ${
                 addedAnimation
                   ? 'bg-emerald-600 text-white'
                   : !product.inStock

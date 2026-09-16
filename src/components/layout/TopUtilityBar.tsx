@@ -195,17 +195,6 @@ export const TopUtilityBar: React.FC = () => {
                         <span>My Profile & Settings</span>
                       </Link>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          openAuthModal('signin');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-[#561269]/5 hover:text-[#561269] transition-colors text-left"
-                      >
-                        <Sparkles className="w-4 h-4 text-amber-500" />
-                        <span>Switch Demo Account</span>
-                      </button>
                     </div>
 
                     {/* Logout Action */}
@@ -230,16 +219,6 @@ export const TopUtilityBar: React.FC = () => {
             </div>
           )}
 
-          {/* Reset Demo Data Button */}
-          <button
-            id="btn-reset-demo-data"
-            onClick={resetDemoData}
-            title="Reset to initial catalog & order data"
-            className="text-slate-400 hover:text-white p-1 hover:bg-[#460e56]/50 rounded transition-colors hidden sm:flex items-center gap-1 text-[11px]"
-          >
-            <RefreshCw className="w-3 h-3" />
-            <span className="hidden md:inline">Reset Data</span>
-          </button>
         </div>
       </div>
     </div>

@@ -9,7 +9,6 @@ import { HeroCircuitAnimation } from '../../components/home/HeroCircuitAnimation
 import { BannerIndiaLargest } from '../../components/home/banners/BannerIndiaLargest';
 import { BannerTopBrands } from '../../components/home/banners/BannerTopBrands';
 import { BannerProjectsReady } from '../../components/home/banners/BannerProjectsReady';
-import { INITIAL_HOMEPAGE_BANNERS } from '../../mockData/banners';
 import { Product, HomepageBanner } from '../../types';
 import { 
   ArrowRight, 
@@ -37,7 +36,7 @@ export const HomePage: React.FC = () => {
   const [couponToast, setCouponToast] = useState<string | null>(null);
 
   // Active banners from AppContext (synced with Firestore & local persistence)
-  const activeBanners: HomepageBanner[] = (banners && banners.length > 0 ? banners : INITIAL_HOMEPAGE_BANNERS).filter(
+  const activeBanners: HomepageBanner[] = (banners || []).filter(
     (b) => b.isActive !== false
   );
 
@@ -108,13 +107,13 @@ export const HomePage: React.FC = () => {
                     isActive ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-98 z-0 pointer-events-none'
                   }`}
                 >
-                  {slide.type === 'banner-india-largest' && (!slide.desktopImage || !slide.desktopImage.startsWith('/uploads/')) ? (
+                  {false ? (
                     <BannerIndiaLargest onCopyCoupon={handleCopyCouponNotification} />
-                  ) : slide.type === 'banner-top-brands' && (!slide.desktopImage || !slide.desktopImage.startsWith('/uploads/')) ? (
+                  ) : false ? (
                     <BannerTopBrands onCopyCoupon={handleCopyCouponNotification} />
-                  ) : slide.type === 'banner-projects-ready' && (!slide.desktopImage || !slide.desktopImage.startsWith('/uploads/')) ? (
+                  ) : false ? (
                     <BannerProjectsReady />
-                  ) : slide.type === 'product' && slide.highlights && (!slide.desktopImage || !slide.desktopImage.startsWith('/uploads/')) ? (
+                  ) : false ? (
                     /* Preserved Flagship Product Banner (Raspberry Pi, Arduino, ESP32) */
                     <div className={`relative w-full h-full bg-gradient-to-r ${slide.bgGradient || 'from-[#380847] via-[#561269] to-[#250530]'} p-3.5 sm:p-10 flex flex-col justify-between`}>
                       {/* Responsive Image Backdrop: mobileImage for mobile screens, desktopImage for laptop */}
@@ -224,10 +223,7 @@ export const HomePage: React.FC = () => {
                       </picture>
 
                       {/* Readability Gradients */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/45 to-transparent sm:bg-gradient-to-r sm:from-slate-950/90 sm:via-slate-950/50 sm:to-transparent pointer-events-none" />
-
-                      {/* Foreground Content */}
-                      <div className="relative z-10 p-5 sm:p-10 md:p-12 flex flex-col justify-end sm:justify-center h-full max-w-2xl">
+                      <div className="hidden">
                         {slide.badge && (
                           <span className="self-start px-3 py-1 rounded-full bg-[#FF6B00] text-white text-[10px] sm:text-xs font-black uppercase tracking-wider mb-2 sm:mb-3 shadow-md">
                             {slide.badge}

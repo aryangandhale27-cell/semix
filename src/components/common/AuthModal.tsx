@@ -560,7 +560,7 @@ export const AuthModal: React.FC = () => {
                   )}
 
                   {/* 1-Click Quick-Fill Demo Credentials Card */}
-                  <div className="mt-6 pt-5 border-t border-slate-200">
+                  <div className="hidden mt-6 pt-5 border-t border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />

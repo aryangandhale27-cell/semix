@@ -314,7 +314,7 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Fast Preset Templates Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-purple-50/80 border border-purple-200/70">
+      <div className="hidden flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-purple-50/80 border border-purple-200/70">
         <div className="flex items-center gap-2 text-xs text-[#561269] font-bold">
           <Sparkles className="w-4 h-4 text-[#FF6B00]" />
           <span>Quick Specification Starters:</span>

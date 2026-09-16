@@ -3,7 +3,7 @@ import { Product, Category } from '../types';
 export const CATEGORIES: Category[] = [
   {
     id: 'cat-electronic-components',
-    name: 'Electronic Components',
+    name: 'Electronics Components',
     slug: 'electronic-components',
     iconName: 'Zap',
     description: 'Resistors, capacitors, diodes, transistors, relays, crystals, fuses, and IC sockets',
@@ -14,7 +14,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-electronic-modules-dev-boards',
-    name: 'Electronic Modules and Development Boards',
+    name: 'Electronics Modules & Development Boards',
     slug: 'electronic-modules-and-development-boards',
     iconName: 'Cpu',
     description: 'Arm Cortex, ESP32, Raspberry Pi, Arduino, STM32, IoT compute, and breakout modules',
@@ -25,7 +25,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-batteries-power-supply',
-    name: 'Batteries and Power Supply',
+    name: 'Batteries & Power Supply',
     slug: 'batteries-and-power-supply',
     iconName: 'BatteryCharging',
     description: 'LiPo packs, 18650 cells, TP4056 chargers, buck-boost converters, SMPS, and BMS boards',
@@ -36,7 +36,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-smd-sample-books-kits',
-    name: 'SMD Sample Books and Kits',
+    name: 'SMD Sample Books & Kits',
     slug: 'smd-sample-books-and-kits',
     iconName: 'BookOpen',
     description: '0402, 0603, 0805, 1206 resistor & capacitor sample books, lab component binder kits',
@@ -47,7 +47,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-cables-connectors',
-    name: 'Cables and Connectors',
+    name: 'Cables & Connectors',
     slug: 'cables-and-connectors',
     iconName: 'Share2',
     description: 'Dupont jumpers, JST-XH, XT60/XT90, silicone wire, terminal blocks, USB & ribbon cables',
@@ -58,7 +58,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-hardware-tools',
-    name: 'Hardware and Tools',
+    name: 'Hardware & Tools',
     slug: 'hardware-and-tools',
     iconName: 'Wrench',
     description: 'Soldering irons, digital multimeters, wire strippers, ESD tweezers, standoff kits, and PCB holders',
@@ -80,7 +80,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-robotics-diy-kits',
-    name: 'Robotics and DIY Kits',
+    name: 'Robotics & DIY Kits',
     slug: 'robotics-and-diy-kits',
     iconName: 'Bot',
     description: '2WD/4WD chassis, obstacle avoiding robot kits, robotic arms, STEM educational kits, and track platforms',
@@ -113,7 +113,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-physics-instruments',
-    name: 'Physics Instruments',
+    name: 'Physical Instruments',
     slug: 'physics-instruments',
     iconName: 'Compass',
     description: 'Galvanometers, optical prisms, tuning forks, rheostats, magnetic field apparatus, and lab physics demonstrators',
@@ -132,6 +132,17 @@ export const CATEGORIES: Category[] = [
     color: '#561269',
     image: 'https://images.unsplash.com/photo-1608755728617-aefab37d45f1?auto=format&fit=crop&w=600&q=80',
     popularItems: ['AMS1117-3.3V SOT-223 Regulators', '0805 10k SMD Resistors Reel', 'AO3400 N-Channel SOT-23 MOSFET']
+  },
+  {
+    id: 'cat-clearance',
+    name: 'Clearance',
+    slug: 'clearance',
+    iconName: 'Tag',
+    description: 'Reduced-price production stock and end-of-line components.',
+    count: 0,
+    color: '#FF6B00',
+    image: 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&w=600&q=80',
+    popularItems: []
   }
 ];
 

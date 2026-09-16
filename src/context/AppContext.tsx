@@ -373,20 +373,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [cart, wishlist, compareList, userStateReady]);
 
   // Categories State & Management
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
 
   useEffect(() => {
     let isMounted = true;
     fetchCategoriesFromFirestore()
       .then((data) => {
-        if (isMounted) {
+        if (isMounted && data.length > 0) {
           setCategories(data);
         }
       })
       .catch((err) => console.warn('[CategoryService] Init error:', err));
 
     const unsub = subscribeToCategories((data) => {
-      if (isMounted) {
+      if (isMounted && data.length > 0) {
         setCategories(data);
       }
     });

@@ -47,9 +47,9 @@ export const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3.5">
         <div className="flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center shrink-0 group py-0.5" title="SEMIX LABS">
-            <SemixLabsLogo variant="dark" size="md" className="group-hover:opacity-90 transition-opacity hidden sm:block" />
-            <SemixLabsLogo variant="dark" size="sm" className="group-hover:opacity-90 transition-opacity sm:hidden" />
+          <Link to="/" className="flex items-center py-1" title="SEMIX LABS">
+            <SemixLabsLogo variant="dark" size="lg" className="group-hover:opacity-90 transition-opacity hidden sm:block" />
+            <SemixLabsLogo variant="dark" size="md" className="group-hover:opacity-90 transition-opacity sm:hidden" />
           </Link>
 
           {/* Search Bar - Wide with Deep Violet CTA & Intelligent Autocomplete */}

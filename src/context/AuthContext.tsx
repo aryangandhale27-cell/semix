@@ -435,7 +435,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // 1. Guaranteed Demo Account Matching (handles aliases, lowercase passwords, shorthand role names)
-    const demoUser = matchDemoUser(cleanEmail, cleanPass);
+    const demoUser = null;
     if (demoUser) {
       try {
         let firebaseUser;

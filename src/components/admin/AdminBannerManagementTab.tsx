@@ -42,6 +42,7 @@ export const AdminBannerManagementTab: React.FC = () => {
     bannerId: string;
     type: 'desktop' | 'mobile';
   } | null>(null);
+  const [newBannerUploadType, setNewBannerUploadType] = useState<'desktop' | 'mobile' | null>(null);
 
   // Edit details modal state
   const [editingBanner, setEditingBanner] = useState<HomepageBanner | null>(null);
@@ -163,6 +164,15 @@ export const AdminBannerManagementTab: React.FC = () => {
     });
   };
 
+  const handleNewBannerImageUploaded = async (imageUrl: string) => {
+    if (!newBannerUploadType) return;
+    setNewBannerForm((current) => ({
+      ...current,
+      ...(newBannerUploadType === 'desktop' ? { desktopImage: imageUrl } : { mobileImage: imageUrl }),
+    }));
+    setNewBannerUploadType(null);
+  };
+
   // Active banners for preview
   const activeBanners = banners.filter((b) => b.isActive !== false);
 
@@ -193,18 +203,6 @@ export const AdminBannerManagementTab: React.FC = () => {
             <span>Responsive Preview</span>
           </button>
 
-          <button
-            onClick={() => {
-              if (window.confirm('Reset all banners back to factory default slides?')) {
-                resetBannersToDefault();
-              }
-            }}
-            className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Restore initial 6 slides"
-          >
-            <RotateCcw className="w-4 h-4 text-slate-500" />
-            <span>Restore Defaults</span>
-          </button>
 
           <button
             onClick={() => setIsAddingBanner(true)}
@@ -504,6 +502,21 @@ export const AdminBannerManagementTab: React.FC = () => {
         />
       )}
 
+      {newBannerUploadType && (
+        <ImageUploadModal
+          isOpen={true}
+          onClose={() => setNewBannerUploadType(null)}
+          onSave={handleNewBannerImageUploaded}
+          title={newBannerUploadType === 'desktop' ? 'Upload Laptop / Desktop Banner Image' : 'Upload Mobile Banner Image'}
+          subtitle="Upload the complete banner artwork from your device"
+          recommendedSize={newBannerUploadType === 'desktop' ? '1920 × 600 px' : '800 × 600 px'}
+          aspectRatioHint={newBannerUploadType === 'desktop' ? '~16:5 ratio' : '~4:3 ratio'}
+          aspectRatioType={newBannerUploadType === 'desktop' ? 'desktop-banner' : 'mobile-banner'}
+          folder="banners"
+          resourceId={`new-banner-${newBannerUploadType}`}
+        />
+      )}
+
       {/* Edit Banner Details Modal */}
       {editingBanner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
@@ -687,30 +700,19 @@ export const AdminBannerManagementTab: React.FC = () => {
                 </span>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Laptop / Desktop Image URL (1920 × 600 px recommended) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="https://... or /uploads/banners/..."
-                    value={newBannerForm.desktopImage}
-                    onChange={(e) => setNewBannerForm({ ...newBannerForm, desktopImage: e.target.value })}
-                    className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#561269] focus:outline-hidden bg-white"
-                  />
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Laptop / Desktop Image *</label>
+                  <button type="button" onClick={() => setNewBannerUploadType('desktop')} className="w-full px-3.5 py-2 text-sm font-bold text-[#561269] border border-dashed border-[#561269]/40 rounded-xl bg-white hover:bg-purple-50">
+                    <Upload className="w-4 h-4 inline mr-2" />
+                    {newBannerForm.desktopImage ? 'Replace Desktop Image' : 'Upload Desktop Image'}
+                  </button>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Mobile View Image URL (800 × 600 px recommended, optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Leave empty to automatically use desktop image"
-                    value={newBannerForm.mobileImage}
-                    onChange={(e) => setNewBannerForm({ ...newBannerForm, mobileImage: e.target.value })}
-                    className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#561269] focus:outline-hidden bg-white"
-                  />
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Mobile View Image (optional)</label>
+                  <button type="button" onClick={() => setNewBannerUploadType('mobile')} className="w-full px-3.5 py-2 text-sm font-bold text-[#561269] border border-dashed border-[#561269]/40 rounded-xl bg-white hover:bg-purple-50">
+                    <Upload className="w-4 h-4 inline mr-2" />
+                    {newBannerForm.mobileImage ? 'Replace Mobile Image' : 'Upload Mobile Image'}
+                  </button>
                 </div>
               </div>
 

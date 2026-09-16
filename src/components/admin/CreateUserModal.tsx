@@ -448,7 +448,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                       className="w-full pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-1">15-digit GSTIN (optional for demo)</p>
+                  <p className="text-[10px] text-gray-500 mt-1">15-digit GSTIN (optional)</p>
                 </div>
 
                 {/* Dispatch Hub Location */}
