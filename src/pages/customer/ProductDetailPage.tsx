@@ -447,7 +447,7 @@ export const ProductDetailPage: React.FC = () => {
                 id="pdp-add-to-cart-btn"
                 onClick={handleAddToCart}
                 disabled={!product.inStock || product.stockCount <= 0}
-                className={`flex-1 h-12 font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer ${
+                className={`w-full sm:flex-1 h-12 font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer ${
                   added
                     ? 'bg-emerald-600 text-white'
                     : 'bg-[#561269] hover:bg-[#460e56] text-white'
@@ -471,7 +471,7 @@ export const ProductDetailPage: React.FC = () => {
                 id="pdp-buy-now-btn"
                 onClick={handleBuyNow}
                 disabled={!product.inStock || product.stockCount <= 0}
-                className="h-12 bg-[#FF6B00] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-6 rounded-xl transition-colors cursor-pointer shadow-md shadow-orange-950/10"
+                className="w-full sm:w-auto h-12 bg-[#FF6B00] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-6 rounded-xl transition-colors cursor-pointer shadow-md shadow-orange-950/10"
               >
                 Buy Now
               </button>

@@ -151,7 +151,7 @@ export const ExploreCategories: React.FC<ExploreCategoriesProps> = ({
   categories = DEFAULT_EXPLORE_CATEGORIES,
   title = 'Explore Categories',
   subtitle = 'Browse microcontrollers, sensors, drone gear, and robotics silicon',
-  viewAllLink = '/shop'
+  viewAllLink = '/categories'
 }) => {
   return (
     <section id="featured-categories-section" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">

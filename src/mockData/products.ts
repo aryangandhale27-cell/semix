@@ -3,7 +3,7 @@ import { Product, Category } from '../types';
 export const CATEGORIES: Category[] = [
   {
     id: 'cat-electronic-components',
-    name: 'Electronics Components',
+    name: 'Electronic Components',
     slug: 'electronic-components',
     iconName: 'Zap',
     description: 'Resistors, capacitors, diodes, transistors, relays, crystals, fuses, and IC sockets',
@@ -14,7 +14,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-electronic-modules-dev-boards',
-    name: 'Electronics Modules & Development Boards',
+    name: 'Electronic Modules and Development Boards',
     slug: 'electronic-modules-and-development-boards',
     iconName: 'Cpu',
     description: 'Arm Cortex, ESP32, Raspberry Pi, Arduino, STM32, IoT compute, and breakout modules',
@@ -25,7 +25,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-batteries-power-supply',
-    name: 'Batteries & Power Supply',
+    name: 'Batteries and Power Supply',
     slug: 'batteries-and-power-supply',
     iconName: 'BatteryCharging',
     description: 'LiPo packs, 18650 cells, TP4056 chargers, buck-boost converters, SMPS, and BMS boards',
@@ -36,7 +36,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-smd-sample-books-kits',
-    name: 'SMD Sample Books & Kits',
+    name: 'SMD Sample Books and Kits',
     slug: 'smd-sample-books-and-kits',
     iconName: 'BookOpen',
     description: '0402, 0603, 0805, 1206 resistor & capacitor sample books, lab component binder kits',
@@ -47,7 +47,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-cables-connectors',
-    name: 'Cables & Connectors',
+    name: 'Cables and Connectors',
     slug: 'cables-and-connectors',
     iconName: 'Share2',
     description: 'Dupont jumpers, JST-XH, XT60/XT90, silicone wire, terminal blocks, USB & ribbon cables',
@@ -58,7 +58,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-hardware-tools',
-    name: 'Hardware & Tools',
+    name: 'Hardware and Tools',
     slug: 'hardware-and-tools',
     iconName: 'Wrench',
     description: 'Soldering irons, digital multimeters, wire strippers, ESD tweezers, standoff kits, and PCB holders',
@@ -80,7 +80,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-robotics-diy-kits',
-    name: 'Robotics & DIY Kits',
+    name: 'Robotics and DIY Kits',
     slug: 'robotics-and-diy-kits',
     iconName: 'Bot',
     description: '2WD/4WD chassis, obstacle avoiding robot kits, robotic arms, STEM educational kits, and track platforms',
@@ -113,7 +113,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'cat-physics-instruments',
-    name: 'Physical Instruments',
+    name: 'Physics Instruments',
     slug: 'physics-instruments',
     iconName: 'Compass',
     description: 'Galvanometers, optical prisms, tuning forks, rheostats, magnetic field apparatus, and lab physics demonstrators',

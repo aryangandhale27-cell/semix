@@ -16,6 +16,7 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 
 // Customer Pages
 import { HomePage } from './pages/customer/HomePage';
+import { CategoriesPage } from './pages/customer/CategoriesPage';
 import { ShopPage } from './pages/customer/ShopPage';
 import { ProductDetailPage } from './pages/customer/ProductDetailPage';
 import { CartPage } from './pages/customer/CartPage';
@@ -70,6 +71,7 @@ function AnimatedRoutes() {
         <Routes location={location}>
           {/* Public Customer Routes */}
           <Route path="/" element={<HomePage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/product/:productId" element={<ProductDetailPage />} />
           <Route path="/cart" element={<CartPage />} />

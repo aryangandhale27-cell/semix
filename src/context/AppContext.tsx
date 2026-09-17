@@ -76,6 +76,7 @@ export interface ToastItem {
   title: string;
   message?: string;
   type: 'success' | 'info' | 'warning' | 'error';
+  durationMs?: number;
 }
 
 interface AppContextType {
@@ -177,7 +178,7 @@ interface AppContextType {
 
   // Toast
   toasts: ToastItem[];
-  showToast: (title: string, message?: string, type?: ToastItem['type']) => void;
+  showToast: (title: string, message?: string, type?: ToastItem['type'], durationMs?: number) => void;
   removeToast: (id: string) => void;
 
   // Reset to initial demo data
@@ -188,6 +189,21 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+function mergeCategoriesWithDefaults(remoteCategories: Category[]): Category[] {
+  const remoteById = new Map(remoteCategories.map((category) => [category.id, category]));
+  const defaultIds = new Set(CATEGORIES.map((category) => category.id));
+
+  return [
+    ...CATEGORIES.map((defaultCategory) => ({
+      ...defaultCategory,
+      ...remoteById.get(defaultCategory.id),
+      name: defaultCategory.name,
+      slug: defaultCategory.slug,
+    })),
+    ...remoteCategories.filter((category) => !defaultIds.has(category.id)),
+  ];
+}
 
 const STORAGE_KEYS = {
   ROLE: 'rietz_user_role',
@@ -301,7 +317,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setCurrentRole = (role: UserRole) => {
     setCurrentRoleState(role);
-    showToast(`Switched Role to ${role.toUpperCase()}`, `Now viewing workspace with ${role} permissions`, 'info');
+    showToast(`Switched Role to ${role.toUpperCase()}`, `Now viewing workspace with ${role} permissions`, 'info', 2000);
   };
 
   // Products
@@ -380,14 +396,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchCategoriesFromFirestore()
       .then((data) => {
         if (isMounted && data.length > 0) {
-          setCategories(data);
+          setCategories(mergeCategoriesWithDefaults(data));
         }
       })
       .catch((err) => console.warn('[CategoryService] Init error:', err));
 
     const unsub = subscribeToCategories((data) => {
       if (isMounted && data.length > 0) {
-        setCategories(data);
+        setCategories(mergeCategoriesWithDefaults(data));
       }
     });
 
@@ -776,12 +792,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Toast System
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const showToast = (title: string, message?: string, type: ToastItem['type'] = 'success') => {
+  const showToast = (title: string, message?: string, type: ToastItem['type'] = 'success', durationMs = 4000) => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
-    setToasts((prev) => [...prev, { id, title, message, type }]);
+    setToasts((prev) => [...prev, { id, title, message, type, durationMs }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, durationMs);
   };
 
   const removeToast = (id: string) => {

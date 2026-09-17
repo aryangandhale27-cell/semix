@@ -1089,7 +1089,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const previousName = user?.name || 'User';
     signOutUser().catch(() => {});
     setUser(null);
-    showToast('Logged Out', `Goodbye ${previousName}, see you soon!`, 'info');
+    showToast('Logged Out', `Goodbye ${previousName}, see you soon!`, 'info', 2000);
   };
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {

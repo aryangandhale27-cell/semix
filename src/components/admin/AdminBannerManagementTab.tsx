@@ -537,57 +537,6 @@ export const AdminBannerManagementTab: React.FC = () => {
             <form onSubmit={handleSaveEdit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Main Headline / Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editingBanner.title}
-                  onChange={(e) => setEditingBanner({ ...editingBanner, title: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#561269] focus:outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Subtitle / Promo Text
-                </label>
-                <input
-                  type="text"
-                  value={editingBanner.subtitle || ''}
-                  onChange={(e) => setEditingBanner({ ...editingBanner, subtitle: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#561269] focus:outline-hidden"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Navigation Tab Label
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBanner.tabLabel}
-                    onChange={(e) => setEditingBanner({ ...editingBanner, tabLabel: e.target.value })}
-                    className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#561269] focus:outline-hidden"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Badge Tag (e.g. SEMIX EXCLUSIVE)
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBanner.badge || ''}
-                    onChange={(e) => setEditingBanner({ ...editingBanner, badge: e.target.value })}
-                    className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#561269] focus:outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
                   Target Destination URL
                 </label>
                 <input
@@ -595,19 +544,6 @@ export const AdminBannerManagementTab: React.FC = () => {
                   value={editingBanner.linkUrl || ''}
                   onChange={(e) => setEditingBanner({ ...editingBanner, linkUrl: e.target.value })}
                   placeholder="/shop or /bulk-enquiry"
-                  className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#561269] focus:outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Telemetry / Banner Ticker Text
-                </label>
-                <input
-                  type="text"
-                  value={editingBanner.telemetry || ''}
-                  onChange={(e) => setEditingBanner({ ...editingBanner, telemetry: e.target.value })}
-                  placeholder="ALL-INDIA DISPATCH • 10% OFF CODE: 10ELECTRO"
                   className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#561269] focus:outline-hidden"
                 />
               </div>

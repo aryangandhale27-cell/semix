@@ -20,7 +20,8 @@ import {
   Store,
   RefreshCw,
   Cloud,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown
 } from 'lucide-react';
 import { CustomProjectsManager } from '../../components/admin/CustomProjectsManager';
 import { AdminOrdersTab } from '../../components/admin/AdminOrdersTab';
@@ -114,6 +115,7 @@ export const AdminDashboardPage: React.FC = () => {
   // Real-time Firestore Admin KPIs
   const firestoreKPIs = useFirestoreAdminKPIs();
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [adminSectionsOpen, setAdminSectionsOpen] = useState(false);
   const sentEmailsList = getLocalSentEmails();
 
   const handleSaveNewProduct = async (e: React.FormEvent) => {
@@ -251,7 +253,83 @@ export const AdminDashboardPage: React.FC = () => {
       />
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 bg-slate-50 p-1 rounded-xl gap-1 overflow-x-auto">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 via-white to-purple-50 p-2 shadow-sm">
+        <div className="min-w-0">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-violet-500">Admin Sections</p>
+          <p className="truncate text-sm font-black text-slate-800">
+            {activeTab === 'orders' ? 'Orders & Seller Assignment' :
+              activeTab === 'coupons' ? 'Coupons & Discounts' :
+              activeTab === 'users' ? 'User Management' :
+              activeTab === 'bonuses' ? 'Sellers → Bonuses' :
+              activeTab === 'banners' ? 'Homepage Banners' :
+              activeTab === 'categories' ? 'Category Images' :
+              activeTab === 'audit_logs' ? 'Audit & Activity Logs' :
+              activeTab === 'analytics' ? 'Analytics & Sales Breakdown' :
+              activeTab === 'catalog' ? 'Catalog & Product Management' :
+              activeTab === 'staff' ? 'Staff & Role Access' : 'Custom Project Requests'}
+          </p>
+        </div>
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            aria-expanded={adminSectionsOpen}
+            aria-label="Open admin section"
+            onClick={() => setAdminSectionsOpen((open) => !open)}
+            className="flex items-center gap-2 rounded-lg border border-violet-300 bg-[#561269] px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-violet-950/20 transition-colors hover:bg-[#6c1a80] focus:outline-none focus:ring-2 focus:ring-violet-300"
+          >
+            <span>Open Section</span>
+            <span className="rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-extrabold">
+              {activeTab === 'orders' ? 'Orders' :
+                activeTab === 'coupons' ? 'Coupons' :
+                activeTab === 'users' ? 'Users' :
+                activeTab === 'bonuses' ? 'Bonuses' :
+                activeTab === 'banners' ? 'Banners' :
+                activeTab === 'categories' ? 'Categories' :
+                activeTab === 'audit_logs' ? 'Audit' :
+                activeTab === 'analytics' ? 'Analytics' :
+                activeTab === 'catalog' ? 'Catalog' :
+                activeTab === 'staff' ? 'Staff' : 'Projects'}
+            </span>
+            <ChevronDown className={`h-3.5 w-3.5 text-violet-200 transition-transform ${adminSectionsOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {adminSectionsOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-violet-200 bg-white p-1.5 shadow-xl shadow-violet-950/20">
+              {[
+                ['orders', 'Orders & Seller Assignment'],
+                ['coupons', 'Coupons & Discounts'],
+                ['users', 'User Management'],
+                ['bonuses', 'Sellers → Bonuses'],
+                ['banners', 'Homepage Banners'],
+                ['categories', 'Category Images'],
+                ['audit_logs', 'Audit & Activity Logs'],
+                ['analytics', 'Analytics & Sales Breakdown'],
+                ['catalog', 'Catalog & Product Management'],
+                ['staff', 'Staff & Role Access'],
+                ['custom_projects', 'Custom Project Requests'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(value as typeof activeTab);
+                    setAdminSectionsOpen(false);
+                  }}
+                  className={`block w-full rounded-lg px-3 py-2 text-left text-xs font-bold transition-colors ${
+                    activeTab === value
+                      ? 'bg-violet-100 text-[#561269]'
+                      : 'text-slate-700 hover:bg-violet-50 hover:text-[#561269]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="hidden">
         <button
           onClick={() => setActiveTab('orders')}
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${

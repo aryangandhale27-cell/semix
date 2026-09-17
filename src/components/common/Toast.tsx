@@ -36,11 +36,11 @@ export const ToastContainer: React.FC = () => {
           return (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: 15, scale: 0.95 }}
+              initial={{ opacity: 0, y: 10, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border ${borderBg}`}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              className={`pointer-events-auto relative flex items-start gap-3 p-3.5 rounded-xl border overflow-hidden ${borderBg}`}
             >
               <div className="mt-0.5">{icon}</div>
               <div className="flex-1 min-w-0">
@@ -59,6 +59,13 @@ export const ToastContainer: React.FC = () => {
               >
                 <X className="w-3.5 h-3.5" />
               </button>
+              <motion.div
+                aria-hidden="true"
+                initial={{ scaleX: 1 }}
+                animate={{ scaleX: 0 }}
+                transition={{ duration: (toast.durationMs || 4000) / 1000, ease: 'linear' }}
+                className="absolute bottom-0 left-0 right-0 h-0.5 origin-left bg-gradient-to-r from-[#561269] via-violet-500 to-[#FF6B00]"
+              />
             </motion.div>
           );
         })}

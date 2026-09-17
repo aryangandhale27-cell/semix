@@ -45,16 +45,16 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <nav id="primary-navbar" className="bg-[#561269] text-white text-xs sm:text-sm font-medium border-t border-[#561269]/30/50 shadow-md relative z-30">
+    <nav id="primary-navbar" className="bg-gradient-to-r from-[#351044] via-[#561269] to-[#3b0a50] text-white text-xs sm:text-sm font-medium border-t border-violet-300/20 shadow-lg shadow-violet-950/30 relative z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Left Categories Dropdown */}
-          <div className="relative py-1 sm:py-1.5" ref={dropdownRef}>
+          <div className="relative py-1 sm:py-1.5 shrink-0" ref={dropdownRef}>
             <motion.button
               id="all-categories-toggle-btn"
               onClick={() => setCategoriesOpen(!categoriesOpen)}
               whileTap={{ scale: 0.97 }}
-              className="bg-[#FF6B00] hover:bg-[#e05e00] text-white px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-lg font-bold flex items-center gap-1.5 sm:gap-2.5 text-xs sm:text-sm transition-colors shadow-xs cursor-pointer"
+              className="bg-[#FF6B00] hover:bg-[#e05e00] text-white px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-lg font-bold flex items-center gap-1.5 sm:gap-2.5 text-xs sm:text-sm transition-colors shadow-md shadow-orange-950/30 cursor-pointer whitespace-nowrap"
             >
               <Menu className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>All Categories</span>
@@ -77,7 +77,7 @@ export const Navbar: React.FC = () => {
                       Product Categories ({categories.length})
                     </span>
                     <Link
-                      to="/shop"
+                      to="/categories"
                       onClick={() => setCategoriesOpen(false)}
                       className="text-[11px] font-bold text-[#561269] hover:text-[#FF6B00] flex items-center gap-0.5"
                     >
@@ -118,11 +118,11 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Center Links */}
-          <div className="hidden lg:flex items-center space-x-1 sm:space-x-2">
+          <div className="hidden lg:flex flex-1 min-w-0 items-center justify-center gap-0.5 xl:gap-1 overflow-hidden">
             <Link
               to="/"
               id="nav-link-home"
-              className={`px-3.5 py-2 rounded-lg font-semibold transition-colors ${
+              className={`px-2.5 xl:px-3 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
                 isActive('/') && location.pathname === '/'
                   ? 'bg-white/15 text-white font-bold shadow-xs'
                   : 'text-purple-100 hover:text-white hover:bg-white/10'
@@ -134,7 +134,7 @@ export const Navbar: React.FC = () => {
             <Link
               to="/shop"
               id="nav-link-shop"
-              className={`px-3.5 py-2 rounded-lg font-semibold transition-colors ${
+              className={`px-2.5 xl:px-3 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
                 isActive('/shop')
                   ? 'bg-white/15 text-white font-bold shadow-xs'
                   : 'text-purple-100 hover:text-white hover:bg-white/10'
@@ -146,7 +146,7 @@ export const Navbar: React.FC = () => {
             <Link
               to="/services"
               id="nav-link-services"
-              className={`px-3.5 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-2.5 xl:px-3 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                 isActive('/services')
                   ? 'bg-white/15 text-white font-bold shadow-xs'
                   : 'text-purple-100 hover:text-white hover:bg-white/10'
@@ -159,7 +159,7 @@ export const Navbar: React.FC = () => {
             <Link
               to="/bulk-enquiry"
               id="nav-link-bulk"
-              className={`px-3.5 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+              className={`px-2.5 xl:px-3 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                 isActive('/bulk-enquiry')
                   ? 'bg-[#FF6B00] text-white font-bold shadow-xs'
                   : 'text-purple-100 hover:text-white hover:bg-white/10'
@@ -172,7 +172,7 @@ export const Navbar: React.FC = () => {
             <Link
               to="/shop?filter=new"
               id="nav-link-new-arrivals"
-              className="px-3.5 py-2 rounded-lg font-semibold text-purple-100 hover:text-white hover:bg-white/10 flex items-center gap-1.5 transition-colors"
+              className="px-2.5 xl:px-3 py-2 rounded-lg font-semibold text-purple-100 hover:text-white hover:bg-white/10 flex items-center gap-1.5 transition-colors whitespace-nowrap"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>New Arrivals</span>
@@ -181,7 +181,7 @@ export const Navbar: React.FC = () => {
             <Link
               to="/about"
               id="nav-link-about"
-              className={`px-3.5 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-2.5 xl:px-3 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                 location.pathname === '/about' || location.hash === '#about'
                   ? 'bg-white/15 text-white font-bold shadow-xs'
                   : 'text-purple-100 hover:text-white hover:bg-white/10'
@@ -194,7 +194,7 @@ export const Navbar: React.FC = () => {
             <Link
               to="/contact"
               id="nav-link-contact"
-              className={`px-3.5 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-2.5 xl:px-3 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                 isActive('/contact') && location.pathname !== '/about'
                   ? 'bg-white/15 text-white font-bold shadow-xs'
                   : 'text-purple-100 hover:text-white hover:bg-white/10'
@@ -206,7 +206,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Right Highlights & Portal Switcher based on authenticated role */}
-          <div className="flex items-center gap-2 sm:gap-3 py-1.5">
+          <div className="flex items-center gap-2 sm:gap-3 py-1.5 shrink-0">
             {!isAuthenticated ? (
               <button
                 id="nav-signin-btn"
@@ -246,7 +246,7 @@ export const Navbar: React.FC = () => {
                   <Link
                     to="/admin/dashboard"
                     id="nav-admin-desk-link"
-                    className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-colors"
+                    className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-400 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md shadow-violet-950/30 transition-colors whitespace-nowrap"
                   >
                     <ShieldCheck className="w-3.5 h-3.5 text-purple-200" />
                     <span>Admin Console</span>

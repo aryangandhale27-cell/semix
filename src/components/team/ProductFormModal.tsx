@@ -105,27 +105,20 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     } else {
       // Default initial state for Add Product
       setName('');
-      setSku(`SKU-${Math.floor(1000 + Math.random() * 9000)}`);
-      setBrand('Texas Instruments');
-      setCategory(categories[0]?.name || CATEGORIES[0]?.name || 'Electronic Components');
-      setSubcategory('Integrated Circuits');
-      setPrice(250);
-      setOriginalPrice(299);
+      setSku('');
+      setBrand('');
+      setCategory('');
+      setSubcategory('');
+      setPrice('');
+      setOriginalPrice('');
       setStockCount(50);
       setLocationBin(`BIN-${String.fromCharCode(65 + Math.floor(Math.random() * 6))}${Math.floor(10 + Math.random() * 20)}`);
-      setShortDescription('Industrial-grade hardware module designed for embedded makers and prototypes.');
-      setDescription('High-performance component with integrated ESD protection, standard header pinout, and wide operating temperature range.');
-      setImages([
-        PRESET_SILICON_IMAGES[0].url,
-        PRESET_SILICON_IMAGES[1].url
-      ]);
+      setShortDescription('');
+      setDescription('');
+      setImages([]);
       setActivePreviewIdx(0);
       setUrlInput('');
-      setSpecifications([
-        { name: 'Operating Voltage', value: '3.3V - 5.0V DC' },
-        { name: 'Operating Temperature', value: '-40°C to +85°C' },
-        { name: 'Package / Case', value: 'DIP-8 / SMD' }
-      ]);
+      setSpecifications([]);
       setErrors({});
     }
   }, [initialProduct, isOpen]);
@@ -244,7 +237,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = 'Product name is required';
     if (!sku.trim()) errs.sku = 'SKU is required';
-    if (!brand.trim()) errs.brand = 'Brand / Manufacturer is required';
     if (!category.trim()) errs.category = 'Category is required';
     if (price === '' || price < 0) errs.price = 'Valid price is required';
     if (stockCount === '' || stockCount < 0) errs.stockCount = 'Valid stock count is required';
@@ -436,18 +428,15 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   {/* Brand / Manufacturer */}
                   <div className="sm:col-span-4">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Brand / Manufacturer <span className="text-rose-500">*</span>
+                      Brand / Manufacturer
                     </label>
                     <input
                       type="text"
                       placeholder="e.g. STMicroelectronics / Arduino"
                       value={brand}
                       onChange={(e) => setBrand(e.target.value)}
-                      className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all ${
-                        errors.brand ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
-                      }`}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
                     />
-                    {errors.brand && <p className="text-[11px] text-rose-500 mt-1">{errors.brand}</p>}
                   </div>
 
                   {/* Warehouse Bin Location */}

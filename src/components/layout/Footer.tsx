@@ -19,68 +19,12 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
           
-          {/* Column 1: Dual Brand Structure (Parent: RIETZZ | Sub-brand: SEMI X LABS) */}
+          {/* Column 1: Semix Labs branding and contact details */}
           <div className="lg:col-span-5 sm:col-span-2 lg:pr-8 space-y-6">
-            
-            {/* Dual Brand Logos & Lineage Hierarchy */}
-            <div className="space-y-3.5">
-              {/* Parent Brand: RIETZZ */}
-              <div className="flex items-center gap-3">
-                {/* RIETZZ Parent Brand Logo Placeholder / Emblem */}
-                <div 
-                  id="rietzz-parent-brand-logo"
-                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8B25C6] via-[#561269] to-[#260533] border border-[#a855f7]/50 flex items-center justify-center text-white font-black font-mono text-lg shadow-[0_0_15px_rgba(168,85,247,0.35)] shrink-0 group hover:border-[#c084fc] transition-colors"
-                  title="RIETZZ Prime Ventures - Parent Brand"
-                >
-                  <span className="bg-gradient-to-t from-purple-200 to-white bg-clip-text text-transparent">R</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base sm:text-lg font-black tracking-wider text-white uppercase font-mono">
-                      RIETZZ
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-[#561269]/60 border border-[#a855f7]/40 text-[#dfb5e9]">
-                      Parent Brand
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 font-medium">
-                    Rietzz Prime Ventures • Enterprise Group
-                  </p>
-                </div>
-              </div>
-
-              {/* Hierarchy Connector Line */}
-              <div className="flex items-center gap-2 pl-4 text-xs">
-                <div className="w-0.5 h-3.5 bg-gradient-to-b from-[#a855f7]/60 to-[#FF6B00]/60" />
-                <span className="text-[10px] font-bold text-purple-300/90 uppercase tracking-widest flex items-center gap-1.5">
-                  <span>Powered Initiative & Hardware Division</span>
-                  <span className="text-purple-400">↓</span>
-                </span>
-              </div>
-
-              {/* Sub-Brand: SEMI X LABS */}
-              <div 
-                id="semixlabs-child-brand-block"
-                className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#561269]/25 via-white/[0.02] to-transparent border border-[#a855f7]/30 hover:border-[#a855f7]/60 transition-colors"
-              >
-                {/* SEMI X LABS Logo Placeholder / Emblem */}
-                <div className="w-9 h-9 rounded-lg bg-[#561269]/40 border border-[#c084fc]/40 flex items-center justify-center p-1 shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
-                  <SemixLabsLogo variant="icon" size="sm" className="w-full h-full" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm sm:text-base font-extrabold tracking-wide text-white font-mono">
-                      SEMI X LABS
-                    </span>
-                    <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded bg-[#FF6B00]/20 border border-[#FF6B00]/50 text-[#FF6B00]">
-                      Child / Sub-Brand
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 truncate">
-                    Electronics, Turnkey Silicon & Prototyping
-                  </p>
-                </div>
-              </div>
+            <div className="flex items-center min-h-20">
+              <Link to="/" aria-label="SEMIX LABS home" className="inline-flex rounded-xl bg-white p-2 -m-2 shadow-lg shadow-black/20 hover:bg-slate-100 transition-colors">
+                <SemixLabsLogo variant="full" size="xl" className="max-w-full" />
+              </Link>
             </div>
 
             {/* Description / Subtext */}

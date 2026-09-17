@@ -28,8 +28,7 @@ export const CATEGORY_IMAGE_MAP: Record<string, string> = {
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className = '' }) => {
   const [imageError, setImageError] = useState(false);
 
-  // Determine display image: prioritize category.image or fall back to curated map
-  const displayImage = category.image || CATEGORY_IMAGE_MAP[category.id] || CATEGORY_IMAGE_MAP['cat-electronic-components'];
+  const displayImage = category.image;
 
   return (
     <motion.div
