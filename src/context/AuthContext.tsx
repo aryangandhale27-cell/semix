@@ -502,19 +502,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fbCode = fbErr?.code || '';
       console.log('Firebase signInWithEmailPassword status:', fbCode);
 
-      if (fbCode === 'auth/user-not-found' || fbCode === 'auth/invalid-credential') {
+      if (fbCode === 'auth/user-not-found') {
   return {
     success: false,
     error: 'You are not registered. Please sign up first or create an account.'
   };
+} else if (fbCode === 'auth/wrong-password') {
+  return {
+    success: false,
+    error: 'Wrong password. Please check your password and try again.'
+  };
+} else if (fbCode === 'auth/invalid-credential') {
+  const emailExists =
+    registeredUsers.some(
+      (u) => u.email.toLowerCase() === cleanEmail
+    ) ||
+    cleanEmail === 'admin@semixlabs.com' ||
+    cleanEmail === 'aryangandhale27@gmail.com';
 
-      
-      } else if (fbCode === 'auth/wrong-password') {
-        return {
-          success: false,
-          error: 'Incorrect password for this account. Please check your credentials or click "Forgot Password".'
-        };
-      } else if (fbCode === 'auth/invalid-email') {
+  if (emailExists) {
+    return {
+      success: false,
+      error: 'Wrong password. Please check your password and try again.'
+    };
+  }
+
+  return {
+    success: false,
+    error: 'You are not registered. Please sign up first or create an account.'
+  };
+}else if (fbCode === 'auth/invalid-email') {
         return {
           success: false,
           error: 'The email address is badly formatted. Please enter a valid email or Gmail address.'

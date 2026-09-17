@@ -69,11 +69,7 @@ const AuthRedirectHandler: React.FC<{
 
     if (reason === 'unauthenticated') {
       const requiredRoleText = allowedRoles?.length ? ` (${allowedRoles.join('/')} account)` : '';
-      openAuthModal(
-        'signin',
-        locationPath,
-        `Portal Access Restricted: Please sign in${requiredRoleText} to access ${locationPath}.`
-      );
+      openAuthModal('signin', locationPath);
       if (shouldShowToast) {
         showToast(
           'Authentication Required',

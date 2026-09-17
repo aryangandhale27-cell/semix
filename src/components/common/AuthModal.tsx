@@ -267,7 +267,11 @@ export const AuthModal: React.FC = () => {
         {/* Header Ribbon */}
         <div className="bg-gradient-to-r from-[#561269] via-[#561269] to-[#380847] text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <SemixLabsLogo variant="icon" size="sm" className="h-9 w-9 bg-white/10 p-1 rounded-xl border border-white/10" />
+            <SemixLabsLogo
+  variant="icon"
+  size="sm"
+  className="h-9 w-9 bg-white p-1 rounded-xl border border-white grayscale"
+/>
             <div>
               <h3 className="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
                 SEMIX LABS Portal Access
@@ -302,41 +306,41 @@ export const AuthModal: React.FC = () => {
         )}
 
         {/* Tabs Switcher */}
-        <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-3">
-          <button
-            id="tab-btn-signin"
-            type="button"
-            onClick={() => {
-              setActiveTab('signin');
-              setShowForgotPassword(false);
-            }}
-            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === 'signin'
-                ? 'border-[#561269] text-[#561269]'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <KeyRound className="w-4 h-4" />
-            <span>Sign In</span>
-          </button>
+<div className="flex w-full border-b border-slate-200 bg-slate-50 px-6 pt-3">
+  <button
+    id="tab-btn-signin"
+    type="button"
+    onClick={() => {
+      setActiveTab('signin');
+      setShowForgotPassword(false);
+    }}
+    className={`flex-1 pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center justify-center gap-2 ${
+      activeTab === 'signin'
+        ? 'border-[#561269] text-[#561269]'
+        : 'border-transparent text-slate-500 hover:text-slate-900'
+    }`}
+  >
+    <KeyRound className="w-4 h-4" />
+    <span>Sign In</span>
+  </button>
 
-          <button
-            id="tab-btn-register"
-            type="button"
-            onClick={() => {
-              setActiveTab('register');
-              setShowForgotPassword(false);
-            }}
-            className={`pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === 'register'
-                ? 'border-[#561269] text-[#561269]'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>Create Customer Account</span>
-          </button>
-        </div>
+  <button
+    id="tab-btn-register"
+    type="button"
+    onClick={() => {
+      setActiveTab('register');
+      setShowForgotPassword(false);
+    }}
+    className={`flex-1 pb-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center justify-center gap-2 ${
+      activeTab === 'register'
+        ? 'border-[#561269] text-[#561269]'
+        : 'border-transparent text-slate-500 hover:text-slate-900'
+    }`}
+  >
+    <User className="w-4 h-4" />
+    <span>Create Customer Account</span>
+  </button>
+</div>
 
         {/* Modal Body */}
         <div className="p-6 max-h-[75vh] overflow-y-auto">
@@ -813,16 +817,7 @@ export const AuthModal: React.FC = () => {
           {/* ===================== CREATE ACCOUNT (REGISTER) TAB ===================== */}
           {activeTab === 'register' && (
             <div>
-              {/* Notice that team/admin are created by Admin */}
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl mb-4 text-xs text-amber-900 flex items-start gap-2">
-                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold">Customer Self-Registration:</span> Sign up here to order hardware, save wishlists, and track shipments. 
-                  <span className="text-slate-600 block mt-0.5 text-[11px]">
-                    *Note: In accordance with SRS FR-1.5, Seller, Team, and Admin accounts cannot self-register; they are created internally or loaded via authorized credentials.
-                  </span>
-                </div>
-              </div>
+              
 
               {/* Registration Provider Selection */}
               <div className="mb-5 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
@@ -961,7 +956,7 @@ export const AuthModal: React.FC = () => {
                         setRegName(e.target.value);
                         setRegError(null);
                       }}
-                      placeholder="e.g. Aryan Gandhale"
+                      placeholder=""
                       required
                       className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden"
                     />
@@ -983,7 +978,7 @@ export const AuthModal: React.FC = () => {
                         setRegEmail(e.target.value);
                         setRegError(null);
                       }}
-                      placeholder="e.g. aryangandhale27@gmail.com, yourname@gmail.com"
+                      placeholder=""
                       required
                       className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden"
                     />
@@ -1002,7 +997,7 @@ export const AuthModal: React.FC = () => {
                       type="tel"
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      placeholder="+91 98765 43210"
+                      placeholder=""
                       className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden"
                     />
                   </div>
