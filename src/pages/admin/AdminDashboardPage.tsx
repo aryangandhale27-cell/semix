@@ -21,7 +21,9 @@ import {
   RefreshCw,
   Cloud,
   CheckCircle2,
-  ChevronDown
+  ChevronDown,
+  Flame,
+  Sparkles
 } from 'lucide-react';
 import { CustomProjectsManager } from '../../components/admin/CustomProjectsManager';
 import { AdminOrdersTab } from '../../components/admin/AdminOrdersTab';
@@ -72,6 +74,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [productSearch, setProductSearch] = useState('');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [trendingProductId, setTrendingProductId] = useState('');
+  const [freshProductId, setFreshProductId] = useState('');
 
   // New product form state
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
@@ -197,6 +201,28 @@ export const AdminDashboardPage: React.FC = () => {
     const q = productSearch.toLowerCase();
     return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
   });
+
+  const addProductToHomepageSection = async (productId: string, section: 'trending' | 'fresh') => {
+    const product = products.find((item) => item.id === productId);
+    if (!product) return;
+
+    try {
+      await updateProduct({
+        ...product,
+        ...(section === 'trending' ? { isBestSeller: true } : { isNew: true }),
+      });
+      showToast(
+        section === 'trending' ? 'Added to Trending' : 'Added to Fresh Silicon',
+        `${product.name} will now appear on the homepage section.`,
+        'success'
+      );
+      if (section === 'trending') setTrendingProductId('');
+      else setFreshProductId('');
+    } catch (error) {
+      console.error('[Admin] Homepage section assignment failed:', error);
+      showToast('Assignment Failed', 'Could not update the product in Firestore.', 'error');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -619,6 +645,62 @@ export const AdminDashboardPage: React.FC = () => {
                 <Plus className="w-4 h-4 text-[#FF6B00]" />
                 <span>New Item</span>
               </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="w-4 h-4 text-[#FF6B00]" />
+                <h4 className="text-xs font-extrabold text-[#561269]">Trending &amp; Best Sellers</h4>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  value={trendingProductId}
+                  onChange={(event) => setTrendingProductId(event.target.value)}
+                  className="min-w-0 flex-1 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-medium text-slate-800"
+                >
+                  <option value="">Select an existing product</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => addProductToHomepageSection(trendingProductId, 'trending')}
+                  disabled={!trendingProductId}
+                  className="rounded-lg bg-[#FF6B00] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-violet-600" />
+                <h4 className="text-xs font-extrabold text-[#561269]">Fresh Silicon &amp; New Arrivals</h4>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  value={freshProductId}
+                  onChange={(event) => setFreshProductId(event.target.value)}
+                  className="min-w-0 flex-1 rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-medium text-slate-800"
+                >
+                  <option value="">Select an existing product</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => addProductToHomepageSection(freshProductId, 'fresh')}
+                  disabled={!freshProductId}
+                  className="rounded-lg bg-[#561269] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[#460e56] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Confirm
+                </button>
+              </div>
             </div>
           </div>
 
