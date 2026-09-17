@@ -210,10 +210,16 @@ export const AuthModal: React.FC = () => {
       });
 
       if (res.success) {
-        navigate(authRedirectUrl || '/customer/dashboard');
-      } else {
-        setRegError(res.error || 'Registration failed');
-      }
+  // Registration successful — close the authentication popup
+  closeAuthModal();
+
+  // Go directly to the home page
+  navigate('/');
+
+  return;
+} else {
+  setRegError(res.error || 'Registration failed');
+}
     } finally {
       setIsSubmittingReg(false);
     }

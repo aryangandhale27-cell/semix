@@ -102,7 +102,7 @@ interface AuthContextType {
   createUser: (payload: CreateUserPayload) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
   updateUser: (id: string, updates: Partial<AuthUser & { passwordHash?: string }>) => Promise<{ success: boolean; error?: string }>;
   toggleUserStatus: (id: string) => void;
-  deleteUser: (id: string) => Promise<{ success: boolean; error?: string }>;
+  deleteUser: (id: string) => { success: boolean; error?: string };
   switchUser: (targetUserOrId: string | AuthUser) => void;
 }
 
@@ -502,35 +502,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fbCode = fbErr?.code || '';
       console.log('Firebase signInWithEmailPassword status:', fbCode);
 
-      // If user not yet created in Firebase Auth, attempt seamless creation for Gmail / valid email
-      if ((fbCode === 'auth/user-not-found' || fbCode === 'auth/invalid-credential') && cleanPass.length >= 6) {
-        try {
-          const newFbUser = await registerWithEmailPassword(cleanEmail, cleanPass, cleanEmail.split('@')[0]);
-          if (newFbUser) {
-            const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
-            const assignedRole: UserRole = isAryanAdmin ? 'admin' : 'customer';
-            const authPayload: AuthUser = {
-              id: newFbUser.uid,
-              name: newFbUser.displayName || cleanEmail.split('@')[0],
-              email: cleanEmail,
-              role: assignedRole,
-              status: 'active',
-              createdAt: new Date().toISOString().slice(0, 10),
-            };
-            setUser(authPayload);
-            setIsAuthModalOpen(false);
-            setAuthNoticeMessage(null);
-            syncUserToFirestore(authPayload).catch(() => {});
-            showToast(
-              'Account Created & Signed In!',
-              `Welcome ${authPayload.name} (${authPayload.role.toUpperCase()})`,
-              'success'
-            );
-            return { success: true, role: assignedRole };
-          }
-        } catch (autoErr: any) {
-          console.log('Firebase auto-enroll note:', autoErr?.code);
-        }
+      if (fbCode === 'auth/user-not-found' || fbCode === 'auth/invalid-credential') {
+  return {
+    success: false,
+    error: 'You are not registered. Please sign up first or create an account.'
+  };
+
+      
       } else if (fbCode === 'auth/wrong-password') {
         return {
           success: false,
@@ -598,27 +576,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true, role: authPayload.role };
     }
 
-    // 5. Direct Gmail / Email Authentication for any valid email & password
-    if (cleanEmail.includes('@') && cleanPass.length >= 4) {
-      const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin');
-      const assignedRole: UserRole = isAryanAdmin ? 'admin' : 'customer';
-      const authPayload: AuthUser = {
-        id: `usr-${cleanEmail.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 15)}-${Date.now().toString().slice(-4)}`,
-        name: cleanEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-        email: cleanEmail,
-        role: assignedRole,
-        phone: '+91 98000 00000',
-        department: assignedRole === 'admin' ? 'Executive Operations' : undefined,
-        status: 'active',
-        createdAt: new Date().toISOString().slice(0, 10),
-      };
-
-      setUser(authPayload);
-      setIsAuthModalOpen(false);
-      setAuthNoticeMessage(null);
-      syncUserToFirestore(authPayload).catch(() => {});
-      return { success: true, role: assignedRole };
-    }
+    
 
     // 6. Helpful error guidance if email is recognizable but password didn't match
     const isKnownRole = 
