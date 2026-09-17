@@ -422,7 +422,7 @@ export const AuthModal: React.FC = () => {
                               setSignInEmail(e.target.value);
                               setSignInError(null);
                             }}
-                            placeholder="e.g. aryangandhale27@gmail.com, customer@semixlabs.com, or admin"
+                            placeholder="Enter email address"
                             required
                             className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-hidden"
                           />
