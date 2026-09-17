@@ -57,6 +57,16 @@ const AuthRedirectHandler: React.FC<{
   const { showToast } = useApp();
 
   useEffect(() => {
+    const noticeKey = `auth-route-notice:${reason}:${locationPath}`;
+    let shouldShowToast = true;
+
+    try {
+      shouldShowToast = sessionStorage.getItem(noticeKey) !== 'shown';
+      if (shouldShowToast) sessionStorage.setItem(noticeKey, 'shown');
+    } catch {
+      // Continue normally when browser storage is unavailable.
+    }
+
     if (reason === 'unauthenticated') {
       const requiredRoleText = allowedRoles?.length ? ` (${allowedRoles.join('/')} account)` : '';
       openAuthModal(
@@ -64,11 +74,13 @@ const AuthRedirectHandler: React.FC<{
         locationPath,
         `Portal Access Restricted: Please sign in${requiredRoleText} to access ${locationPath}.`
       );
-      showToast(
-        'Authentication Required',
-        `Please sign in to access ${locationPath}`,
-        'warning'
-      );
+      if (shouldShowToast) {
+        showToast(
+          'Authentication Required',
+          `Please sign in to access ${locationPath}`,
+          'warning'
+        );
+      }
     } else if (reason === 'unauthorized') {
       const rolesNeeded = allowedRoles?.map((r) => r.toUpperCase()).join(' or ') || 'Administrative';
       openAuthModal(
@@ -76,13 +88,15 @@ const AuthRedirectHandler: React.FC<{
         locationPath,
         `Access Denied: Your current role (${userRole?.toUpperCase()}) does not have permission for this portal. Please sign in as ${rolesNeeded}.`
       );
-      showToast(
-        'Access Denied',
-        `This section requires ${rolesNeeded} privileges`,
-        'error'
-      );
+      if (shouldShowToast) {
+        showToast(
+          'Access Denied',
+          `This section requires ${rolesNeeded} privileges`,
+          'error'
+        );
+      }
     }
-  }, [locationPath, reason, allowedRoles, userRole]);
+  }, [locationPath, reason, allowedRoles?.join('|'), userRole]);
 
   return <Navigate to="/" replace />;
 };

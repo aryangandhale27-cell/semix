@@ -71,6 +71,37 @@ import { logActivity, recordActivityLog } from '../services/auditService';
 import { auth, onAuthStateChanged, testFirestoreConnection } from '../lib/firebase';
 import { saveUserAppState, subscribeToUserAppState } from '../services/userStateService';
 
+const APP_DATA_CACHE_KEYS = {
+  products: 'semix-cache-products-v1',
+  categories: 'semix-cache-categories-v1',
+  banners: 'semix-cache-banners-v1',
+} as const;
+
+function readCachedData<T>(key: string, fallback: T): T {
+  try {
+    const cached = localStorage.getItem(key);
+    return cached ? (JSON.parse(cached) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeCachedData<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Continue using live Firestore data when browser storage is unavailable.
+  }
+}
+
+function clearCachedData(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
 export interface ToastItem {
   id: string;
   title: string;
@@ -317,11 +348,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setCurrentRole = (role: UserRole) => {
     setCurrentRoleState(role);
-    showToast(`Switched Role to ${role.toUpperCase()}`, `Now viewing workspace with ${role} permissions`, 'info', 2000);
   };
 
   // Products
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() =>
+    readCachedData<Product[]>(APP_DATA_CACHE_KEYS.products, [])
+  );
 
   const [isProductSyncing, setIsProductSyncing] = useState(false);
 
@@ -332,7 +364,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchProductsFromFirestore()
       .then((remoteProducts) => {
         if (!isMounted) return;
-        setProducts(remoteProducts.map(normalizeProduct));
+        const normalizedProducts = remoteProducts.map(normalizeProduct);
+        setProducts(normalizedProducts);
+        if (normalizedProducts.length > 0) writeCachedData(APP_DATA_CACHE_KEYS.products, normalizedProducts);
+        else clearCachedData(APP_DATA_CACHE_KEYS.products);
       })
       .catch((err) => {
         console.warn('[Firestore] Product load notice:', err?.message || err);
@@ -340,7 +375,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const unsubscribe = subscribeToProducts((remoteProducts) => {
       if (!isMounted) return;
-      setProducts(remoteProducts.map(normalizeProduct));
+      const normalizedProducts = remoteProducts.map(normalizeProduct);
+      setProducts(normalizedProducts);
+      if (normalizedProducts.length > 0) writeCachedData(APP_DATA_CACHE_KEYS.products, normalizedProducts);
+      else clearCachedData(APP_DATA_CACHE_KEYS.products);
     });
 
     return () => {
@@ -389,21 +427,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [cart, wishlist, compareList, userStateReady]);
 
   // Categories State & Management
-  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>(() =>
+    readCachedData<Category[]>(APP_DATA_CACHE_KEYS.categories, CATEGORIES)
+  );
 
   useEffect(() => {
     let isMounted = true;
     fetchCategoriesFromFirestore()
       .then((data) => {
         if (isMounted && data.length > 0) {
-          setCategories(mergeCategoriesWithDefaults(data));
+          const mergedCategories = mergeCategoriesWithDefaults(data);
+          setCategories(mergedCategories);
+          writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
         }
       })
       .catch((err) => console.warn('[CategoryService] Init error:', err));
 
     const unsub = subscribeToCategories((data) => {
       if (isMounted && data.length > 0) {
-        setCategories(mergeCategoriesWithDefaults(data));
+        const mergedCategories = mergeCategoriesWithDefaults(data);
+        setCategories(mergedCategories);
+        writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
       }
     });
 
@@ -428,7 +472,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Homepage Banners State & Management
-  const [banners, setBanners] = useState<HomepageBanner[]>([]);
+  const [banners, setBanners] = useState<HomepageBanner[]>(() =>
+    readCachedData<HomepageBanner[]>(APP_DATA_CACHE_KEYS.banners, [])
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -436,6 +482,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .then((data) => {
         if (isMounted && data && data.length > 0) {
           setBanners(data);
+          writeCachedData(APP_DATA_CACHE_KEYS.banners, data);
         }
       })
       .catch((err) => console.warn('[BannerService] Init error:', err));
@@ -443,6 +490,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsub = subscribeToBanners((data) => {
       if (isMounted) {
         setBanners(data);
+        if (data.length > 0) writeCachedData(APP_DATA_CACHE_KEYS.banners, data);
+        else clearCachedData(APP_DATA_CACHE_KEYS.banners);
       }
     });
 

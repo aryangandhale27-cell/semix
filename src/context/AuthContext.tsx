@@ -10,7 +10,7 @@ import {
   sendPasswordReset
 } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { syncUserToFirestore, fetchUsersFromFirestore } from '../services/firebaseService';
+import { syncUserToFirestore, fetchUsersFromFirestore, deleteUserFromFirestore } from '../services/firebaseService';
 import { createAdminManagedUser } from '../services/adminUserService';
 import { sendWelcomeEmail } from '../services/emailService';
 
@@ -102,7 +102,7 @@ interface AuthContextType {
   createUser: (payload: CreateUserPayload) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
   updateUser: (id: string, updates: Partial<AuthUser & { passwordHash?: string }>) => Promise<{ success: boolean; error?: string }>;
   toggleUserStatus: (id: string) => void;
-  deleteUser: (id: string) => { success: boolean; error?: string };
+  deleteUser: (id: string) => Promise<{ success: boolean; error?: string }>;
   switchUser: (targetUserOrId: string | AuthUser) => void;
 }
 
@@ -326,10 +326,10 @@ const matchDemoUser = (inputEmail: string, inputPass: string): AuthUser | null =
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { showToast, setCurrentRole, addAvailableSeller, updateAvailableSeller, removeAvailableSeller, addStaff } = useApp();
 
-  // Load registered users and always ensure default users are merged and fresh
+  // Keep only the root admin as a local fallback; other accounts must come from Firestore.
   const [registeredUsers, setRegisteredUsers] = useState<Array<AuthUser & { passwordHash: string }>>(() => {
     const map = new Map<string, AuthUser & { passwordHash: string }>();
-    DEFAULT_USERS.forEach((u) => map.set(u.email.toLowerCase(), u));
+    DEFAULT_USERS.filter((u) => u.role === 'admin').forEach((u) => map.set(u.email.toLowerCase(), u));
     return Array.from(map.values());
   });
 
@@ -368,10 +368,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[Firestore] User initial fetch status:', err?.message || err);
       });
 
-    // 2. Ensure current registered users are written into Firestore 'users' collection
-    DEFAULT_USERS.forEach((u) => {
-      syncUserToFirestore(u).catch(() => {});
-    });
   }, []);
 
   // Listen to Firebase Auth state changes
@@ -599,11 +595,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthModalOpen(false);
       setAuthNoticeMessage(null);
       syncUserToFirestore(authPayload).catch(() => {});
-      showToast(
-        `Welcome back, ${authPayload.name}!`,
-        `Signed in as ${authPayload.role.toUpperCase()} • ${authPayload.email}`,
-        'success'
-      );
       return { success: true, role: authPayload.role };
     }
 
@@ -626,11 +617,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthModalOpen(false);
       setAuthNoticeMessage(null);
       syncUserToFirestore(authPayload).catch(() => {});
-      showToast(
-        `Welcome, ${authPayload.name}!`,
-        `Signed in as ${authPayload.role.toUpperCase()} • ${authPayload.email}`,
-        'success'
-      );
       return { success: true, role: assignedRole };
     }
 
@@ -1010,7 +996,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
-  const deleteUser = (id: string): { success: boolean; error?: string } => {
+  const deleteUser = async (id: string): Promise<{ success: boolean; error?: string }> => {
     const target = registeredUsers.find((u) => u.id === id);
     if (!target) {
       return { success: false, error: 'User account not found.' };
@@ -1024,6 +1010,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user && user.id === id) {
       showToast('Action Blocked', 'You cannot delete the account you are currently logged into.', 'error');
       return { success: false, error: 'Cannot delete currently active account.' };
+    }
+
+    try {
+      await deleteUserFromFirestore(id);
+    } catch (error) {
+      console.error('[AuthContext] User deletion failed:', error);
+      showToast('Delete Failed', 'Firebase could not remove this user profile.', 'error');
+      return { success: false, error: 'Could not delete user from Firestore.' };
     }
 
     setRegisteredUsers((prev) => prev.filter((u) => u.id !== id));
@@ -1077,19 +1071,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentRole(target.role);
     setIsAuthModalOpen(false);
     setAuthNoticeMessage(null);
-
-    showToast(
-      'Account Switched',
-      `Signed in as ${target.name} (${target.role.toUpperCase()})`,
-      'success'
-    );
   };
 
   const logout = () => {
-    const previousName = user?.name || 'User';
     signOutUser().catch(() => {});
     setUser(null);
-    showToast('Logged Out', `Goodbye ${previousName}, see you soon!`, 'info', 2000);
   };
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {

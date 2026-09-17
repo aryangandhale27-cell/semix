@@ -143,10 +143,10 @@ export const ProductDetailPage: React.FC = () => {
     .slice(0, 4);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6">
       {/* Admin / Team Staff Quick Management Bar */}
       {(user?.role === 'admin' || user?.role === 'team') && (
-        <div className="bg-gradient-to-r from-[#561269] to-[#3b0b49] text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between flex-wrap gap-3 border border-purple-800">
+        <div className="bg-gradient-to-r from-[#561269] to-[#3b0b49] text-white p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-md flex items-center justify-between flex-wrap gap-2 sm:gap-3 border border-purple-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-[#FF6B00]">
               <ShieldAlert className="w-4 h-4" />
@@ -187,7 +187,7 @@ export const ProductDetailPage: React.FC = () => {
       )}
 
       {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-xs text-slate-500">
+      <nav className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 overflow-hidden">
         <Link to="/" className="hover:text-slate-800">Home</Link>
         <ChevronRight className="w-3.5 h-3.5" />
         <Link to="/shop" className="hover:text-slate-800">Catalog</Link>
@@ -200,10 +200,10 @@ export const ProductDetailPage: React.FC = () => {
       </nav>
 
       {/* Main Product Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start">
         {/* Left Image Gallery */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="group bg-slate-50 border border-slate-200 rounded-2xl p-6 relative overflow-hidden aspect-square flex items-center justify-center">
+        <div className="lg:col-span-5 space-y-3 sm:space-y-4">
+          <div className="group bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 relative overflow-hidden aspect-square flex items-center justify-center lg:max-w-[420px] lg:mx-auto">
             {product.isNew && (
               <span className="absolute top-4 left-4 bg-cyan-600 text-white text-xs font-extrabold uppercase px-2.5 py-1 rounded-md shadow-xs z-10">
                 New Arrival
@@ -266,7 +266,7 @@ export const ProductDetailPage: React.FC = () => {
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => setIsLightboxOpen(true)}
-                className="max-h-80 w-full object-contain mix-blend-multiply cursor-zoom-in transition-all"
+                className="max-h-64 sm:max-h-72 w-full object-contain mix-blend-multiply cursor-zoom-in transition-all"
               />
             </AnimatePresence>
           </div>
@@ -281,7 +281,7 @@ export const ProductDetailPage: React.FC = () => {
                     key={idx}
                     type="button"
                     onClick={() => setSelectedImgIdx(idx)}
-                    className={`relative w-16 h-16 rounded-xl border-2 overflow-hidden p-1 bg-white cursor-pointer transition-all shrink-0 ${
+                    className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl border-2 overflow-hidden p-1 bg-white cursor-pointer transition-all shrink-0 ${
                       isActive
                         ? 'border-[#FF6B00] ring-2 ring-[#FF6B00]/30 scale-105 shadow-sm'
                         : 'border-slate-200 hover:border-slate-300 opacity-70 hover:opacity-100'
@@ -300,7 +300,7 @@ export const ProductDetailPage: React.FC = () => {
           )}
 
           {/* Verification Badges */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-2 gap-3 text-xs text-slate-700">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4 grid grid-cols-2 gap-2 sm:gap-3 text-[11px] sm:text-xs text-slate-700">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>100% Genuine Silicon</span>
@@ -321,27 +321,27 @@ export const ProductDetailPage: React.FC = () => {
         </div>
 
         {/* Right Product Buy Box & Specs Summary */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-4 sm:space-y-5">
           <div>
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
               <span className="font-extrabold text-[#561269] uppercase tracking-wider">{product.brand}</span>
               <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-xs">SKU: {product.sku}</span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">
+            <h1 className="text-lg sm:text-2xl font-extrabold text-slate-900 leading-tight">
               {product.name}
             </h1>
 
             {/* Ratings & Stock info */}
-            <div className="flex flex-wrap items-center gap-4 mt-3">
-              <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-800 border border-amber-200">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 sm:mt-3">
+              <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-bold text-amber-800 border border-amber-200">
                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
                 <span>{product.rating}</span>
                 <span className="text-slate-400 font-normal">({product.reviewCount} customer reviews)</span>
               </div>
 
               <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                className={`text-[11px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border ${
                   product.stockCount > 10
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                     : product.stockCount > 0
@@ -359,9 +359,9 @@ export const ProductDetailPage: React.FC = () => {
           </div>
 
           {/* Pricing Calculation Display */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 space-y-2 sm:space-y-3">
             <div className="flex items-baseline gap-3 flex-wrap">
-              <span className="text-3xl font-extrabold text-slate-900 font-mono">
+              <span className="text-2xl sm:text-[28px] font-extrabold text-slate-900 font-mono">
                 ₹{unitPrice.toLocaleString('en-IN')}
               </span>
               <span className="text-xs text-slate-500 font-semibold">/ piece (+18% GST)</span>
@@ -417,12 +417,12 @@ export const ProductDetailPage: React.FC = () => {
             )}
 
             {/* Quantity Selector & Action Buttons */}
-            <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="pt-2 sm:pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
               {/* Quantity counter */}
-              <div className="inline-flex rounded-xl border border-slate-300 bg-white items-center overflow-hidden h-12 shrink-0">
+              <div className="inline-flex rounded-lg sm:rounded-xl border border-slate-300 bg-white items-center overflow-hidden h-10 sm:h-12 shrink-0 self-start">
                 <button
                   onClick={() => setSelectedQty((q) => Math.max(1, q - 1))}
-                  className="px-4 text-sm font-bold text-slate-600 hover:bg-slate-100 h-full cursor-pointer"
+                  className="px-3 sm:px-4 text-sm font-bold text-slate-600 hover:bg-slate-100 h-full cursor-pointer"
                 >
                   -
                 </button>
@@ -436,7 +436,7 @@ export const ProductDetailPage: React.FC = () => {
                 />
                 <button
                   onClick={() => setSelectedQty((q) => Math.min(product.stockCount, q + 1))}
-                  className="px-4 text-sm font-bold text-slate-600 hover:bg-slate-100 h-full cursor-pointer"
+                  className="px-3 sm:px-4 text-sm font-bold text-slate-600 hover:bg-slate-100 h-full cursor-pointer"
                 >
                   +
                 </button>
@@ -447,7 +447,7 @@ export const ProductDetailPage: React.FC = () => {
                 id="pdp-add-to-cart-btn"
                 onClick={handleAddToCart}
                 disabled={!product.inStock || product.stockCount <= 0}
-                className={`w-full sm:flex-1 h-12 font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer ${
+                className={`w-full sm:flex-1 h-10 sm:h-12 font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer ${
                   added
                     ? 'bg-emerald-600 text-white'
                     : 'bg-[#561269] hover:bg-[#460e56] text-white'
@@ -471,7 +471,7 @@ export const ProductDetailPage: React.FC = () => {
                 id="pdp-buy-now-btn"
                 onClick={handleBuyNow}
                 disabled={!product.inStock || product.stockCount <= 0}
-                className="w-full sm:w-auto h-12 bg-[#FF6B00] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-6 rounded-xl transition-colors cursor-pointer shadow-md shadow-orange-950/10"
+                className="w-full sm:w-auto h-10 sm:h-12 bg-[#FF6B00] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-6 rounded-lg sm:rounded-xl transition-colors cursor-pointer shadow-md shadow-orange-950/10"
               >
                 Buy Now
               </button>

@@ -256,6 +256,17 @@ export async function syncUserToFirestore(user: AuthUser): Promise<void> {
   }
 }
 
+export async function deleteUserFromFirestore(userId: string): Promise<void> {
+  const path = `users/${userId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId));
+    await deleteDoc(doc(db, 'staff', userId)).catch(() => undefined);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+}
+
 export async function fetchUsersFromFirestore(): Promise<AuthUser[]> {
   const path = 'users';
   try {

@@ -629,7 +629,7 @@ export const AdminUserManagementTab: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  deleteUser(userToDelete.id);
+                  void deleteUser(userToDelete.id);
                   setUserToDelete(null);
                 }}
                 className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-sm"

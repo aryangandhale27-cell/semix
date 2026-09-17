@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -29,8 +29,14 @@ export const CustomerDashboardPage: React.FC = () => {
   const { orders, wishlist, products, addToCart, toggleWishlist, reportEscalation, showToast, bulkEnquiries } = useApp();
   const { user } = useAuth();
 
+  const customerOrders = user
+    ? orders.filter((order) =>
+        order.userId === user.id || order.userId === user.email || order.customer?.email === user.email
+      )
+    : [];
+
   const activeTab = searchParams.get('tab') || 'orders';
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(orders[0] || null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(customerOrders[0] || null);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
   // Ticket form state
@@ -38,8 +44,18 @@ export const CustomerDashboardPage: React.FC = () => {
   const [ticketCategory, setTicketCategory] = useState<EscalationType>('defective_batch');
   const [ticketPriority, setTicketPriority] = useState<EscalationPriority>('medium');
   const [ticketDescription, setTicketDescription] = useState('');
-  const [ticketOrderId, setTicketOrderId] = useState<string>(orders[0]?.id || '');
+  const [ticketOrderId, setTicketOrderId] = useState<string>(customerOrders[0]?.id || '');
   const [ticketSubmitted, setTicketSubmitted] = useState(false);
+
+  useEffect(() => {
+    const selectedStillBelongsToCustomer = selectedOrder && customerOrders.some((order) => order.id === selectedOrder.id);
+    if (!selectedStillBelongsToCustomer) {
+      setSelectedOrder(customerOrders[0] || null);
+    }
+    if (!customerOrders.some((order) => order.id === ticketOrderId)) {
+      setTicketOrderId(customerOrders[0]?.id || '');
+    }
+  }, [customerOrders, selectedOrder, ticketOrderId]);
 
   const wishlistProducts = products.filter((p) => wishlist.includes(p.id));
 
@@ -99,7 +115,7 @@ export const CustomerDashboardPage: React.FC = () => {
           </button>
           <div className="bg-white/10 px-4 py-2 rounded-xl text-center border border-white/15">
             <span className="text-[10px] text-purple-200 block uppercase font-bold">Total Orders</span>
-            <span className="text-lg font-bold font-mono text-white">{orders.length}</span>
+            <span className="text-lg font-bold font-mono text-white">{customerOrders.length}</span>
           </div>
           <div className="bg-white/10 px-4 py-2 rounded-xl text-center border border-white/15">
             <span className="text-[10px] text-purple-200 block uppercase font-bold">Wishlist Parts</span>
@@ -119,7 +135,7 @@ export const CustomerDashboardPage: React.FC = () => {
           }`}
         >
           <Package className="w-4 h-4 text-[#FF6B00]" />
-          <span>Orders & Live Tracking ({orders.length})</span>
+          <span>Orders & Live Tracking ({customerOrders.length})</span>
         </button>
 
         <button
@@ -180,7 +196,7 @@ export const CustomerDashboardPage: React.FC = () => {
               Select Shipment to Track
             </h3>
 
-            {orders.map((ord) => {
+            {customerOrders.map((ord) => {
               const isSelected = selectedOrder?.id === ord.id;
               return (
                 <div
@@ -372,7 +388,7 @@ export const CustomerDashboardPage: React.FC = () => {
                     onChange={(e) => setTicketOrderId(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold"
                   >
-                    {orders.map((o) => (
+                    {customerOrders.map((o) => (
                       <option key={o.id} value={o.id}>{o.id} ({o.createdAt.slice(0, 10)})</option>
                     ))}
                     <option value="GENERAL">General Technical Inquiry</option>

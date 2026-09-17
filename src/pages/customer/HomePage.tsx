@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { ProductCard } from '../../components/common/ProductCard';
@@ -26,6 +26,8 @@ export const HomePage: React.FC = () => {
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const isSwiping = useRef(false);
 
   // Active banners from AppContext (synced with Firestore & local persistence)
   const activeBanners: HomepageBanner[] = (banners || []).filter(
@@ -46,6 +48,34 @@ export const HomePage: React.FC = () => {
   const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 8);
   const newArrivals = products.filter((p) => p.isNew).slice(0, 4);
 
+  const handleHeroTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    touchStart.current = { x: touch.clientX, y: touch.clientY };
+    isSwiping.current = false;
+  };
+
+  const handleHeroTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchStart.current || activeBanners.length <= 1) return;
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStart.current.x;
+    const deltaY = touch.clientY - touchStart.current.y;
+    touchStart.current = null;
+
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+    isSwiping.current = true;
+    setHeroSlide((prev) => (
+      deltaX < 0
+        ? (prev + 1) % activeBanners.length
+        : (prev - 1 + activeBanners.length) % activeBanners.length
+    ));
+
+    window.setTimeout(() => {
+      isSwiping.current = false;
+    }, 0);
+  };
+
   return (
     <div className="space-y-6 sm:space-y-12 pb-8 sm:pb-12">
       {/* 1. Hero Layout: Main Banner Carousel (Total 6 Banners) */}
@@ -54,7 +84,9 @@ export const HomePage: React.FC = () => {
         <div 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="w-full relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group"
+          onTouchStart={handleHeroTouchStart}
+          onTouchEnd={handleHeroTouchEnd}
+          className="w-full relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y"
         >
             {activeBanners.map((slide, idx) => {
               const isActive = currentSlideIndex === idx;
@@ -66,7 +98,13 @@ export const HomePage: React.FC = () => {
                     isActive ? 'relative opacity-100 z-10' : 'absolute inset-0 opacity-0 z-0 pointer-events-none'
                   }`}
                 >
-                  <Link to={slide.linkUrl || '/shop'} className="block w-full">
+                  <Link
+                    to={slide.linkUrl || '/shop'}
+                    onClick={(event) => {
+                      if (isSwiping.current) event.preventDefault();
+                    }}
+                    className="block w-full"
+                  >
                     <picture className="block w-full">
                       {slide.mobileImage && (
                         <source media="(max-width: 640px)" srcSet={slide.mobileImage} />

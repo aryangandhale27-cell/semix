@@ -69,11 +69,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const inWish = isInWishlist(product.id);
   const inComp = isComparing(product.id);
 
-  // Best tier savings
-  const bestTier = product.bulkTiers && product.bulkTiers.length > 1 
-    ? product.bulkTiers[product.bulkTiers.length - 1] 
-    : null;
-
   return (
     <motion.div
       id={`product-card-${product.id}`}
@@ -240,7 +235,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="pt-1 sm:pt-2 border-t border-slate-100">
           <div className="flex items-baseline justify-between gap-1 mb-1 sm:mb-1.5">
             <div className="flex items-baseline gap-1 sm:gap-1.5 flex-wrap">
-              <span className="text-xs sm:text-lg font-extrabold text-slate-900 font-mono">
+              <span className="text-lg sm:text-2xl font-black text-[#561269] font-mono tracking-tight bg-purple-50 px-1.5 py-0.5 rounded-md">
                 ₹{product.price.toLocaleString('en-IN')}
               </span>
               {product.originalPrice > product.price && (
@@ -249,16 +244,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </span>
               )}
             </div>
-            <span className="text-[8px] sm:text-[10px] text-slate-500 font-medium">+18% GST</span>
+            <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono font-semibold truncate max-w-[46%]">
+              SKU: {product.sku}
+            </span>
           </div>
-
-          {/* Bulk Tier Hint */}
-          {bestTier && (
-            <div className="hidden sm:flex text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold mb-2.5 items-center justify-between border border-emerald-200/50">
-              <span>Bulk Tier: {bestTier.minQty}+ pcs</span>
-              <span className="font-mono font-bold">₹{bestTier.unitPrice}/pc</span>
-            </div>
-          )}
 
           {/* CTA Buttons - full width on mobile, with quantity stepper on sm+ */}
           <div className="flex items-center gap-1.5">
