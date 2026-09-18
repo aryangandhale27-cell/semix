@@ -14,7 +14,13 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Product, Order, CustomProjectSubmission, AuthUser } from '../types';
+import {
+  Product,
+  Order,
+  CustomProjectSubmission,
+  AuthUser,
+  UserRole,
+} from '../types';
 
 /**
  * Helper to remove undefined values so Firestore doesn't throw 'Unsupported field value: undefined'
@@ -268,28 +274,111 @@ export async function deleteUserFromFirestore(userId: string): Promise<void> {
 }
 
 export async function fetchUsersFromFirestore(): Promise<AuthUser[]> {
-  const path = 'users';
   try {
-    const q = query(collection(db, path), limit(100));
-    const snapshot = await getDocs(q);
-    const users: AuthUser[] = [];
-    snapshot.forEach((docSnap) => {
+    // Fetch both users and staff records.
+    // Staff records are authoritative for Team members.
+    const [usersSnapshot, staffSnapshot] = await Promise.all([
+      getDocs(query(collection(db, 'users'), limit(100))),
+      getDocs(query(collection(db, 'staff'), limit(100))),
+    ]);
+
+    // Build a map of staff members by UID/email.
+    const staffMap = new Map<string, any>();
+
+    staffSnapshot.forEach((docSnap) => {
       const data = docSnap.data();
+
+      if (data.uid) {
+        staffMap.set(String(data.uid), data);
+      }
+
+      if (data.email) {
+        staffMap.set(String(data.email).toLowerCase(), data);
+      }
+    });
+
+    const users: AuthUser[] = [];
+
+    usersSnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+
+      const uid = data.uid || docSnap.id;
+      const email = (data.email || '').toLowerCase();
+
+      // If this account exists in Staff, Staff determines the role.
+      const staffRecord =
+        staffMap.get(String(uid)) ||
+        staffMap.get(email);
+
+      const resolvedRole: UserRole =
+        staffRecord?.role === 'team'
+          ? 'team'
+          : data.role || 'customer';
+
       users.push({
-        id: data.uid || docSnap.id,
-        name: data.name || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        role: data.role || 'customer',
-        status: data.status || 'active',
-        department: data.department || undefined,
+        id: uid,
+        name: data.name || staffRecord?.name || '',
+        email: data.email || staffRecord?.email || '',
+        phone: data.phone || staffRecord?.phone || '',
+        role: resolvedRole,
+        status:
+          data.status ||
+          (staffRecord?.active === false ? 'suspended' : 'active'),
+        department:
+          data.department ||
+          staffRecord?.department ||
+          undefined,
         businessName: data.businessName || undefined,
-        createdAt: data.createdAt || new Date().toISOString().slice(0, 10),
+        createdAt:
+          data.createdAt ||
+          new Date().toISOString().slice(0, 10),
       });
     });
+
+    // Also include Team members that exist in Staff
+    // but don't yet have a users document.
+    staffSnapshot.forEach((docSnap) => {
+      const staff = docSnap.data();
+
+      if (staff.role !== 'team') {
+        return;
+      }
+
+      const uid = staff.uid || docSnap.id;
+      const email = (staff.email || '').toLowerCase();
+
+      const alreadyExists = users.some(
+        (u) =>
+          u.id === uid ||
+          u.email.toLowerCase() === email
+      );
+
+      if (!alreadyExists) {
+        users.push({
+          id: uid,
+          name: staff.name || '',
+          email,
+          phone: staff.phone || '',
+          role: 'team',
+          status:
+            staff.active === false ? 'suspended' : 'active',
+          department:
+            staff.department || 'Warehouse & Fulfillment',
+          createdAt:
+            new Date().toISOString().slice(0, 10),
+        });
+      }
+    });
+
     return users;
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
+    handleFirestoreError(
+      error,
+      OperationType.GET,
+      'users + staff'
+    );
+
+    return [];
   }
 }
 

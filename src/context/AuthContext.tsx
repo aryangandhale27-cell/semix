@@ -328,10 +328,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Keep only the root admin as a local fallback; other accounts must come from Firestore.
   const [registeredUsers, setRegisteredUsers] = useState<Array<AuthUser & { passwordHash: string }>>(() => {
-    const map = new Map<string, AuthUser & { passwordHash: string }>();
-    DEFAULT_USERS.filter((u) => u.role === 'admin').forEach((u) => map.set(u.email.toLowerCase(), u));
-    return Array.from(map.values());
-  });
+  const map = new Map<string, AuthUser & { passwordHash: string }>();
+
+  DEFAULT_USERS
+    .filter((u) => u.role === 'admin')
+    .forEach((u) => map.set(u.email.toLowerCase(), u));
+
+  return Array.from(map.values());
+});
+
+const [usersLoaded, setUsersLoaded] = useState(false);
 
   // Current session user
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -354,19 +360,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             remoteUsers.forEach((ru) => {
               if (ru.email && !map.has(ru.email.toLowerCase())) {
                 map.set(ru.email.toLowerCase(), {
-                  ...ru,
-                  passwordHash: 'Customer@123',
-                  password: 'Customer@123',
-                });
+  ...ru,
+  passwordHash: '',
+  password: '',
+});
               }
             });
             return Array.from(map.values());
           });
         }
       })
-      .catch((err) => {
-        console.log('[Firestore] User initial fetch status:', err?.message || err);
-      });
+          .catch((err) => {
+      console.log('[Firestore] User initial fetch status:', err?.message || err);
+    })
+    .finally(() => {
+      setUsersLoaded(true);
+    });
 
   }, []);
 
@@ -377,7 +386,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cleanEmail = firebaseUser.email?.toLowerCase() || '';
         const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
         const matchedUser = registeredUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-        const assignedRole: UserRole = matchedUser?.role || (isAryanAdmin ? 'admin' : 'customer');
+        if (!usersLoaded) return;
+
+const assignedRole: UserRole =
+  matchedUser?.role || (isAryanAdmin ? 'admin' : 'customer');
 
         const authPayload: AuthUser = {
           id: firebaseUser.uid,
@@ -391,12 +403,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         setUser(authPayload);
-        syncUserToFirestore(authPayload).catch(() => {});
+        
       }
     });
 
     return () => unsubscribe();
-  }, [registeredUsers, user]);
+}, [registeredUsers, usersLoaded, user]);
 
   // Firebase Auth owns session persistence; React only mirrors the current session.
   useEffect(() => {
@@ -472,9 +484,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const fbUser = await signInWithEmailPassword(cleanEmail, cleanPass);
       if (fbUser) {
-        const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
-        const matchedUser = registeredUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-        const assignedRole: UserRole = matchedUser?.role || (isAryanAdmin ? 'admin' : 'customer');
+        const isAryanAdmin =
+  cleanEmail === 'aryangandhale27@gmail.com' ||
+  cleanEmail.includes('admin@');
+
+const matchedUser = registeredUsers.find(
+  (u) => u.email.toLowerCase() === cleanEmail
+);
+
+if (!matchedUser && !isAryanAdmin) {
+  return {
+    success: false,
+    error: 'Your account profile could not be found. Please contact the administrator.'
+  };
+}
+
+const assignedRole: UserRole =
+  matchedUser?.role || 'admin';
 
         const authPayload: AuthUser = {
           id: fbUser.uid,
@@ -488,9 +514,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         setUser(authPayload);
-        setIsAuthModalOpen(false);
-        setAuthNoticeMessage(null);
-        syncUserToFirestore(authPayload).catch(() => {});
+setIsAuthModalOpen(false);
+setAuthNoticeMessage(null);
         showToast(
           `Welcome back, ${authPayload.name}!`,
           `Signed in via Firebase Auth (${authPayload.role.toUpperCase()})`,
