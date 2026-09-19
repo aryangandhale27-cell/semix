@@ -37,7 +37,7 @@ app.post('/api/ai/product-description', async (req, res) => {
   try {
     const ai = new GoogleGenAI({ apiKey });
     const result = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.6-flash',
       contents: `Write a professional electronics e-commerce product description for SEMIX LABS.\n\nProduct title: ${productName}\nCategory: ${category}\n\nUse only the product title and category as factual inputs. Do not invent specifications, ratings, compatibility claims, measurements, certifications, included items, or performance figures. Write 2 concise paragraphs, plain text only, suitable for a product catalog.`,
     });
     const description = result.text?.trim();
