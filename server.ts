@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import { INITIAL_PRODUCTS } from './src/mockData/products';
 import { searchProducts } from './src/services/searchEngine';
@@ -15,6 +16,42 @@ const app = express();
 const PORT =  Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '15mb' }));
+
+app.post('/api/ai/product-description', async (req, res) => {
+  const productName = typeof req.body?.productName === 'string' ? req.body.productName.trim() : '';
+  const category = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+
+  if (!productName || !category) {
+    return res.status(400).json({ success: false, error: 'Product name and category are required.' });
+  }
+
+  if (productName.length > 200 || category.length > 160) {
+    return res.status(400).json({ success: false, error: 'Product name or category is too long.' });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ success: false, error: 'AI description generation is not configured on the server.' });
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: `Write a professional electronics e-commerce product description for SEMIX LABS.\n\nProduct title: ${productName}\nCategory: ${category}\n\nUse only the product title and category as factual inputs. Do not invent specifications, ratings, compatibility claims, measurements, certifications, included items, or performance figures. Write 2 concise paragraphs, plain text only, suitable for a product catalog.`,
+    });
+    const description = result.text?.trim();
+
+    if (!description) {
+      return res.status(502).json({ success: false, error: 'The AI returned an empty description.' });
+    }
+
+    return res.json({ success: true, description });
+  } catch (err: any) {
+    console.error('[AI] Product description generation failed:', err?.message || err);
+    return res.status(502).json({ success: false, error: 'Unable to generate a description right now. Please try again.' });
+  }
+});
 
 function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;

@@ -41,6 +41,7 @@ import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
 import { getLocalSentEmails } from '../../services/emailService';
 import { Tag, Mail, SlidersHorizontal, FolderTree, Image as ImageIcon, Award, ShieldAlert } from 'lucide-react';
 import { CATEGORIES } from '../../mockData/products';
+import { generateProductDescription } from '../../services/aiService';
 
 export const AdminDashboardPage: React.FC = () => {
   const { 
@@ -76,6 +77,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [trendingProductId, setTrendingProductId] = useState('');
   const [freshProductId, setFreshProductId] = useState('');
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
   // New product form state
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
@@ -166,6 +168,26 @@ export const AdminDashboardPage: React.FC = () => {
     } catch (error) {
       console.error('[Admin] Product creation failed:', error);
       showToast('Product Save Failed', 'Firestore rejected the product. Check your account permissions and try again.', 'error');
+    }
+  };
+
+  const handleGenerateDescription = async () => {
+    const productName = newProduct.name?.trim() || '';
+    const productCategory = newProduct.category?.trim() || '';
+    if (!productName || !productCategory) {
+      showToast('Product Name and Category Required', 'Enter both fields before generating a description.', 'warning');
+      return;
+    }
+
+    setIsGeneratingDescription(true);
+    try {
+      const description = await generateProductDescription(productName, productCategory);
+      setNewProduct((current) => ({ ...current, description }));
+      showToast('Description Generated', 'Review and edit the description before saving.', 'success');
+    } catch (error) {
+      showToast('AI Description Failed', error instanceof Error ? error.message : 'Please try again.', 'error');
+    } finally {
+      setIsGeneratingDescription(false);
     }
   };
 
@@ -960,6 +982,28 @@ export const AdminDashboardPage: React.FC = () => {
                   onChange={(e) => setNewProduct({ ...newProduct, shortDescription: e.target.value })}
                   className="w-full border border-slate-300 rounded-lg p-2"
                   placeholder="Summary for catalog card"
+                />
+              </div>
+
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                  <label className="block font-bold text-slate-700">Description</label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateDescription}
+                    disabled={isGeneratingDescription}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#561269]/30 bg-purple-50 px-2.5 py-1.5 text-[11px] font-bold text-[#561269] transition-colors hover:bg-purple-100 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <Sparkles className={`h-3.5 w-3.5 text-[#FF6B00] ${isGeneratingDescription ? 'animate-pulse' : ''}`} />
+                    {isGeneratingDescription ? 'Generating...' : 'Generate AI Description'}
+                  </button>
+                </div>
+                <textarea
+                  rows={4}
+                  value={newProduct.description || ''}
+                  onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                  placeholder="Professional product description"
                 />
               </div>
 

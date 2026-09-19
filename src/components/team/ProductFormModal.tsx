@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { TechnicalSpecificationManager } from './TechnicalSpecificationManager';
 import { CATEGORIES } from '../../mockData/products';
 import { uploadImageDataUrl } from '../../services/storageService';
+import { generateProductDescription } from '../../services/aiService';
 import { validateImageFile } from '../../utils/imageOptimizer';
 import { 
   X, 
@@ -80,6 +81,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dragActive, setDragActive] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
   useEffect(() => {
     if (initialProduct) {
@@ -308,6 +310,23 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       showToast('Product Save Failed', error instanceof Error ? error.message : 'Image upload or Firestore save failed.', 'error');
     } finally {
       setIsUploadingImages(false);
+    }
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!name.trim() || !category.trim()) {
+      showToast('Product Name and Category Required', 'Enter both fields before generating a description.', 'warning');
+      return;
+    }
+
+    setIsGeneratingDescription(true);
+    try {
+      setDescription(await generateProductDescription(name, category));
+      showToast('Description Generated', 'Review and edit the description before saving.', 'success');
+    } catch (error) {
+      showToast('AI Description Failed', error instanceof Error ? error.message : 'Please try again.', 'error');
+    } finally {
+      setIsGeneratingDescription(false);
     }
   };
 
@@ -863,9 +882,20 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Full Technical Description
-                    </label>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Full Technical Description
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleGenerateDescription}
+                        disabled={isGeneratingDescription}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#561269]/30 bg-purple-50 px-2.5 py-1.5 text-[11px] font-bold text-[#561269] transition-colors hover:bg-purple-100 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        <Sparkles className={`h-3.5 w-3.5 text-[#FF6B00] ${isGeneratingDescription ? 'animate-pulse' : ''}`} />
+                        {isGeneratingDescription ? 'Generating...' : 'Generate AI Description'}
+                      </button>
+                    </div>
                     <textarea
                       rows={3}
                       placeholder="Comprehensive technical details, operating guidelines, and pinout notes..."
