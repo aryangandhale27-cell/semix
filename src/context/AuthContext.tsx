@@ -55,7 +55,7 @@ export const DEMO_CREDENTIALS: Record<UserRole, DemoCredential> = {
     password: 'Team@123',
     name: 'Sanjay Verma',
     department: 'Warehouse & Fulfillment',
-    defaultRedirect: '/team/fulfillment',
+    defaultRedirect: '/team/fulfillment?tab=stock',
     description: 'Warehouse packing desk, inventory edits & stock discrepancies',
     badgeColor: 'bg-[#561269] text-white',
   },
@@ -496,9 +496,29 @@ const assignedRole: UserRole =
   cleanEmail === 'aryangandhale27@gmail.com' ||
   cleanEmail.includes('admin@');
 
-const matchedUser = registeredUsers.find(
+let matchedUser = registeredUsers.find(
   (u) => u.email.toLowerCase() === cleanEmail
 );
+
+if (!matchedUser) {
+  const remoteUsers = await fetchUsersFromFirestore();
+  matchedUser = remoteUsers.find(
+    (remoteUser) => remoteUser.email.toLowerCase() === cleanEmail
+  ) as (AuthUser & { passwordHash: string }) | undefined;
+
+  if (matchedUser) {
+    setRegisteredUsers((prev) => {
+      const map = new Map<string, AuthUser & { passwordHash: string }>();
+      prev.forEach((existingUser) => map.set(existingUser.id, existingUser));
+      map.set(matchedUser!.id, {
+        ...matchedUser!,
+        passwordHash: '',
+        password: '',
+      });
+      return Array.from(map.values());
+    });
+  }
+}
 
 if (!matchedUser && !isAryanAdmin) {
   return {
@@ -1082,8 +1102,9 @@ setAuthNoticeMessage(null);
   };
 
   const logout = () => {
-    signOutUser().catch(() => {});
+    setCurrentRole('customer');
     setUser(null);
+    void signOutUser();
   };
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {

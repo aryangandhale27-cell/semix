@@ -29,7 +29,7 @@ export const Footer: React.FC = () => {
 
             {/* Description / Subtext */}
             <p className="text-sm text-slate-400 leading-relaxed max-w-md">
-              <strong className="text-slate-200 font-semibold">SEMI X LABS</strong> is a specialized electronics engineering, turnkey IoT prototyping, and verified component procurement platform — an initiative powered by <strong className="text-purple-300 font-semibold">RIETZZ</strong> Prime Ventures.
+              <strong className="text-slate-200 font-semibold">SEMIX LABS</strong> is a specialized electronics engineering, turnkey IoT prototyping, and verified component procurement platform — an initiative powered by <strong className="text-purple-300 font-semibold">RIETZZ</strong> Prime Ventures.
             </p>
 
             {/* Outlined Contact Info with Purple/Violet Accents */}
@@ -210,7 +210,7 @@ export const Footer: React.FC = () => {
       <div className="border-t border-white/10 bg-[#06020b]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p className="text-center sm:text-left text-slate-400">
-            © 2026 <strong className="text-slate-300 font-medium">SEMI X LABS</strong> — An Initiative Powered by <strong className="text-purple-300 font-medium">RIETZZ</strong> Prime Ventures. All Rights Reserved.
+            © 2026 <strong className="text-slate-300 font-medium">SEMIX LABS</strong> — An Initiative Powered by <strong className="text-purple-300 font-medium">RIETZZ</strong> Prime Ventures. All Rights Reserved.
           </p>
           <div className="flex items-center gap-6 text-slate-500">
             <a 

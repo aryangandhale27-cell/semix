@@ -57,6 +57,7 @@ export const TeamPortalPage: React.FC = () => {
   // Active Main Tab: 'stock' | 'fulfillment' | 'issues'
   const [activeTab, setActiveTab] = useState<'stock' | 'fulfillment' | 'issues'>(() => {
     const tabParam = searchParams.get('tab');
+    if (tabParam === 'stock') return 'stock';
     if (tabParam === 'fulfillment' || location.pathname.includes('/fulfillment')) return 'fulfillment';
     if (tabParam === 'issues') return 'issues';
     return 'stock';
@@ -64,7 +65,9 @@ export const TeamPortalPage: React.FC = () => {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam === 'fulfillment' || location.pathname.includes('/fulfillment')) {
+    if (tabParam === 'stock') {
+      setActiveTab('stock');
+    } else if (tabParam === 'fulfillment' || location.pathname.includes('/fulfillment')) {
       setActiveTab('fulfillment');
     } else if (tabParam === 'issues') {
       setActiveTab('issues');

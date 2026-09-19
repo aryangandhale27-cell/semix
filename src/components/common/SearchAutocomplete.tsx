@@ -207,6 +207,26 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
       {isMobile ? (
         <form onSubmit={handleFormSubmit} className="flex w-full items-center">
           <div className="flex w-full rounded-lg border border-slate-200 bg-slate-50 focus-within:bg-white focus-within:border-[#561269] overflow-hidden shadow-2xs transition-colors">
+            {onCategoryChange && (
+              <div className="relative flex shrink-0 items-center border-r border-slate-200 bg-slate-100/70 px-2">
+                <select
+                  id="mobile-search-category-filter"
+                  value={selectedCategory}
+                  onChange={(e) => onCategoryChange(e.target.value)}
+                  aria-label="Filter search by category"
+                  className="w-[5.75rem] appearance-none bg-transparent pr-3 text-[10px] font-semibold text-slate-700 focus:outline-hidden"
+                >
+                  <option value="all">All Categories</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute right-2 h-1.5 w-1.5 -translate-y-0.5 rotate-45 border-r border-b border-slate-400" />
+              </div>
+            )}
+
             <div className="relative flex-1 flex items-center">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
               <input

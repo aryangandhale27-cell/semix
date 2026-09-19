@@ -86,7 +86,7 @@ export const CustomerDashboardPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header Profile Banner */}
-      <div className="bg-gradient-to-r from-[#561269] to-[#380847] rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg border border-[#561269]/30">
+      <div id="customer-dashboard-profile" className="bg-gradient-to-r from-[#561269] to-[#380847] rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg border border-[#561269]/30">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-[#FF6B00] text-white font-extrabold text-xl flex items-center justify-center shadow-md border border-orange-400/30 shrink-0 select-none">
             {userInitials}
@@ -125,9 +125,11 @@ export const CustomerDashboardPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 bg-slate-50 p-1 rounded-xl gap-1 overflow-x-auto">
+      <div id="customer-dashboard-tabs" className="flex border-b border-slate-200 bg-slate-50 p-1 rounded-xl gap-1 overflow-x-auto">
         <button
           onClick={() => setSearchParams({ tab: 'orders' })}
+          title="Orders & Live Tracking"
+          aria-label="Orders & Live Tracking"
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'orders'
               ? 'bg-[#561269] text-white shadow-xs'
@@ -140,6 +142,8 @@ export const CustomerDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setSearchParams({ tab: 'wishlist' })}
+          title="Saved Components"
+          aria-label="Saved Components"
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'wishlist'
               ? 'bg-[#561269] text-white shadow-xs'
@@ -152,6 +156,8 @@ export const CustomerDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setSearchParams({ tab: 'support' })}
+          title="Technical Support & RMA Escalation"
+          aria-label="Technical Support & RMA Escalation"
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'support'
               ? 'bg-[#561269] text-white shadow-xs'
@@ -164,6 +170,8 @@ export const CustomerDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setSearchParams({ tab: 'bulk' })}
+          title="Bulk Enquiries & Quotes"
+          aria-label="Bulk Enquiries & Quotes"
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'bulk'
               ? 'bg-[#561269] text-white shadow-xs'
@@ -176,6 +184,8 @@ export const CustomerDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setSearchParams({ tab: 'address' })}
+          title="Shipping & GST Profile"
+          aria-label="Shipping & GST Profile"
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'address'
               ? 'bg-[#561269] text-white shadow-xs'

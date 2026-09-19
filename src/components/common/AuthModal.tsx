@@ -114,7 +114,11 @@ export const AuthModal: React.FC = () => {
     try {
       const res = await login(demo.email, demo.password);
       if (res.success) {
-        const destination = authRedirectUrl || demo.defaultRedirect;
+        const destination = res.role === 'team'
+          ? '/team/fulfillment?tab=stock'
+          : res.role === 'admin'
+            ? '/admin/dashboard'
+            : authRedirectUrl || demo.defaultRedirect;
         navigate(destination);
       } else {
         setSignInError(res.error || 'Authentication failed');
@@ -137,15 +141,19 @@ export const AuthModal: React.FC = () => {
     try {
       const res = await login(signInEmail, signInPassword);
       if (res.success) {
-        // Direct redirect based on matched role or saved redirect
-        if (authRedirectUrl) {
+        // Team members always land on Stock Management, even after a protected-route redirect.
+        if (res.role === 'team') {
+          navigate('/team/fulfillment?tab=stock');
+        } else if (res.role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (authRedirectUrl) {
           navigate(authRedirectUrl);
         } else if (res.role === 'admin' || signInEmail.toLowerCase().includes('admin')) {
           navigate('/admin/dashboard');
         } else if (res.role === 'seller' || signInEmail.toLowerCase().includes('seller')) {
           navigate('/seller');
         } else if (res.role === 'team' || signInEmail.toLowerCase().includes('team')) {
-          navigate('/team/fulfillment');
+          navigate('/team/fulfillment?tab=stock');
         } else {
           navigate('/customer/dashboard');
         }
@@ -164,14 +172,16 @@ export const AuthModal: React.FC = () => {
     try {
       const res = await loginWithGoogle();
       if (res.success) {
-        if (authRedirectUrl) {
+        if (res.role === 'team') {
+          navigate('/team/fulfillment?tab=stock');
+        } else if (res.role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (authRedirectUrl) {
           navigate(authRedirectUrl);
         } else if (res.role === 'admin') {
           navigate('/admin/dashboard');
         } else if (res.role === 'seller') {
           navigate('/seller');
-        } else if (res.role === 'team') {
-          navigate('/team/fulfillment');
         } else {
           navigate('/customer/dashboard');
         }
@@ -275,9 +285,6 @@ export const AuthModal: React.FC = () => {
             <div>
               <h3 className="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
                 SEMIX LABS Portal Access
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-[#FF6B00] text-white rounded-full">
-                  Secure Auth
-                </span>
               </h3>
               <p className="text-xs text-purple-200">
                 Makers, Engineers & Staff Operations

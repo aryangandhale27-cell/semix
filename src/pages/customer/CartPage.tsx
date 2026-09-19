@@ -67,7 +67,7 @@ export const CartPage: React.FC = () => {
 
   if (cart.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+      <div id="empty-cart-state" className="max-w-7xl mx-auto px-4 py-16 text-center">
         <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-4">
           <ShoppingCart className="w-8 h-8" />
         </div>

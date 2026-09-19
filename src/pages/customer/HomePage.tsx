@@ -112,6 +112,9 @@ export const HomePage: React.FC = () => {
                       <img
                         src={slide.desktopImage || slide.mobileImage}
                         alt={slide.title}
+                        loading={idx === 0 ? 'eager' : 'lazy'}
+                        fetchPriority={idx === 0 ? 'high' : 'auto'}
+                        decoding={idx === 0 ? 'sync' : 'async'}
                         className="block w-full h-auto"
                       />
                     </picture>
