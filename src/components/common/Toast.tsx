@@ -9,7 +9,7 @@ export const ToastContainer: React.FC = () => {
   return (
     <div
       id="toast-container"
-      className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"
+      className="fixed inset-x-0 bottom-3 z-50 flex w-full flex-col items-center gap-2 px-3 pointer-events-none sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-auto sm:max-w-sm sm:items-stretch sm:px-0"
     >
       <AnimatePresence>
         {toasts.map((toast) => {
@@ -26,12 +26,12 @@ export const ToastContainer: React.FC = () => {
 
           const borderBg =
             toast.type === 'success'
-              ? 'border-emerald-200 bg-white text-slate-900 shadow-lg shadow-emerald-950/5'
+              ? 'border-emerald-200 bg-white text-slate-900 shadow-lg shadow-emerald-950/10'
               : toast.type === 'error'
-              ? 'border-rose-200 bg-white text-slate-900 shadow-lg shadow-rose-950/5'
+              ? 'border-rose-200 bg-white text-slate-900 shadow-lg shadow-rose-950/10'
               : toast.type === 'warning'
-              ? 'border-amber-200 bg-white text-slate-900 shadow-lg shadow-amber-950/5'
-              : 'border-[#561269]/20 bg-white text-slate-900 shadow-lg shadow-indigo-950/5';
+              ? 'border-amber-200 bg-white text-slate-900 shadow-lg shadow-amber-950/10'
+              : 'border-slate-200 bg-white text-slate-900 shadow-lg shadow-slate-950/10';
 
           return (
             <motion.div
@@ -40,7 +40,7 @@ export const ToastContainer: React.FC = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.96 }}
               transition={{ duration: 0.16, ease: 'easeOut' }}
-              className={`pointer-events-auto relative flex items-start gap-3 p-3.5 rounded-xl border overflow-hidden ${borderBg}`}
+              className={`pointer-events-auto relative flex w-full max-w-md items-start gap-2.5 rounded-xl border px-3 py-2.5 sm:min-w-[320px] ${borderBg}`}
             >
               <div className="mt-0.5">{icon}</div>
               <div className="flex-1 min-w-0">
@@ -54,7 +54,7 @@ export const ToastContainer: React.FC = () => {
               <button
                 id={`toast-close-${toast.id}`}
                 onClick={() => removeToast(toast.id)}
-                className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors"
+                className="ml-1 rounded p-0.5 text-slate-400 transition-colors hover:text-slate-700"
                 title="Dismiss"
               >
                 <X className="w-3.5 h-3.5" />
@@ -64,7 +64,15 @@ export const ToastContainer: React.FC = () => {
                 initial={{ scaleX: 1 }}
                 animate={{ scaleX: 0 }}
                 transition={{ duration: (toast.durationMs || 4000) / 1000, ease: 'linear' }}
-                className="absolute bottom-0 left-0 right-0 h-0.5 origin-left bg-gradient-to-r from-[#561269] via-violet-500 to-[#FF6B00]"
+                className={`absolute bottom-0 left-0 right-0 h-0.5 origin-left ${
+                  toast.type === 'success'
+                    ? 'bg-emerald-500'
+                    : toast.type === 'error'
+                    ? 'bg-rose-500'
+                    : toast.type === 'warning'
+                    ? 'bg-amber-500'
+                    : 'bg-slate-500'
+                }`}
               />
             </motion.div>
           );

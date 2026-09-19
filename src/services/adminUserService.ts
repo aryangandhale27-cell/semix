@@ -136,9 +136,6 @@ export async function createAdminManagedUser(
   const secondaryAuth = getAuth(secondaryApp);
 
   let uid: string | undefined;
-  let secondaryFirebaseUser: ReturnType<typeof secondaryAuth.currentUser> =
-    null;
-
   try {
     /**
      * -------------------------------------------------------------
@@ -153,8 +150,6 @@ export async function createAdminManagedUser(
     );
 
     uid = credential.user.uid;
-    secondaryFirebaseUser = credential.user;
-
     console.log(
       '[AdminUserService] Firebase Auth account created:',
       {

@@ -206,28 +206,28 @@ export const Navbar: React.FC = () => {
             </Link>
           </div>
 
-          <div id="mobile-service-links" className="lg:hidden flex items-center gap-1 min-w-0 overflow-x-auto no-scrollbar">
+          <div id="mobile-service-links" className="lg:hidden flex flex-1 items-center justify-between gap-0.5 min-w-0 overflow-hidden no-scrollbar">
             <Link
               to="/bulk-enquiry"
-              className={`flex items-center gap-0.5 px-1.5 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
+              className={`flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
                 isActive('/bulk-enquiry')
                   ? 'bg-white/15 text-white'
                   : 'text-purple-100 hover:bg-white/10 hover:text-white'
               }`}
             >
               <FileText className="w-2.5 h-2.5 text-amber-300" />
-              Bulk Orders
+              Bulk
             </Link>
             <Link
               to="/bulk-enquiry"
-              className="flex items-center gap-0.5 px-1.5 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap text-purple-100 hover:bg-white/10 hover:text-white transition-colors"
+              className="flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap text-purple-100 hover:bg-white/10 hover:text-white transition-colors"
             >
               <Layers className="w-2.5 h-2.5 text-cyan-300" />
-              Custom Projects
+              Projects
             </Link>
             <Link
               to="/contact"
-              className={`flex items-center gap-0.5 px-1.5 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
+              className={`flex shrink-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
                 isActive('/contact')
                   ? 'bg-white/15 text-white'
                   : 'text-purple-100 hover:bg-white/10 hover:text-white'
@@ -265,7 +265,7 @@ export const Navbar: React.FC = () => {
 
                 {user?.role === 'team' && (
                   <Link
-                    to="/team/fulfillment"
+                    to="/team/fulfillment?tab=stock"
                     id="nav-team-desk-link"
                     className="flex items-center gap-1.5 bg-[#561269] hover:bg-[#460e56] text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-colors"
                   >

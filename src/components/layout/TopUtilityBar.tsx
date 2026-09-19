@@ -41,7 +41,7 @@ export const TopUtilityBar: React.FC = () => {
     if (!user) return '/';
     if (user.role === 'admin') return '/admin/dashboard';
     if (user.role === 'seller') return '/seller';
-    if (user.role === 'team') return '/team/fulfillment';
+    if (user.role === 'team') return '/team/fulfillment?tab=stock';
     return '/customer/dashboard';
   };
 

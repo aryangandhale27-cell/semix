@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AuthUser, UserRole, CreateUserPayload } from '../types';
 import { useApp } from './AppContext';
 import { 
@@ -343,6 +343,7 @@ const [usersLoaded, setUsersLoaded] = useState(false);
 
   // Current session user
   const [user, setUser] = useState<AuthUser | null>(null);
+  const isSigningOutRef = useRef(false);
 
   // Modal states
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -390,6 +391,8 @@ const [usersLoaded, setUsersLoaded] = useState(false);
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setAuthReady(true);
       setFirebaseAuthUser(firebaseUser);
+      if (isSigningOutRef.current && firebaseUser) return;
+      if (!firebaseUser) isSigningOutRef.current = false;
       if (firebaseUser && !user) {
         const cleanEmail = firebaseUser.email?.toLowerCase() || '';
         const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
@@ -1102,9 +1105,12 @@ setAuthNoticeMessage(null);
   };
 
   const logout = () => {
+    isSigningOutRef.current = true;
     setCurrentRole('customer');
     setUser(null);
-    void signOutUser();
+    void signOutUser().finally(() => {
+      isSigningOutRef.current = false;
+    });
   };
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {

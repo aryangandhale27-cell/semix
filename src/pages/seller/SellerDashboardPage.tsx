@@ -281,21 +281,21 @@ export const SellerDashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
       {/* Top Banner / Seller Portal Header */}
-      <div className="bg-[#561269] text-white pt-8 pb-14 px-4 sm:px-6 lg:px-8 border-b border-violet-900/50 relative overflow-hidden">
+      <div className="bg-[#561269] text-white pt-6 sm:pt-8 pb-12 sm:pb-14 px-4 sm:px-6 lg:px-8 border-b border-violet-900/50 relative z-30 overflow-visible">
         {/* Subtle background circuit pattern */}
-        <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+        <div className="absolute inset-0 rounded-[inherit] overflow-hidden opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
 
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
             {/* Seller Identity & Hub Snapshot */}
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-800 to-[#561269] border border-violet-400/40 shadow-lg flex items-center justify-center text-white shrink-0">
-                <Store className="w-7 h-7" />
+              <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-violet-800 to-[#561269] border border-violet-400/40 shadow-lg flex items-center justify-center text-white shrink-0">
+                <Store className="w-5 h-5 sm:w-7 sm:h-7" />
               </div>
 
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-black tracking-tight">{profile.name}</h1>
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight">{profile.name}</h1>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                     Active Merchant
                   </span>
@@ -319,7 +319,7 @@ export const SellerDashboardPage: React.FC = () => {
             </div>
 
             {/* Quick Actions: Edit Profile, Notifications Bell, Simulate Order */}
-            <div className="flex flex-wrap items-center gap-3 self-start lg:self-center">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 self-start lg:self-center">
               {/* Active Hub Switcher for testing/multi-seller management */}
               <div className="flex items-center gap-1.5 bg-violet-950/60 border border-violet-700/60 rounded-xl px-2.5 py-1.5 text-xs text-violet-100 shadow-xs">
                 <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -455,7 +455,7 @@ export const SellerDashboardPage: React.FC = () => {
       </div>
 
       {/* Floating Quick Stats Bar (Real-Time Cloud Firestore Scoped Seller KPIs & My Bonus) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 relative z-20">
         <SellerKpiCardsRow
           kpis={sellerKpis}
           dateRange={analyticsDateRange}

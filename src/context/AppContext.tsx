@@ -588,44 +588,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     let isMounted = true;
+    let unsubscribeBonuses: (() => void) | undefined;
+    const applyBonuses = (map: Record<string, SellerBonusRecord>) => {
+      setSellerBonuses((prev) => ({ ...prev, ...map }));
+      setAvailableSellers((prev) =>
+        prev.map((s) => ({
+          ...s,
+          bonusAmount: map[s.id] ? map[s.id].bonusAmount : s.bonusAmount || 0,
+          bonusUpdatedAt: map[s.id] ? map[s.id].updatedAt : s.bonusUpdatedAt,
+          bonusUpdatedBy: map[s.id] ? map[s.id].updatedBy : s.bonusUpdatedBy,
+        }))
+      );
+    };
 
-    fetchAllSellerBonuses()
-      .then((remoteBonuses) => {
-        if (!isMounted) return;
-        if (remoteBonuses && remoteBonuses.length > 0) {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      unsubscribeBonuses?.();
+      unsubscribeBonuses = undefined;
+      if (!firebaseUser) return;
+
+      fetchAllSellerBonuses()
+        .then((remoteBonuses) => {
+          if (!isMounted || !remoteBonuses?.length) return;
           const map: Record<string, SellerBonusRecord> = {};
           remoteBonuses.forEach((b) => {
             map[b.sellerId] = b;
           });
-          setSellerBonuses((prev) => ({ ...prev, ...map }));
-          setAvailableSellers((prev) =>
-            prev.map((s) => ({
-              ...s,
-              bonusAmount: map[s.id] ? map[s.id].bonusAmount : s.bonusAmount || 0,
-              bonusUpdatedAt: map[s.id] ? map[s.id].updatedAt : s.bonusUpdatedAt,
-              bonusUpdatedBy: map[s.id] ? map[s.id].updatedBy : s.bonusUpdatedBy,
-            }))
-          );
-        }
-      })
-      .catch((err) => console.warn('[Bonuses] Initial fetch error:', err));
+          applyBonuses(map);
+        })
+        .catch((err) => console.warn('[Bonuses] Initial fetch error:', err));
 
-    const unsub = subscribeToSellerBonuses((updatedMap) => {
-      if (!isMounted) return;
-      setSellerBonuses(updatedMap);
-      setAvailableSellers((prev) =>
-        prev.map((s) => ({
-          ...s,
-          bonusAmount: updatedMap[s.id] ? updatedMap[s.id].bonusAmount : s.bonusAmount || 0,
-          bonusUpdatedAt: updatedMap[s.id] ? updatedMap[s.id].updatedAt : s.bonusUpdatedAt,
-          bonusUpdatedBy: updatedMap[s.id] ? updatedMap[s.id].updatedBy : s.bonusUpdatedBy,
-        }))
-      );
+      unsubscribeBonuses = subscribeToSellerBonuses((updatedMap) => {
+        if (!isMounted) return;
+        setSellerBonuses(updatedMap);
+        applyBonuses(updatedMap);
+      });
     });
 
     return () => {
       isMounted = false;
-      unsub();
+      unsubscribeBonuses?.();
+      unsubscribeAuth();
     };
   }, []);
 
@@ -689,24 +691,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Synchronize orders with Firebase Firestore (initial load and realtime listener)
   useEffect(() => {
     let isMounted = true;
+    let unsubscribeOrders: (() => void) | undefined;
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      unsubscribeOrders?.();
+      unsubscribeOrders = undefined;
 
-    fetchOrdersFromFirestore()
-      .then((remoteOrders) => {
+      if (!firebaseUser) {
+        setOrders([]);
+        return;
+      }
+
+      fetchOrdersFromFirestore()
+        .then((remoteOrders) => {
+          if (!isMounted) return;
+          setOrders(remoteOrders.map(normalizeOrder));
+        })
+        .catch((err) => {
+          console.warn('[Firestore] Orders load notice:', err?.message || err);
+        });
+
+      unsubscribeOrders = subscribeToOrders((remoteOrders) => {
         if (!isMounted) return;
         setOrders(remoteOrders.map(normalizeOrder));
-      })
-      .catch((err) => {
-        console.warn('[Firestore] Orders load notice:', err?.message || err);
       });
-
-    const unsubscribe = subscribeToOrders((remoteOrders) => {
-      if (!isMounted) return;
-      setOrders(remoteOrders.map(normalizeOrder));
     });
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      unsubscribeOrders?.();
+      unsubscribeAuth();
     };
   }, []);
 
@@ -843,12 +856,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Toast System
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const showToast = (title: string, message?: string, type: ToastItem['type'] = 'success', durationMs = 4000) => {
+  const showToast = (title: string, message?: string, type: ToastItem['type'] = 'success', durationMs = 1300) => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
-    setToasts((prev) => [...prev, { id, title, message, type, durationMs }]);
+    const visibleDuration = Math.min(durationMs, 1300);
+    setToasts((prev) => [...prev, { id, title, message, type, durationMs: visibleDuration }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, durationMs);
+    }, visibleDuration);
   };
 
   const removeToast = (id: string) => {

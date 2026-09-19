@@ -3,6 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 import { INITIAL_PRODUCTS } from './src/mockData/products';
 import { searchProducts } from './src/services/searchEngine';
@@ -13,6 +15,69 @@ const app = express();
 const PORT =  Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '15mb' }));
+
+function getRazorpayClient() {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) return null;
+  return new Razorpay({ key_id: keyId, key_secret: keySecret });
+}
+
+app.post('/api/payments/razorpay/order', async (req, res) => {
+  const amount = Number(req.body?.amount);
+  const receipt = String(req.body?.receipt || '').slice(0, 40);
+
+  if (!Number.isFinite(amount) || amount <= 0 || !receipt) {
+    return res.status(400).json({ success: false, error: 'A valid amount and receipt are required.' });
+  }
+
+  const razorpay = getRazorpayClient();
+  if (!razorpay) {
+    return res.status(503).json({ success: false, error: 'Razorpay is not configured on the server.' });
+  }
+
+  try {
+    const order = await razorpay.orders.create({
+      amount: Math.round(amount * 100),
+      currency: 'INR',
+      receipt,
+    });
+
+    return res.json({
+      success: true,
+      order: { id: order.id, amount: order.amount, currency: order.currency },
+      keyId: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (err: any) {
+    console.error('[Razorpay] Failed to create order:', err);
+    return res.status(502).json({ success: false, error: 'Unable to start Razorpay checkout.' });
+  }
+});
+
+app.post('/api/payments/razorpay/verify', (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keySecret || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ success: false, error: 'Incomplete Razorpay payment details.' });
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', keySecret)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
+  const receivedSignature = String(razorpay_signature);
+
+  if (
+    expectedSignature.length !== receivedSignature.length ||
+    !crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(receivedSignature))
+  ) {
+    return res.status(400).json({ success: false, error: 'Razorpay payment verification failed.' });
+  }
+
+  return res.json({ success: true, paymentId: razorpay_payment_id });
+});
 
 // Ensure public uploads directories exist and serve statically
 const uploadsDir = path.join(process.cwd(), 'public', 'uploads');

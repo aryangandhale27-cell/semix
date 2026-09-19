@@ -32,6 +32,24 @@ import {
 import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
 import { getLocalSentEmails, getGmailComposeUrl } from '../../services/emailService';
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
+function loadRazorpayCheckout(): Promise<void> {
+  if (window.Razorpay) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Unable to load Razorpay checkout.'));
+    document.body.appendChild(script);
+  });
+}
+
 export const CheckoutPage: React.FC = () => {
   const { 
     cart, 
@@ -144,55 +162,100 @@ export const CheckoutPage: React.FC = () => {
         image: item.product.image
       }));
 
-      // Atomic Firestore transaction with re-validation of all 8 rules
-      const result = await placeOrderWithCoupon(
-        {
-          customer: address,
-          items: orderItems,
-          subtotal: cartSubtotal,
-          shippingFee,
-          tax,
-          discount: couponDiscount,
-          discountAmount: couponDiscount,
-          couponCode: appliedCoupon?.code,
-          totalAmount,
-          finalTotal: totalAmount,
-          status: 'pending_assignment',
-          paymentMethod,
-          paymentStatus: paymentMethod === 'COD' ? 'Pending' : 'Paid',
-          packingNotes,
-          assignedSellerId: null,
-          assignedSellerName: null,
-          assignedAt: null,
-          userId: user?.id || address.email
-        },
-        user?.id || address.email
-      );
+      const finalizeOrder = async () => {
+        const result = await placeOrderWithCoupon(
+          {
+            customer: address,
+            items: orderItems,
+            subtotal: cartSubtotal,
+            shippingFee,
+            tax,
+            discount: couponDiscount,
+            discountAmount: couponDiscount,
+            couponCode: appliedCoupon?.code,
+            totalAmount,
+            finalTotal: totalAmount,
+            status: 'pending_assignment',
+            paymentMethod,
+            paymentStatus: paymentMethod === 'COD' ? 'Pending' : 'Paid',
+            packingNotes,
+            assignedSellerId: null,
+            assignedSellerName: null,
+            assignedAt: null,
+            userId: user?.id || address.email
+          },
+          user?.id || address.email
+        );
 
-      if (!result.success) {
+        if (!result.success) {
+          throw new Error(result.error || 'Order placement blocked due to coupon validation error.');
+        }
+
+        setConfirmedOrderId(result.order.id);
+        confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+        showToast(
+          'Order Placed Successfully!',
+          paymentMethod === 'COD'
+            ? `Order #${result.order.id} placed with Cash on Delivery (₹${Math.round(totalAmount).toLocaleString('en-IN')})`
+            : `Order #${result.order.id} confirmed and queued for fulfillment`,
+          'success'
+        );
+      };
+
+      const usesRazorpay = ['UPI', 'Card', 'NetBanking'].includes(paymentMethod);
+      if (!usesRazorpay) {
+        await finalizeOrder();
         setIsProcessing(false);
-        setOrderError(result.error || 'Order placement blocked due to coupon validation error.');
-        showToast('Order Placement Blocked', result.error || 'Coupon validation failed', 'error');
         return;
       }
 
-      setIsProcessing(false);
-      setConfirmedOrderId(result.order.id);
-
-      // Trigger Confetti effect
-      confetti({
-        particleCount: 120,
-        spread: 70,
-        origin: { y: 0.6 }
+      const orderResponse = await fetch('/api/payments/razorpay/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: totalAmount, receipt: `checkout_${Date.now()}` }),
       });
+      const orderPayload = await orderResponse.json();
+      if (!orderResponse.ok || !orderPayload.success) {
+        throw new Error(orderPayload.error || 'Unable to start Razorpay checkout.');
+      }
 
-      showToast(
-        'Order Placed Successfully!',
-        paymentMethod === 'COD'
-          ? `Order #${result.order.id} placed with Cash on Delivery (₹${Math.round(totalAmount).toLocaleString('en-IN')})`
-          : `Order #${result.order.id} confirmed and queued for fulfillment`,
-        'success'
-      );
+      await loadRazorpayCheckout();
+      const razorpay = new window.Razorpay({
+        key: orderPayload.keyId,
+        amount: orderPayload.order.amount,
+        currency: orderPayload.order.currency,
+        name: 'SEMIX LABS',
+        description: 'Electronics and prototyping supplies',
+        order_id: orderPayload.order.id,
+        prefill: { name: address.fullName, email: address.email, contact: address.phone },
+        theme: { color: '#561269' },
+        handler: async (response: any) => {
+          try {
+            const verifyResponse = await fetch('/api/payments/razorpay/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(response),
+            });
+            const verifyPayload = await verifyResponse.json();
+            if (!verifyResponse.ok || !verifyPayload.success) {
+              throw new Error(verifyPayload.error || 'Razorpay payment verification failed.');
+            }
+            await finalizeOrder();
+          } catch (err: any) {
+            setOrderError(err.message || 'Payment verification failed.');
+            showToast('Payment Not Confirmed', err.message || 'Payment verification failed.', 'error');
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        modal: { ondismiss: () => setIsProcessing(false) },
+      });
+      razorpay.on('payment.failed', (response: any) => {
+        setIsProcessing(false);
+        setOrderError(response.error?.description || 'Razorpay payment failed.');
+        showToast('Payment Failed', response.error?.description || 'Razorpay payment failed.', 'error');
+      });
+      razorpay.open();
     } catch (err: any) {
       setIsProcessing(false);
       setOrderError(err.message || 'An unexpected error occurred while finalizing your order.');

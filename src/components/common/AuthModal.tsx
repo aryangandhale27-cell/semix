@@ -267,6 +267,9 @@ export const AuthModal: React.FC = () => {
       }}
     >
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
         id="auth-modal-container"
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -283,7 +286,7 @@ export const AuthModal: React.FC = () => {
   className="h-9 w-9 bg-white p-1 rounded-xl border border-white grayscale"
 />
             <div>
-              <h3 className="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
+              <h3 id="auth-modal-title" className="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
                 SEMIX LABS Portal Access
               </h3>
               <p className="text-xs text-purple-200">

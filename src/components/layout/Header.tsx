@@ -35,7 +35,9 @@ export const Header: React.FC = () => {
   const { user, isAuthenticated, openAuthModal, logout } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [mobileAccountMenuOpen, setMobileAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const mobileAccountMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const accountPath = user?.role === 'admin'
@@ -43,13 +45,16 @@ export const Header: React.FC = () => {
     : user?.role === 'seller'
       ? '/seller'
       : user?.role === 'team'
-        ? '/team/fulfillment'
+        ? '/team/fulfillment?tab=stock'
         : '/customer/dashboard';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
         setAccountMenuOpen(false);
+      }
+      if (mobileAccountMenuRef.current && !mobileAccountMenuRef.current.contains(event.target as Node)) {
+        setMobileAccountMenuOpen(false);
       }
     };
 
@@ -77,7 +82,7 @@ export const Header: React.FC = () => {
           </Link>
 
           {/* Search Bar - Wide with Deep Violet CTA & Intelligent Autocomplete */}
-          <div className="flex-1 max-w-2xl hidden md:flex items-center">
+          <div className="flex-1 max-w-2xl hidden xl:flex items-center">
             <SearchAutocomplete 
               selectedCategory={selectedCategory} 
               onCategoryChange={setSelectedCategory} 
@@ -85,7 +90,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Quick Action Icons */}
-          <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-1 md:gap-2 lg:gap-4 shrink-0">
             {/* Compare */}
             <Link
               to="/compare"
@@ -101,7 +106,7 @@ export const Header: React.FC = () => {
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-semibold mt-1 hidden sm:inline">Compare</span>
+              <span className="text-[11px] font-semibold mt-1 hidden xl:inline">Compare</span>
             </Link>
 
             {/* Orders Tracker */}
@@ -112,7 +117,7 @@ export const Header: React.FC = () => {
               title="Track Orders"
             >
               <Package className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-[11px] font-semibold mt-1 hidden sm:inline">Orders</span>
+              <span className="text-[11px] font-semibold mt-1 hidden xl:inline">Orders</span>
             </Link>
 
             {/* Wishlist */}
@@ -130,7 +135,7 @@ export const Header: React.FC = () => {
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-semibold mt-1 hidden sm:inline">Wishlist</span>
+              <span className="text-[11px] font-semibold mt-1 hidden xl:inline">Wishlist</span>
             </Link>
 
             {/* Cart with Live Badge & Subtotal */}
@@ -145,7 +150,7 @@ export const Header: React.FC = () => {
                   {cartItemCount}
                 </span>
               </div>
-              <div className="hidden md:flex flex-col text-left leading-tight">
+              <div className="hidden xl:flex flex-col text-left leading-tight">
                 <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Cart</span>
                 <span className="text-xs font-bold text-slate-900 font-mono">₹{cartSubtotal.toLocaleString('en-IN')}</span>
               </div>
@@ -165,7 +170,7 @@ export const Header: React.FC = () => {
                 ) : (
                   <Store className="w-4 h-4 sm:w-5 sm:h-5" />
                 )}
-                <span className="hidden sm:inline text-[11px] font-bold">Console</span>
+                <span className="hidden xl:inline text-[11px] font-bold">Console</span>
               </Link>
             ) : (
               <div ref={accountMenuRef} className="relative">
@@ -179,7 +184,7 @@ export const Header: React.FC = () => {
                   title="Account menu"
                 >
                   <User className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline text-[11px] font-bold">Account</span>
+                  <span className="hidden xl:inline text-[11px] font-bold">Account</span>
                 </button>
 
                 {accountMenuOpen && (
@@ -241,12 +246,58 @@ export const Header: React.FC = () => {
               </div>
             )}
 
+            {isAuthenticated && user?.role !== 'customer' && (
+              <div ref={mobileAccountMenuRef} className="relative sm:hidden">
+                <button
+                  type="button"
+                  id="header-mobile-account-link"
+                  onClick={() => setMobileAccountMenuOpen((open) => !open)}
+                  className="flex items-center justify-center rounded-lg border border-purple-200 bg-purple-50 p-1.5 text-[#561269] shadow-sm transition-colors hover:border-purple-300 hover:bg-purple-100"
+                  aria-expanded={mobileAccountMenuOpen}
+                  aria-haspopup="menu"
+                  title="Account menu"
+                >
+                  <User className="h-4 w-4" />
+                </button>
+
+                {mobileAccountMenuOpen && (
+                  <div
+                    className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 text-slate-800 shadow-xl"
+                    role="menu"
+                  >
+                    <Link
+                      to={accountPath}
+                      onClick={() => setMobileAccountMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold hover:bg-purple-50 hover:text-[#561269]"
+                      role="menuitem"
+                    >
+                      <LayoutDashboard className="h-4 w-4 text-[#561269]" />
+                      View Account
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileAccountMenuOpen(false);
+                        logout();
+                        navigate('/');
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-xs font-bold text-rose-600 hover:bg-rose-50"
+                      role="menuitem"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Role-Specific Portal Button (Only when authenticated with specific role) */}
             {isAuthenticated && user?.role === 'seller' && (
               <Link
                 to="/seller"
                 id="header-seller-desk-btn"
-                className="hidden lg:flex items-center gap-1.5 bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-colors"
+                className="hidden xl:flex items-center gap-1.5 bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-colors"
               >
                 <Store className="w-3.5 h-3.5 text-emerald-300" />
                 <span>Seller Dashboard</span>
@@ -257,7 +308,7 @@ export const Header: React.FC = () => {
               <Link
                 to="/team/fulfillment"
                 id="header-team-desk-btn"
-                className="hidden lg:flex items-center gap-1.5 bg-[#561269] hover:bg-[#460e56] text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-colors"
+                className="hidden xl:flex items-center gap-1.5 bg-[#561269] hover:bg-[#460e56] text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-colors"
               >
                 <Boxes className="w-3.5 h-3.5 text-purple-300" />
                 <span>Fulfillment Desk</span>
@@ -268,7 +319,7 @@ export const Header: React.FC = () => {
               <Link
                 to="/admin/dashboard"
                 id="header-admin-desk-btn"
-                className="hidden lg:flex items-center gap-1.5 bg-purple-900 hover:bg-purple-950 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-colors"
+                className="hidden xl:flex items-center gap-1.5 bg-purple-900 hover:bg-purple-950 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-colors"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
                 <span>Admin Master</span>
@@ -279,7 +330,7 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Mobile Search input with Intelligent Autocomplete */}
-        <div className="mt-1.5 md:hidden">
+        <div className="mt-1.5 xl:hidden">
           <SearchAutocomplete
             isMobile={true}
           />
