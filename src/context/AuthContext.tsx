@@ -338,6 +338,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 });
 
 const [usersLoaded, setUsersLoaded] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [firebaseAuthUser, setFirebaseAuthUser] = useState<NonNullable<typeof auth.currentUser>>(null);
 
   // Current session user
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -348,23 +350,27 @@ const [usersLoaded, setUsersLoaded] = useState(false);
   const [authRedirectUrl, setAuthRedirectUrl] = useState<string | null>(null);
   const [authNoticeMessage, setAuthNoticeMessage] = useState<string | null>(null);
 
-  // Initial sync: fetch any users from Firestore and back-populate Firestore
+  // Firebase rules require an authenticated request, so wait for Auth to finish
+  // restoring the session before reading the users and staff directories.
   useEffect(() => {
-    // 1. Merge any existing users from Firestore database
+    if (!authReady || !firebaseAuthUser) return;
+
     fetchUsersFromFirestore()
       .then((remoteUsers) => {
         if (remoteUsers && remoteUsers.length > 0) {
           setRegisteredUsers((prev) => {
             const map = new Map<string, AuthUser & { passwordHash: string }>();
-            prev.forEach((u) => map.set(u.email.toLowerCase(), u));
+            prev.forEach((u) => map.set(u.id, u));
             remoteUsers.forEach((ru) => {
-              if (ru.email && !map.has(ru.email.toLowerCase())) {
-                map.set(ru.email.toLowerCase(), {
-  ...ru,
-  passwordHash: '',
-  password: '',
-});
-              }
+              const previousEntry = Array.from(map.entries()).find(
+                ([, existing]) => existing.email.toLowerCase() === ru.email.toLowerCase()
+              );
+              if (previousEntry) map.delete(previousEntry[0]);
+              map.set(ru.id, {
+                ...ru,
+                passwordHash: '',
+                password: '',
+              });
             });
             return Array.from(map.values());
           });
@@ -377,11 +383,13 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       setUsersLoaded(true);
     });
 
-  }, []);
+  }, [authReady, firebaseAuthUser]);
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setAuthReady(true);
+      setFirebaseAuthUser(firebaseUser);
       if (firebaseUser && !user) {
         const cleanEmail = firebaseUser.email?.toLowerCase() || '';
         const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
