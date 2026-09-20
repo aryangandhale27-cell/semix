@@ -558,7 +558,7 @@ export const ProductDetailPage: React.FC = () => {
                 ) : (
                   <>
                     <ShoppingCart className="w-4 h-4 text-[#FF6B00] shrink-0" />
-                    <span className="truncate">Add to Cart (₹{totalPrice.toLocaleString('en-IN')})</span>
+                    <span className="truncate">Add to Cart</span>
                   </>
                 )}
               </button>
