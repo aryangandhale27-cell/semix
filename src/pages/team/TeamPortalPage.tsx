@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { Order, Product, EscalationIssue, OrderStatus, EscalationType, EscalationPriority } from '../../types';
 import { ProductFormModal } from '../../components/team/ProductFormModal';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
+import { auth } from '../../lib/firebase';
 import { 
   PackageCheck, 
   Boxes, 
@@ -132,6 +133,34 @@ export const TeamPortalPage: React.FC = () => {
     const shippedToday = orders.filter((o) => o.status === 'shipped' || o.status === 'delivered').length;
     return { totalInventoryItems, lowStockItems, ordersToPack, packedToday, shippedToday };
   }, [products, orders]);
+
+  const lifetimeTeamProductCounts = useMemo(() => {
+    const counts = new Map<string, { name: string; email: string; role: string; count: number }>();
+
+    products.forEach((product) => {
+      const name = product.addedBy || 'Semix Team';
+      const email = product.addedByEmail || '';
+      const role = product.addedByRole || 'team';
+      const key = email || name;
+      const current = counts.get(key) || { name, email, role, count: 0 };
+      current.count += 1;
+      counts.set(key, current);
+    });
+
+    return Array.from(counts.values())
+      .sort((a, b) => b.count - a.count)
+      .map((member, index) => ({ ...member, rank: index + 1 }));
+  }, [products]);
+
+  const myLifetimeProductCount = useMemo(() => {
+    const currentUserEmail = auth.currentUser?.email?.toLowerCase();
+    return products.filter((product) => {
+      const productEmail = product.addedByEmail?.toLowerCase();
+      return productEmail && currentUserEmail && productEmail === currentUserEmail;
+    }).length;
+  }, [products]);
+
+  const topContributor = lifetimeTeamProductCounts[0];
 
   // Filtered Products for Inventory Table
   const filteredProducts = useMemo(() => {
@@ -351,6 +380,61 @@ export const TeamPortalPage: React.FC = () => {
           </button>
         </div>
       </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Lifetime Product Adds</p>
+              <h3 className="text-lg font-black text-slate-900 mt-1">{myLifetimeProductCount} items added by you</h3>
+            </div>
+            <div className="bg-[#561269]/10 text-[#561269] px-2.5 py-1.5 rounded-lg text-xs font-bold">
+              {auth.currentUser?.displayName || auth.currentUser?.email || 'Team member'}
+            </div>
+          </div>
+          <div className="space-y-2">
+            {lifetimeTeamProductCounts.length === 0 ? (
+              <p className="text-xs text-slate-500">No products have been added yet.</p>
+            ) : lifetimeTeamProductCounts.map((member) => (
+              <div
+                key={`${member.email || member.name}-${member.role}`}
+                className={`flex items-center justify-between rounded-xl border px-3 py-2 ${member.rank === 1 ? 'border-[#561269]/30 bg-[#561269]/5' : 'border-slate-200 bg-slate-50'}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black ${member.rank === 1 ? 'bg-[#561269] text-white' : 'bg-slate-200 text-slate-700'}`}>
+                    {member.rank}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-slate-800 truncate">{member.name}</p>
+                      {member.rank === 1 && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                          Top contributor
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500">{member.email || 'no email on file'} • {member.role}</p>
+                  </div>
+                </div>
+                <span className="bg-[#561269] text-white text-[10px] font-bold px-2 py-1 rounded-full">{member.count}</span>
+              </div>
+            ))}
+          </div>
+          {topContributor && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-800">
+              Leaderboard leader: {topContributor.name} with {topContributor.count} total products added.
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Product Attribution</p>
+          <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
+            <p>Each product keeps the creator name, email, and role in Firestore.</p>
+            <p>This helps the admin see who added each item and contact them directly if there is a quality or listing issue later.</p>
+          </div>
+        </div>
+      </div>
 
       {/* TODAY'S OVERVIEW: Compact Statistics Cards (Requirement #13) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">

@@ -96,6 +96,7 @@ export interface Product {
   addedBy?: string;
   addedByEmail?: string;
   addedByRole?: string;
+  addedByUid?: string;
   createdAt?: string;
   updatedAt?: string;
 }

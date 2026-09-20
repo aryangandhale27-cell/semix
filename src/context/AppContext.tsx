@@ -1070,26 +1070,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const id = productData.sku 
       ? `prod-${productData.sku.toLowerCase().replace(/[^a-z0-9]/g, '-')}` 
       : `prod-${Date.now().toString().slice(-6)}`;
-      
+
     const nowIso = new Date().toISOString();
-    const teamAuthor = currentRole === 'admin' 
-      ? 'Central Engineering Admin' 
-      : currentRole === 'seller' 
-      ? 'Verified Component Supplier' 
-      : 'Hardware Ops Tech Team';
+    const authUserName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0]?.replace(/[._]/g, ' ') || 'Team Member';
+    const authUserEmail = auth.currentUser?.email || (productData as any).addedByEmail || '';
+    const teamAuthor = currentRole === 'admin'
+      ? 'Central Engineering Admin'
+      : currentRole === 'seller'
+      ? 'Verified Component Supplier'
+      : (productData as any).addedBy || authUserName;
 
     const normalized = normalizeProduct({ 
       ...productData, 
       id,
       createdAt: (productData as any).createdAt || nowIso,
       updatedAt: nowIso,
-      addedBy: (productData as any).addedBy || teamAuthor,
+      addedBy: (productData as any).addedBy || authUserName || teamAuthor,
+      addedByEmail: (productData as any).addedByEmail || authUserEmail,
       addedByRole: (productData as any).addedByRole || currentRole,
+      addedByUid: (productData as any).addedByUid || auth.currentUser?.uid || undefined,
     });
 
     await syncProductToFirestore(normalized);
     setProducts((prev) => [normalized, ...prev.filter((p) => p.id !== id)]);
-    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'CREATE_PRODUCT', targetCollection: 'products', targetId: id });
+    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'CREATE_PRODUCT', targetCollection: 'products', targetId: id, metadata: { addedBy: normalized.addedBy, addedByEmail: normalized.addedByEmail } });
 
     showToast('Product Stored in Firebase', `${normalized.name} successfully published to catalog & Firestore`, 'success');
   };
