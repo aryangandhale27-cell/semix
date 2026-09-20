@@ -31,25 +31,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // If role is restricted and user's role is not in allowedRoles
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return (
-      <AuthRedirectHandler
-        locationPath={location.pathname + location.search}
-        reason="unauthorized"
-        allowedRoles={allowedRoles}
-        userRole={user.role}
-      />
-    );
-  }
-
   return <>{children}</>;
 };
 
 // Helper sub-component to handle side-effects cleanly before redirect
 const AuthRedirectHandler: React.FC<{
   locationPath: string;
-  reason: 'unauthenticated' | 'unauthorized';
+  reason: 'unauthenticated';
   allowedRoles?: UserRole[];
   userRole?: UserRole;
 }> = ({ locationPath, reason, allowedRoles, userRole }) => {
@@ -75,20 +63,6 @@ const AuthRedirectHandler: React.FC<{
           'Authentication Required',
           `Please sign in to access ${locationPath}`,
           'warning'
-        );
-      }
-    } else if (reason === 'unauthorized') {
-      const rolesNeeded = allowedRoles?.map((r) => r.toUpperCase()).join(' or ') || 'Administrative';
-      openAuthModal(
-        'signin',
-        locationPath,
-        `Access Denied: Your current role (${userRole?.toUpperCase()}) does not have permission for this portal. Please sign in as ${rolesNeeded}.`
-      );
-      if (shouldShowToast) {
-        showToast(
-          'Access Denied',
-          `This section requires ${rolesNeeded} privileges`,
-          'error'
         );
       }
     }

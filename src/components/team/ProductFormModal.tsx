@@ -118,7 +118,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setPrice('');
       setOriginalPrice('');
       setStockCount(50);
-      setLocationBin(`BIN-${String.fromCharCode(65 + Math.floor(Math.random() * 6))}${Math.floor(10 + Math.random() * 20)}`);
+      setLocationBin('BIN-D17');
       setShortDescription('');
       setDescription('');
       setImages([]);
@@ -406,7 +406,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Raspberry Pi 5 Single Board Computer (8GB RAM)"
+                      placeholder=""
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all ${
@@ -424,7 +424,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="e.g. RPI-5-8GB-ORIG"
+                        placeholder=""
                         value={sku}
                         onChange={(e) => setSku(e.target.value.toUpperCase())}
                         className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all ${
@@ -462,7 +462,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. STMicroelectronics / Arduino"
+                      placeholder=""
                       value={brand}
                       onChange={(e) => setBrand(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
@@ -476,7 +476,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. BIN-C04"
+                      placeholder="BIN-D17"
                       value={locationBin}
                       onChange={(e) => setLocationBin(e.target.value.toUpperCase())}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
