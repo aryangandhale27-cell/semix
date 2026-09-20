@@ -51,6 +51,7 @@ export const ProductDetailPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'specs' | 'datasheet' | 'tiers' | 'reviews'>('specs');
   const [added, setAdded] = useState(false);
+  const [cartBurst, setCartBurst] = useState<{ x: number; y: number; endX: number; endY: number } | null>(null);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState('');
 
@@ -138,10 +139,26 @@ export const ProductDetailPage: React.FC = () => {
   const standardTotal = product.price * selectedQty;
   const savings = standardTotal - totalPrice;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (event?: React.MouseEvent<HTMLButtonElement>) => {
+    if (event) {
+      const buttonRect = event.currentTarget.getBoundingClientRect();
+      const cartButton = document.getElementById('header-cart-link');
+      const cartRect = cartButton?.getBoundingClientRect();
+
+      setCartBurst({
+        x: buttonRect.left + buttonRect.width / 2,
+        y: buttonRect.top + buttonRect.height / 2,
+        endX: cartRect ? cartRect.left + cartRect.width / 2 : window.innerWidth - 60,
+        endY: cartRect ? cartRect.top + cartRect.height / 2 : 60,
+      });
+    }
+
     addToCart(product, selectedQty);
     setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+    setTimeout(() => {
+      setAdded(false);
+      setCartBurst(null);
+    }, 900);
   };
 
   const handleBuyNow = () => {
@@ -210,7 +227,20 @@ export const ProductDetailPage: React.FC = () => {
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6 relative">
+      {cartBurst && (
+        <motion.div
+          initial={{ opacity: 1, scale: 1, x: cartBurst.x, y: cartBurst.y, rotate: 0 }}
+          animate={{ opacity: 0, scale: 0.35, x: cartBurst.endX, y: cartBurst.endY, rotate: 18 }}
+          transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+          className="pointer-events-none fixed z-50"
+          style={{ left: 0, top: 0 }}
+        >
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FF6B00] to-[#ff9a43] shadow-xl shadow-orange-500/30 ring-4 ring-white/60 flex items-center justify-center text-white -translate-x-1/2 -translate-y-1/2">
+            <ShoppingCart className="w-5 h-5" />
+          </div>
+        </motion.div>
+      )}
       {/* Admin / Team Staff Quick Management Bar */}
       {(user?.role === 'admin' || user?.role === 'team') && (
         <div className="bg-gradient-to-r from-[#561269] to-[#3b0b49] text-white p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-md flex items-center justify-between flex-wrap gap-2 sm:gap-3 border border-purple-800">

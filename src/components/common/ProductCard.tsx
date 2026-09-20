@@ -35,6 +35,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const [quantity, setQuantity] = useState(1);
   const [addedAnimation, setAddedAnimation] = useState(false);
+  const [cartBurst, setCartBurst] = useState<{ x: number; y: number; endX: number; endY: number } | null>(null);
 
   const discountPercent = Math.round(
     ((product.originalPrice - product.price) / product.originalPrice) * 100
@@ -43,9 +44,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const buttonRect = e.currentTarget.getBoundingClientRect();
+    const cartButton = document.getElementById('header-cart-link');
+    const cartRect = cartButton?.getBoundingClientRect();
+
+    setCartBurst({
+      x: buttonRect.left + buttonRect.width / 2,
+      y: buttonRect.top + buttonRect.height / 2,
+      endX: cartRect ? cartRect.left + cartRect.width / 2 : window.innerWidth - 60,
+      endY: cartRect ? cartRect.top + cartRect.height / 2 : 60,
+    });
+
     addToCart(product, quantity);
     setAddedAnimation(true);
-    setTimeout(() => setAddedAnimation(false), 1200);
+    setTimeout(() => {
+      setAddedAnimation(false);
+      setCartBurst(null);
+    }, 850);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
@@ -75,6 +91,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       whileHover={{ y: -4, transition: { duration: 0.2, ease: 'easeOut' } }}
       className="group bg-white rounded-lg sm:rounded-xl border border-slate-200 hover:border-[#561269]/40 hover:shadow-xl hover:shadow-indigo-950/5 transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
     >
+      {cartBurst && (
+        <motion.div
+          initial={{ opacity: 1, scale: 1, x: cartBurst.x, y: cartBurst.y, rotate: 0 }}
+          animate={{ opacity: 0, scale: 0.35, x: cartBurst.endX, y: cartBurst.endY, rotate: 18 }}
+          transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+          className="pointer-events-none fixed z-50"
+          style={{ left: 0, top: 0 }}
+        >
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FF6B00] to-[#ff9a43] shadow-xl shadow-orange-500/30 ring-4 ring-white/60 flex items-center justify-center text-white -translate-x-1/2 -translate-y-1/2">
+            <ShoppingCart className="w-5 h-5" />
+          </div>
+        </motion.div>
+      )}
       {/* Top Badges */}
       <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 flex flex-col gap-0.5 sm:gap-1">
         {discountPercent > 0 && (
