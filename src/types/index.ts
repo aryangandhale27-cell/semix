@@ -151,6 +151,17 @@ export interface OrderItem {
   price: number;
   quantity: number;
   image: string;
+  availableQty?: number;
+  isUnavailable?: boolean;
+  shortageReason?: string;
+}
+
+export interface OrderShortageItem {
+  productId: string;
+  sku: string;
+  name: string;
+  quantity: number;
+  reason?: string;
 }
 
 export type OrderStatus = 
@@ -205,6 +216,7 @@ export interface Order {
   assignedSellerId: string | null;
   assignedSellerName: string | null;
   assignedAt: string | null;
+  missingItems?: OrderShortageItem[];
   // Coupon & Discount System fields
   couponCode?: string;
   discountAmount?: number;

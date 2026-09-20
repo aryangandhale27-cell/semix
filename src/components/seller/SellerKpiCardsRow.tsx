@@ -43,13 +43,13 @@ export const SellerKpiCardsRow: React.FC<SellerKpiCardsRowProps> = ({
 
   return (
     <div
-      className={`grid grid-cols-1 sm:grid-cols-2 ${sellerId ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}
+      className={`grid grid-cols-1 sm:grid-cols-2 ${sellerId ? 'xl:grid-cols-5' : 'xl:grid-cols-4'} gap-3 sm:gap-4`}
       id="seller-kpi-cards-row"
     >
       {/* Card 1: Gross Revenue with Dropdown Selector */}
       <div 
         id="seller-kpi-gross-revenue"
-        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col justify-between transition-all hover:border-violet-300"
+        className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col justify-between transition-all hover:border-violet-300"
       >
         <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
           <div className="flex items-center gap-1.5">
@@ -75,7 +75,7 @@ export const SellerKpiCardsRow: React.FC<SellerKpiCardsRowProps> = ({
           {isLoading ? (
             <div className="h-8 w-32 bg-slate-100 animate-pulse rounded-md" />
           ) : (
-            <p className="text-2xl font-black text-slate-900 font-mono tracking-tight">
+            <p className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
               {formattedRevenue}
             </p>
           )}
@@ -101,7 +101,7 @@ export const SellerKpiCardsRow: React.FC<SellerKpiCardsRowProps> = ({
       <div 
         id="seller-kpi-todays-packlist"
         onClick={() => onSelectTab?.('packlist')}
-        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col justify-between cursor-pointer transition-all hover:border-amber-300 group"
+        className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col justify-between cursor-pointer transition-all hover:border-amber-300 group"
       >
         <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
           <div className="flex items-center gap-1.5">
@@ -119,7 +119,7 @@ export const SellerKpiCardsRow: React.FC<SellerKpiCardsRowProps> = ({
           {isLoading ? (
             <div className="h-8 w-24 bg-slate-100 animate-pulse rounded-md" />
           ) : (
-            <p className="text-2xl font-black text-slate-900 font-mono">
+            <p className="text-xl sm:text-2xl font-black text-slate-900 font-mono">
               {todayPackListCount} <span className="text-sm font-bold text-slate-500">Orders</span>
             </p>
           )}
@@ -133,7 +133,7 @@ export const SellerKpiCardsRow: React.FC<SellerKpiCardsRowProps> = ({
       <div 
         id="seller-kpi-pending-handover"
         onClick={() => onSelectTab?.('packlist')}
-        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col justify-between cursor-pointer transition-all hover:border-[#561269]/40 group"
+        className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col justify-between cursor-pointer transition-all hover:border-[#561269]/40 group"
       >
         <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
           <div className="flex items-center gap-1.5">
@@ -151,7 +151,7 @@ export const SellerKpiCardsRow: React.FC<SellerKpiCardsRowProps> = ({
           {isLoading ? (
             <div className="h-8 w-24 bg-slate-100 animate-pulse rounded-md" />
           ) : (
-            <p className="text-2xl font-black text-slate-900 font-mono">
+            <p className="text-xl sm:text-2xl font-black text-slate-900 font-mono">
               {pendingHandoverCount} <span className="text-sm font-bold text-slate-500">Ready</span>
             </p>
           )}
@@ -164,7 +164,7 @@ export const SellerKpiCardsRow: React.FC<SellerKpiCardsRowProps> = ({
       {/* Card 4: Fulfillment SLA Quality */}
       <div 
         id="seller-kpi-fulfillment-sla"
-        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col justify-between transition-all hover:border-emerald-300"
+        className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col justify-between transition-all hover:border-emerald-300"
       >
         <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
           <div className="flex items-center gap-1.5">
@@ -183,7 +183,7 @@ export const SellerKpiCardsRow: React.FC<SellerKpiCardsRowProps> = ({
             <div className="h-8 w-28 bg-slate-100 animate-pulse rounded-md" />
           ) : (
             <div className="flex items-baseline gap-2">
-              <p className="text-2xl font-black text-emerald-700 font-mono">
+              <p className="text-xl sm:text-2xl font-black text-emerald-700 font-mono">
                 {onTimeDispatchRate}%
               </p>
               <span className="text-xs font-bold text-slate-500">On-Time</span>

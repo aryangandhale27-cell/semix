@@ -118,7 +118,7 @@ export const SellerBonusCard: React.FC<SellerBonusCardProps> = ({
   return (
     <div
       id="seller-bonus-display-card"
-      className="bg-white rounded-2xl p-5 border border-slate-200 shadow-md flex flex-col justify-between transition-all hover:border-orange-300 relative overflow-hidden group"
+      className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-md flex flex-col justify-between transition-all hover:border-orange-300 relative overflow-hidden group"
     >
       {/* Background ambient glow */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-orange-100/50 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110" />
@@ -146,7 +146,7 @@ export const SellerBonusCard: React.FC<SellerBonusCardProps> = ({
         ) : (
           <p
             id="seller-bonus-amount-text"
-            className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight"
+            className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight"
           >
             {formatInrBonus(effectiveBonus)}
           </p>

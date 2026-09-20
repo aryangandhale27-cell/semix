@@ -46,7 +46,7 @@ import { createOrderInFirestore } from '../../services/firebaseService';
 import { sendSellerAssignmentEmail, getLocalSentEmails } from '../../services/emailService';
 
 export const SellerDashboardPage: React.FC = () => {
-  const { orders, availableSellers, updateOrderStatus, showToast } = useApp();
+  const { orders, availableSellers, updateOrderStatus, showToast, flagMissingOrderItems } = useApp();
   const { user } = useAuth();
 
   // Active Main Tabs: 'packlist' | 'analytics'
@@ -170,6 +170,25 @@ export const SellerDashboardPage: React.FC = () => {
       packedBy: profile.name,
     });
     showToast('Order Handed Over', `AWB ${trackingNumber} assigned to ${courierName}`, 'success');
+  };
+
+  const handleMissingItemsAlert = (orderId: string, missingItems: Array<{ productId: string; sku: string; name: string; quantity: number; reason?: string }>) => {
+    if (!missingItems.length) return;
+
+    flagMissingOrderItems(orderId, missingItems, `Seller hub ${profile.name} cannot fulfill ${missingItems.length} component(s) in this order.`);
+
+    const shortageNotification: SellerNotification = {
+      id: `notif-shortage-${Date.now()}`,
+      title: `Missing Components: ${missingItems.length} item(s)`,
+      message: `${missingItems.map((item) => item.name).join(', ')} could not be located at ${profile.name}. Please reassign these items to another seller or fulfillment hub.`,
+      timestamp: 'Just now',
+      type: 'inventory',
+      isRead: false,
+      orderId,
+      priority: 'urgent',
+    };
+
+    setNotifications((prev) => [shortageNotification, ...prev]);
   };
 
 
@@ -325,16 +344,16 @@ export const SellerDashboardPage: React.FC = () => {
             </div>
 
             {/* Quick Actions: Edit Profile, Notifications Bell, Simulate Order */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 self-start lg:self-center">
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 w-full lg:w-auto self-start lg:self-center">
               {/* Active Hub Switcher for testing/multi-seller management */}
-              <div className="flex items-center gap-1.5 bg-violet-950/60 border border-violet-700/60 rounded-xl px-2.5 py-1.5 text-xs text-violet-100 shadow-xs">
+              <div className="flex items-center gap-1.5 bg-violet-950/60 border border-violet-700/60 rounded-xl px-2.5 py-1.5 text-xs text-violet-100 shadow-xs max-w-full">
                 <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span className="text-[11px] text-violet-300 font-medium hidden sm:inline">Seller Queue:</span>
                 <select
                   value={selectedSellerId}
                   onChange={(e) => setSelectedSellerId(e.target.value)}
                   id="active-seller-hub-select"
-                  className="bg-transparent font-bold text-white text-xs border-none focus:outline-hidden cursor-pointer"
+                  className="bg-transparent font-bold text-white text-xs border-none focus:outline-hidden cursor-pointer max-w-[130px] sm:max-w-[180px]"
                 >
                   {availableSellers.map((s) => (
                     <option key={s.id} value={s.id} className="text-slate-900 bg-white">
@@ -348,7 +367,7 @@ export const SellerDashboardPage: React.FC = () => {
               <button
                 onClick={handleSimulateIncomingOrder}
                 id="simulate-order-btn"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-violet-800 hover:bg-violet-700 text-violet-100 border border-violet-600/40 transition-colors shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-violet-800 hover:bg-violet-700 text-violet-100 border border-violet-600/40 transition-colors shadow-xs w-full sm:w-auto justify-center"
                 title="Simulate a new customer order placed to demo live notifications"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
@@ -359,7 +378,7 @@ export const SellerDashboardPage: React.FC = () => {
               <button
                 onClick={() => setIsEmailModalOpen(true)}
                 id="seller-hub-emails-btn"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-violet-800/80 hover:bg-violet-700 text-violet-100 border border-violet-600/40 transition-colors shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-violet-800/80 hover:bg-violet-700 text-violet-100 border border-violet-600/40 transition-colors shadow-xs w-full sm:w-auto justify-center"
                 title="View Dispatch Emails sent to this Warehouse Hub"
               >
                 <Mail className="w-3.5 h-3.5 text-purple-200" />
@@ -450,7 +469,7 @@ export const SellerDashboardPage: React.FC = () => {
               <button
                 onClick={() => setIsProfileModalOpen(true)}
                 id="edit-seller-profile-btn"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-[#561269] hover:bg-violet-50 transition-colors shadow-xs"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-[#561269] hover:bg-violet-50 transition-colors shadow-xs w-full sm:w-auto justify-center"
               >
                 <Edit className="w-3.5 h-3.5 text-violet-700" />
                 <span>Edit Hub Profile</span>
@@ -519,6 +538,7 @@ export const SellerDashboardPage: React.FC = () => {
               onUpdateStatus={handleStatusProgression}
               onOpenDispatchModal={(order) => setDispatchOrder(order)}
               onOpenPackingSlip={(order) => setPackingSlipOrder(order)}
+              onFlagMissingItems={handleMissingItemsAlert}
               onPrintMasterManifest={() => {
                 if (sellerAssignedOrders.length > 0) {
                   setPackingSlipOrder(sellerAssignedOrders[0]);

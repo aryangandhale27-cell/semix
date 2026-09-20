@@ -26,6 +26,7 @@ interface PackListTabProps {
   onUpdateStatus: (orderId: string, nextStatus: OrderStatus) => void;
   onOpenDispatchModal: (order: Order) => void;
   onOpenPackingSlip: (order: Order) => void;
+  onFlagMissingItems?: (orderId: string, missingItems: Array<{ productId: string; sku: string; name: string; quantity: number; reason?: string }>) => void;
   onPrintMasterManifest: () => void;
 }
 
@@ -35,10 +36,12 @@ export const PackListTab: React.FC<PackListTabProps> = ({
   onUpdateStatus,
   onOpenDispatchModal,
   onOpenPackingSlip,
+  onFlagMissingItems,
   onPrintMasterManifest,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'to_pack' | 'packed' | 'shipped' | 'delivered'>('all');
+  const [flaggedMissingItems, setFlaggedMissingItems] = useState<Record<string, Record<string, boolean>>>({});
 
   // Picking verification checkboxes: { [orderId]: { [sku_or_id]: boolean } }
   const [pickedItems, setPickedItems] = useState<Record<string, Record<string, boolean>>>(() => {
@@ -61,6 +64,34 @@ export const PackListTab: React.FC<PackListTabProps> = ({
         [itemKey]: !prev[orderId]?.[itemKey],
       },
     }));
+  };
+
+  const toggleMissingItem = (orderId: string, itemKey: string) => {
+    setFlaggedMissingItems((prev) => ({
+      ...prev,
+      [orderId]: {
+        ...(prev[orderId] || {}),
+        [itemKey]: !prev[orderId]?.[itemKey],
+      },
+    }));
+  };
+
+  const submitMissingItemsReport = (order: Order) => {
+    const missing = order.items
+      .filter((item) => {
+        const itemKey = item.productId || item.sku;
+        return !!flaggedMissingItems[order.id]?.[itemKey];
+      })
+      .map((item) => ({
+        productId: item.productId,
+        sku: item.sku,
+        name: item.name,
+        quantity: item.quantity,
+        reason: 'Not available at this seller hub',
+      }));
+
+    if (!missing.length) return;
+    onFlagMissingItems?.(order.id, missing);
   };
 
   const markAllOrderItemsPicked = (order: Order) => {
@@ -306,7 +337,7 @@ export const PackListTab: React.FC<PackListTabProps> = ({
                       <span>Components to Pick & Pack</span>
                     </span>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[11px] font-medium text-slate-500">
                         Picking Progress:{' '}
                         <strong className={isAllPicked ? 'text-emerald-700' : 'text-amber-700'}>
@@ -321,6 +352,12 @@ export const PackListTab: React.FC<PackListTabProps> = ({
                           Check All
                         </button>
                       )}
+                      <button
+                        onClick={() => submitMissingItemsReport(order)}
+                        className="text-[11px] text-amber-700 hover:text-amber-900 font-bold underline"
+                      >
+                        Notify Missing Components
+                      </button>
                     </div>
                   </div>
 
@@ -340,16 +377,36 @@ export const PackListTab: React.FC<PackListTabProps> = ({
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              className="text-slate-400 hover:text-violet-700 transition-colors"
-                            >
-                              {isPicked ? (
-                                <CheckSquare className="w-4 h-4 text-emerald-600" />
-                              ) : (
-                                <Square className="w-4 h-4 text-slate-400" />
-                              )}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                className="text-slate-400 hover:text-violet-700 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleItemCheck(order.id, itemKey);
+                                }}
+                              >
+                                {isPicked ? (
+                                  <CheckSquare className="w-4 h-4 text-emerald-600" />
+                                ) : (
+                                  <Square className="w-4 h-4 text-slate-400" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors ${
+                                  flaggedMissingItems[order.id]?.[itemKey]
+                                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleMissingItem(order.id, itemKey);
+                                }}
+                              >
+                                {flaggedMissingItems[order.id]?.[itemKey] ? 'Missing' : 'Not in Hub'}
+                              </button>
+                            </div>
 
                             {item.image && (
                               <img

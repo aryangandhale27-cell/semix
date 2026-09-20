@@ -139,6 +139,24 @@ export const AdminOrderAssignmentModal: React.FC<AdminOrderAssignmentModalProps>
             </div>
           )}
 
+          {order.missingItems && order.missingItems.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-bold">Seller shortage reported:</span>
+                  <div className="mt-1 space-y-1">
+                    {order.missingItems.map((item) => (
+                      <div key={`${item.productId}-${item.sku}`} className="font-medium">
+                        • {item.name} ({item.quantity} qty) — {item.reason || 'not available at seller hub'}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Seller Selection Options */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">

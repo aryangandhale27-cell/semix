@@ -175,6 +175,7 @@ interface AppContextType {
   assignSellerToOrder: (orderId: string, sellerId: string, sellerName: string, notes?: string) => void;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, note?: string, updatedBy?: string, courierInfo?: { courier?: string; courierTrackingId?: string; packedBy?: string }) => void;
   adminOverrideOrder: (orderId: string, updates: Partial<Order>) => void;
+  flagMissingOrderItems: (orderId: string, missingItems: Array<{ productId: string; sku: string; name: string; quantity: number; reason?: string }>, note?: string) => void;
 
   // Escalations
   escalations: EscalationIssue[];
@@ -1434,6 +1435,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Order Overridden', `Admin changes applied to ${orderId}`, 'info');
   };
 
+  const flagMissingOrderItems = (
+    orderId: string,
+    missingItems: Array<{ productId: string; sku: string; name: string; quantity: number; reason?: string }>,
+    note?: string
+  ) => {
+    if (!missingItems.length) return;
+
+    setOrders((prev) =>
+      prev.map((order) => {
+        if (order.id !== orderId) return order;
+
+        const updatedOrder: Order = {
+          ...order,
+          missingItems: missingItems.map((item) => ({
+            productId: item.productId,
+            sku: item.sku,
+            name: item.name,
+            quantity: item.quantity,
+            reason: item.reason || 'Marked unavailable at seller hub',
+          })),
+          statusTimeline: [
+            ...order.statusTimeline,
+            {
+              status: order.status,
+              timestamp: new Date().toISOString(),
+              note: note || `Seller reported ${missingItems.length} item(s) unavailable at this hub and requested reassignment.`,
+              updatedBy: order.assignedSellerName || 'Seller Hub',
+            },
+          ],
+        };
+
+        syncOrderToFirestore(updatedOrder).catch((e) => console.warn('Firestore shortage sync deferred:', e));
+        return updatedOrder;
+      })
+    );
+
+    showToast('Shortage Reported', `${missingItems.length} component(s) flagged as unavailable. Admin reassignment requested.`, 'warning');
+  };
+
   // Escalations
   const reportEscalation = (issueData: Omit<EscalationIssue, 'id' | 'createdAt' | 'status'>) => {
     const id = `ESC-${Math.floor(400 + Math.random() * 500)}`;
@@ -1548,6 +1588,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assignSellerToOrder,
         updateOrderStatus,
         adminOverrideOrder,
+        flagMissingOrderItems,
         escalations,
         reportEscalation,
         resolveEscalation,
