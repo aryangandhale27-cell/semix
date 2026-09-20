@@ -273,13 +273,13 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           <div className="flex w-full rounded-xl border-2 border-[#561269]/20 focus-within:border-[#561269] bg-slate-50/50 hover:bg-white focus-within:bg-white transition-all overflow-hidden shadow-xs">
             {/* Category Dropdown Filter */}
             {onCategoryChange && (
-              <div className="relative border-r border-slate-200 bg-slate-100/70 hidden sm:flex items-center px-3">
+              <div className="relative border-r border-slate-200 bg-slate-100/70 hidden sm:flex items-center px-3 w-[30%] max-w-[220px] shrink-0">
                 <select
                   id="search-category-filter"
                   value={selectedCategory}
                   onChange={(e) => onCategoryChange(e.target.value)}
                   aria-label="Filter search by category"
-                  className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-hidden cursor-pointer pr-4 appearance-none py-2"
+                  className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-hidden cursor-pointer pr-4 appearance-none py-2 w-full"
                 >
                   <option value="all">All Categories</option>
                   {categories.map((c) => (
@@ -292,7 +292,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
               </div>
             )}
 
-            <div className="relative flex-1 flex items-center">
+            <div className="relative flex-1 min-w-0 flex items-center">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
               <input
                 ref={inputRef}
@@ -330,7 +330,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             <button
               id="search-submit-btn"
               type="submit"
-              className="bg-[#561269] hover:bg-[#460e56] text-white font-semibold text-xs sm:text-sm px-5 sm:px-6 py-2.5 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="bg-[#561269] hover:bg-[#460e56] text-white font-semibold text-xs sm:text-sm px-5 sm:px-6 py-2.5 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 w-[120px] justify-center"
             >
               <span>Search</span>
             </button>
