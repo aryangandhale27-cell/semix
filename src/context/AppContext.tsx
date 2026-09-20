@@ -364,9 +364,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchProductsFromFirestore()
       .then((remoteProducts) => {
         if (!isMounted) return;
-        const normalizedProducts = remoteProducts.length > 0
-          ? remoteProducts.map(normalizeProduct)
-          : INITIAL_PRODUCTS.map(normalizeProduct);
+        const normalizedProducts = remoteProducts.map(normalizeProduct);
         setProducts(normalizedProducts);
         if (normalizedProducts.length > 0) writeCachedData(APP_DATA_CACHE_KEYS.products, normalizedProducts);
       })
@@ -376,9 +374,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const unsubscribe = subscribeToProducts((remoteProducts) => {
       if (!isMounted) return;
-      const normalizedProducts = remoteProducts.length > 0
-        ? remoteProducts.map(normalizeProduct)
-        : INITIAL_PRODUCTS.map(normalizeProduct);
+      const normalizedProducts = remoteProducts.map(normalizeProduct);
       setProducts(normalizedProducts);
       if (normalizedProducts.length > 0) writeCachedData(APP_DATA_CACHE_KEYS.products, normalizedProducts);
     });

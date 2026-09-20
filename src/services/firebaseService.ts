@@ -89,7 +89,7 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
 export async function fetchProductsFromFirestore(): Promise<Product[]> {
   const path = 'products';
   try {
-    const q = query(collection(db, path), limit(100));
+    const q = query(collection(db, path), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     const items: Product[] = [];
     snapshot.forEach((docSnap) => {
@@ -102,7 +102,7 @@ export async function fetchProductsFromFirestore(): Promise<Product[]> {
 }
 
 export function subscribeToProducts(onData: (products: Product[]) => void, onError?: (err: any) => void): Unsubscribe {
-  const q = query(collection(db, 'products'), limit(100));
+  const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
   return onSnapshot(
     q,
     (snapshot) => {
