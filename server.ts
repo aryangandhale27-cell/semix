@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import { Resend } from 'resend';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import { INITIAL_PRODUCTS } from './src/mockData/products';
@@ -180,6 +181,191 @@ function getTransporter() {
   });
 }
 
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+  return new Resend(apiKey);
+}
+
+function isResendSkipped(): boolean {
+  const value = String(process.env.SKIP_RESEND_EMAIL ?? '').trim().toLowerCase();
+  return value === 'true' || value === '1' || value === 'yes' || value === 'on';
+}
+
+function buildOrderConfirmationText(order: any): string {
+  const orderDate = order?.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }) : 'N/A';
+  const customerName = order?.customer?.fullName || 'Customer';
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const lines = items.map((item: any) => `${item.name} x${item.quantity} @ ₹${Number(item.price || 0).toLocaleString('en-IN')} = ₹${Number((item.price || 0) * (item.quantity || 0)).toLocaleString('en-IN')}`);
+
+  return [
+    'SEMIX LABS — Order Confirmed',
+    '',
+    `Hello ${customerName},`,
+    'Thank you for shopping with SEMIX LABS.',
+    `Your order has been successfully confirmed.`,
+    `Order ID: #${order?.id || 'N/A'}`,
+    `Order Date: ${orderDate}`,
+    `Payment Status: ${order?.paymentStatus || 'Paid'}`,
+    '',
+    'ORDER SUMMARY',
+    ...lines,
+    '',
+    `Subtotal: ₹${Number(order?.subtotal || 0).toLocaleString('en-IN')}`,
+    `Shipping: ₹${Number(order?.shippingFee || 0).toLocaleString('en-IN')}`,
+    `Discount: -₹${Number(order?.discount || 0).toLocaleString('en-IN')}`,
+    `Total: ₹${Number(order?.finalTotal ?? order?.totalAmount ?? 0).toLocaleString('en-IN')}`,
+    '',
+    'DELIVERY ADDRESS',
+    `${order?.customer?.fullName || ''}`,
+    `${order?.customer?.street || ''}`,
+    `${order?.customer?.city || ''}, ${order?.customer?.state || ''} - ${order?.customer?.pincode || ''}`,
+    `Phone: ${order?.customer?.phone || ''}`,
+    '',
+    'We\'ll notify you when your order is shipped.',
+    '',
+    'Thank you for choosing SEMIX LABS.',
+  ].filter(Boolean).join('\n');
+}
+
+function buildResendOrderConfirmationHtml(order: any): string {
+  const customerName = order?.customer?.fullName || 'Customer';
+  const orderDate = order?.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }) : 'N/A';
+  const subtotal = Number(order?.subtotal || 0);
+  const shippingFee = Number(order?.shippingFee || 0);
+  const discount = Number(order?.discount || 0);
+  const total = Number(order?.finalTotal ?? order?.totalAmount ?? 0);
+  const addressLines = [
+    order?.customer?.fullName || '',
+    order?.customer?.street || '',
+    `${order?.customer?.city || ''}, ${order?.customer?.state || ''} - ${order?.customer?.pincode || ''}`,
+    `Phone: ${order?.customer?.phone || ''}`,
+    `Email: ${order?.customer?.email || ''}`,
+  ].filter(Boolean);
+
+  const itemRows = (Array.isArray(order?.items) ? order.items : []).map((item: any) => {
+    const unitTotal = Number((item.price || 0) * (item.quantity || 0));
+    return `
+      <tr>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 600; color: #0f172a;">${String(item.name || 'Product')}</td>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 13px; color: #334155;">${Number(item.quantity || 0)}</td>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 13px; color: #334155;">₹${Number(item.price || 0).toLocaleString('en-IN')}</td>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 13px; font-weight: 700; color: #0f172a;">₹${unitTotal.toLocaleString('en-IN')}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+  <div style="font-family: Arial, Helvetica, sans-serif; background: #f8fafc; padding: 24px; color: #0f172a;">
+    <div style="max-width: 680px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
+      <div style="background: linear-gradient(135deg, #561269 0%, #3b074a 100%); padding: 28px 24px; color: white; text-align: center;">
+        <div style="font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase; opacity: 0.9;">SEMIX LABS</div>
+        <h1 style="margin: 12px 0 8px; font-size: 30px; line-height: 1.2;">Order Confirmed 🎉</h1>
+        <p style="margin: 0; font-size: 14px; opacity: 0.92;">Hello ${customerName}, thank you for shopping with SEMIX LABS.</p>
+      </div>
+      <div style="padding: 28px 24px;">
+        <p style="margin: 0 0 18px; font-size: 14px; color: #334155;">Your order has been successfully confirmed.</p>
+        <div style="margin-bottom: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+          <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+            <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">Order ID</div>
+            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">#${order?.id || 'N/A'}</div>
+          </div>
+          <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+            <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">Order Date</div>
+            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${orderDate}</div>
+          </div>
+          <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+            <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">Payment Status</div>
+            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${order?.paymentStatus || 'Paid'}</div>
+          </div>
+          <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+            <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">Payment Method</div>
+            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${order?.paymentMethod || 'UPI'}</div>
+          </div>
+        </div>
+        <h2 style="margin: 0 0 12px; font-size: 18px; color: #0f172a;">Order Summary</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+          <thead>
+            <tr>
+              <th style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: left; color: #64748b; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">Product</th>
+              <th style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: center; color: #64748b; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">Qty</th>
+              <th style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; color: #64748b; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">Unit Price</th>
+              <th style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; color: #64748b; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+        </table>
+        <div style="background: #faf5ff; border: 1px solid #f3e8ff; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; font-size: 14px; color: #475569; margin-bottom: 8px;"><span>Subtotal</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; color: #475569; margin-bottom: 8px;"><span>Shipping</span><span>₹${shippingFee.toLocaleString('en-IN')}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; color: #15803d; margin-bottom: 8px;"><span>Discount</span><span>-₹${discount.toLocaleString('en-IN')}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 800; color: #561269; padding-top: 12px; border-top: 1px solid #e9d5ff;"><span>Total</span><span>₹${total.toLocaleString('en-IN')}</span></div>
+        </div>
+        <h2 style="margin: 0 0 12px; font-size: 18px; color: #0f172a;">Delivery Address</h2>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; color: #334155; line-height: 1.6;">${addressLines.map((line) => `<div>${line}</div>`).join('')}</div>
+        <p style="margin: 24px 0 0; font-size: 14px; color: #334155;">We’ll notify you when your order is shipped.</p>
+      </div>
+      <div style="padding: 20px 24px 28px; text-align: center; border-top: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; font-size: 12px;">
+        Thank you for choosing SEMIX LABS.<br />Electronics Components & Solutions
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+async function sendResendOrderConfirmationEmail(order: any): Promise<{ sent: boolean; message?: string }> {
+  if (!order || !order.customer?.email) {
+    console.warn('[Resend] Customer email missing; skipping confirmation email.');
+    return { sent: false, message: 'Customer email missing.' };
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[Resend] No RESEND_API_KEY configured; skipping confirmation email.');
+    return { sent: false, message: 'RESEND_API_KEY not configured.' };
+  }
+
+  if (isResendSkipped()) {
+    console.log('[Resend] Development skip enabled; order confirmation email not sent.');
+    return { sent: false, message: 'Development email sending skipped.' };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const html = buildResendOrderConfirmationHtml(order);
+    const text = buildOrderConfirmationText(order);
+    const response = await resend.emails.send({
+      from: 'orders@semixlabs.com',
+      to: [order.customer.email],
+      subject: `SEMIX LABS — Order Confirmed #${order.id}`,
+      html,
+      text,
+    });
+
+    if (response.error) {
+      const errorMessage = response.error?.message || 'Unknown Resend error.';
+      console.error('[Resend] Email failed:', errorMessage);
+      return { sent: false, message: errorMessage };
+    }
+
+    console.log(`[Resend] Order confirmation email sent for order ${order.id}`);
+    return { sent: true, message: 'Resend email sent.' };
+  } catch (error: any) {
+    console.error('[Resend] Exception while sending confirmation email:', error?.message || error);
+    return { sent: false, message: error?.message || 'Unknown exception.' };
+  }
+}
+
 // Check Email Delivery Service Status
 app.get('/api/email-status', (req, res) => {
   const user = process.env.SMTP_USER;
@@ -200,7 +386,7 @@ app.get('/api/email-status', (req, res) => {
 
 // Send Transactional Email API Endpoint
 app.post('/api/send-email', async (req, res) => {
-  const { to, subject, html, text, recipientType, orderId } = req.body;
+  const { to, subject, html, text, recipientType, orderId, orderData } = req.body;
 
   if (!to || !subject || !html) {
     return res.status(400).json({
@@ -210,6 +396,38 @@ app.post('/api/send-email', async (req, res) => {
   }
 
   const recipients = Array.isArray(to) ? to : [to];
+  const normalizedType = recipientType || 'customer';
+
+  if (
+    normalizedType === 'customer' &&
+    process.env.RESEND_API_KEY &&
+    process.env.RESEND_API_KEY.trim() &&
+    !isResendSkipped()
+  ) {
+    const resendResult = await sendResendOrderConfirmationEmail(
+      orderData || { customer: { email: recipients[0] }, id: orderId, paymentStatus: 'Paid' }
+    );
+    if (resendResult.sent) {
+      return res.json({
+        success: true,
+        delivered: true,
+        mode: 'resend',
+        message: resendResult.message,
+        recipients,
+        orderId,
+      });
+    }
+
+    console.warn('[Email Dispatcher] Resend send failed; falling back to SMTP if configured.', {
+      orderId,
+      recipients,
+    });
+  }
+
+  if (normalizedType === 'customer' && isResendSkipped()) {
+    console.log('[Email Dispatcher] SKIP_RESEND_EMAIL enabled; customer Resend dispatch skipped.');
+  }
+
   const transporter = getTransporter();
 
   if (!transporter) {
@@ -258,6 +476,7 @@ app.post('/api/send-email', async (req, res) => {
       delivered: false,
       error: err.message || 'Failed to dispatch email through SMTP transport.',
       recipients,
+      orderId,
     });
   }
 });

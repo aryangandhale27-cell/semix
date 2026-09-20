@@ -1,4 +1,15 @@
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  doc,
+  getDoc,
+  updateDoc,
+} from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Order, AvailableSeller } from '../types';
 
@@ -652,7 +663,7 @@ let localSentEmails: SentEmailRecord[] = [];
 /**
  * Helper to dispatch email via the server-side API (which connects to live SMTP if configured)
  */
-async function dispatchViaServerApi(record: SentEmailRecord): Promise<{ delivered: boolean; message?: string }> {
+async function dispatchViaServerApi(record: SentEmailRecord, order?: Order): Promise<{ delivered: boolean; message?: string }> {
   try {
     const res = await fetch('/api/send-email', {
       method: 'POST',
@@ -663,6 +674,7 @@ async function dispatchViaServerApi(record: SentEmailRecord): Promise<{ delivere
         html: record.html,
         recipientType: record.recipientType,
         orderId: record.orderId,
+        orderData: order || undefined,
       }),
     });
     if (res.ok) {
@@ -826,23 +838,65 @@ export async function sendOrderPlacedEmails(order: Order): Promise<{
   const records: SentEmailRecord[] = [];
   const now = new Date().toISOString();
 
-  // 1. Customer Email
-  const customerHtml = generateCustomerOrderEmailHtml(order);
-  const customerSubject = `⚡ Order Confirmed: #${order.id} - SEMIX LABS`;
-  const customerRecord: SentEmailRecord = {
-    id: `email-cust-${order.id}-${Date.now()}`,
-    recipientType: 'customer',
-    to: [order.customer.email],
-    recipientName: order.customer.fullName,
-    subject: customerSubject,
-    html: customerHtml,
-    orderId: order.id,
-    status: 'queued',
-    timestamp: now,
-  };
-  records.push(customerRecord);
+  if (!order?.id) {
+    console.warn('[EmailService] Missing order id; skipping order confirmation email.');
+    return { customerEmailSent: false, adminEmailSent: false, records };
+  }
 
-  // 2. Admin Alert Email
+  if (order.confirmationEmailSent) {
+    console.log(`[EmailService] Skipping duplicate confirmation email for order ${order.id}.`);
+    return { customerEmailSent: false, adminEmailSent: false, records };
+  }
+
+  try {
+    const orderSnap = await getDoc(doc(db, 'orders', order.id));
+    if (orderSnap.exists() && Boolean((orderSnap.data() as Partial<Order>)?.confirmationEmailSent)) {
+      console.log(`[EmailService] Firestore indicates confirmation email already sent for order ${order.id}.`);
+      return { customerEmailSent: false, adminEmailSent: false, records };
+    }
+  } catch (err) {
+    console.warn('[EmailService] Duplicate-check read failed; continuing with send guard.', err);
+  }
+
+  let customerEmailSent = false;
+
+  if (order.customer?.email) {
+    const customerHtml = generateCustomerOrderEmailHtml(order);
+    const customerSubject = `SEMIX LABS — Order Confirmed #${order.id}`;
+    const customerRecord: SentEmailRecord = {
+      id: `email-cust-${order.id}-${Date.now()}`,
+      recipientType: 'customer',
+      to: [order.customer.email],
+      recipientName: order.customer.fullName,
+      subject: customerSubject,
+      html: customerHtml,
+      orderId: order.id,
+      status: 'queued',
+      timestamp: now,
+    };
+    records.push(customerRecord);
+
+    localSentEmails = [customerRecord, ...localSentEmails];
+
+    const customerDispatch = await dispatchViaServerApi(customerRecord, order);
+    if (customerDispatch.delivered) {
+      customerEmailSent = true;
+      customerRecord.status = 'delivered';
+      try {
+        await updateDoc(doc(db, 'orders', order.id), {
+          confirmationEmailSent: true,
+          confirmationEmailSentAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn(`[EmailService] Failed to mark order ${order.id} confirmationEmailSent flag:`, err);
+      }
+    } else {
+      console.warn(`[EmailService] Customer confirmation email for order ${order.id} failed to dispatch.`);
+    }
+  } else {
+    console.warn(`[EmailService] Customer email missing for order ${order.id}; customer confirmation email skipped.`);
+  }
+
   const adminHtml = generateAdminOrderAlertHtml(order);
   const adminSubject = `🔔 [Admin Alert] New Order Received: #${order.id} (₹${(order.finalTotal || order.totalAmount).toLocaleString('en-IN')})`;
   const adminRecord: SentEmailRecord = {
@@ -858,19 +912,13 @@ export async function sendOrderPlacedEmails(order: Order): Promise<{
   };
   records.push(adminRecord);
 
-  // Store in local cache for instant UI rendering
   localSentEmails = [...records, ...localSentEmails];
 
-  // Dispatch via Server API (triggers real SMTP if configured)
-  for (const rec of records) {
-    dispatchViaServerApi(rec).then((res) => {
-      if (res.delivered) {
-        rec.status = 'delivered';
-      }
-    });
+  const adminDispatch = await dispatchViaServerApi(adminRecord, order);
+  if (adminDispatch.delivered) {
+    adminRecord.status = 'delivered';
   }
 
-  // Write into Firestore 'mail' collection (for Firebase Trigger Email extension / backend sync)
   try {
     const mailCol = collection(db, 'mail');
     for (const rec of records) {
@@ -887,14 +935,14 @@ export async function sendOrderPlacedEmails(order: Order): Promise<{
         createdAt: serverTimestamp(),
       });
     }
-    console.log(`[EmailService] Customer & Admin emails queued in Firestore 'mail' collection for order ${order.id}`);
+    console.log(`[EmailService] Order emails queued in Firestore 'mail' collection for order ${order.id}`);
   } catch (err) {
     console.warn('[EmailService] Firestore mail queue deferred (offline/permission fallback):', err);
   }
 
   return {
-    customerEmailSent: true,
-    adminEmailSent: true,
+    customerEmailSent,
+    adminEmailSent: adminDispatch.delivered,
     records,
   };
 }

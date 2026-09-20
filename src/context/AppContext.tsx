@@ -1174,6 +1174,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assignedAt: orderData.assignedAt ?? null,
       userId: auth.currentUser?.uid || orderData.customer.email,
       createdAt: now.toISOString(),
+      confirmationEmailSent: false,
       statusTimeline: [
         {
           status: initialStatus,
@@ -1234,6 +1235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assignedSellerName: orderData.assignedSellerName ?? null,
       assignedAt: orderData.assignedAt ?? null,
       createdAt: now.toISOString(),
+      confirmationEmailSent: false,
       statusTimeline: [
         {
           status: initialStatus,

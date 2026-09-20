@@ -223,6 +223,7 @@ export interface Order {
   discountAmount?: number;
   finalTotal?: number;
   userId?: string;
+  confirmationEmailSent?: boolean;
 }
 
 export type CouponDiscountType = 'percentage' | 'fixed';
