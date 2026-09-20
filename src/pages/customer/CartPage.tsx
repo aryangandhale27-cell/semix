@@ -59,10 +59,10 @@ export const CartPage: React.FC = () => {
   };
 
   const taxableAmount = Math.max(0, cartSubtotal - couponDiscount);
-  const gstTax = taxableAmount * 0.18;
+  const gstTax = 0;
   const isFreeShipping = taxableAmount > 500;
   const shippingFee = cart.length === 0 || isFreeShipping ? 0 : 70;
-  const grandTotal = taxableAmount + gstTax + shippingFee;
+  const grandTotal = taxableAmount + shippingFee;
   const amountNeededForFreeShipping = Math.max(0, 500 - taxableAmount);
 
   if (cart.length === 0) {

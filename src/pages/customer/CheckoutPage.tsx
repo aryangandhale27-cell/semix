@@ -97,8 +97,8 @@ export const CheckoutPage: React.FC = () => {
   const taxableAmount = Math.max(0, cartSubtotal - couponDiscount);
   const isFreeShipping = taxableAmount > 500;
   const shippingFee = cart.length === 0 ? 0 : (isFreeShipping ? 0 : 70);
-  const tax = taxableAmount * 0.18;
-  const totalAmount = Math.max(0, taxableAmount + tax + shippingFee);
+  const tax = 0;
+  const totalAmount = Math.max(0, taxableAmount + shippingFee);
 
   // COD Availability Condition: strictly Order Subtotal > ₹300
   const isCodAvailable = taxableAmount > 300;
@@ -927,11 +927,9 @@ export const CheckoutPage: React.FC = () => {
               </div>
             )}
             
-            <div className="flex justify-between">
-              <span>GST (18%):</span>
-              <span className="font-bold font-mono text-slate-900">
-                ₹{tax.toFixed(2)}
-              </span>
+            <div className="flex justify-between text-slate-500">
+              <span>GST:</span>
+              <span className="font-bold font-mono text-emerald-700">Included</span>
             </div>
             
             <div className="flex justify-between items-center">
