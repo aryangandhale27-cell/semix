@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
@@ -27,7 +27,11 @@ import {
   Trash2,
   Edit3,
   ShieldAlert,
-  X
+  X,
+  Share2,
+  Copy,
+  Mail,
+  MessageCircle
 } from 'lucide-react';
 
 export const ProductDetailPage: React.FC = () => {
@@ -36,7 +40,10 @@ export const ProductDetailPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const product = products.find((p) => p.id === productId) || products[0];
+  const product = useMemo(
+    () => products.find((p) => p.id === productId) || products[0],
+    [products, productId]
+  );
 
   const [selectedQty, setSelectedQty] = useState(1);
   const [selectedImgIdx, setSelectedImgIdx] = useState(0);
@@ -44,6 +51,8 @@ export const ProductDetailPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'specs' | 'datasheet' | 'tiers' | 'reviews'>('specs');
   const [added, setAdded] = useState(false);
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [shareStatus, setShareStatus] = useState('');
 
   // Keyboard navigation for gallery & lightbox
   useEffect(() => {
@@ -116,7 +125,10 @@ export const ProductDetailPage: React.FC = () => {
     );
   }
 
-  const images = product.images && product.images.length > 0 ? product.images : [product.image];
+  const images = useMemo(
+    () => (product.images && product.images.length > 0 ? product.images : [product.image]),
+    [product]
+  );
   const inWish = isInWishlist(product.id);
   const inComp = isComparing(product.id);
 
@@ -137,10 +149,65 @@ export const ProductDetailPage: React.FC = () => {
     navigate('/checkout');
   };
 
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : `https://semixlabs.com/product/${product.id}`;
+  const shareText = `Check out ${product.name} on SEMIX LABS.`;
+
+  const handleShare = async (channel: 'native' | 'copy' | 'whatsapp' | 'x' | 'email') => {
+    const fullShareText = `${shareText} ${shareUrl}`;
+
+    try {
+      if (channel === 'native') {
+        if (navigator.share) {
+          await navigator.share({
+            title: product.name,
+            text: shareText,
+            url: shareUrl,
+          });
+          setShareStatus('Product shared successfully');
+          return;
+        }
+      }
+
+      if (channel === 'copy') {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(fullShareText);
+          setShareStatus('Link copied to clipboard');
+          return;
+        }
+        setShareStatus('Copy is not available in this browser');
+        return;
+      }
+
+      if (channel === 'whatsapp') {
+        window.open(`https://wa.me/?text=${encodeURIComponent(fullShareText)}`, '_blank', 'noopener,noreferrer');
+        setShareStatus('WhatsApp share opened');
+        return;
+      }
+
+      if (channel === 'x') {
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(fullShareText)}`, '_blank', 'noopener,noreferrer');
+        setShareStatus('X share opened');
+        return;
+      }
+
+      if (channel === 'email') {
+        window.location.href = `mailto:?subject=${encodeURIComponent(product.name)}&body=${encodeURIComponent(fullShareText)}`;
+        setShareStatus('Email composer opened');
+        return;
+      }
+    } catch (error) {
+      console.warn('[ProductDetailPage] Share action failed:', error);
+      setShareStatus('Unable to share right now');
+    }
+  };
+
   // Related products
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  const relatedProducts = useMemo(
+    () => products
+      .filter((p) => p.category === product.category && p.id !== product.id)
+      .slice(0, 4),
+    [products, product]
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6">
@@ -476,8 +543,8 @@ export const ProductDetailPage: React.FC = () => {
                 Buy Now
               </button>
 
-              {/* Wishlist & Compare */}
-              <div className="flex gap-2">
+              {/* Wishlist, Compare, Share */}
+              <div className="flex gap-2 items-center">
                 <button
                   onClick={() => toggleWishlist(product.id)}
                   className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
@@ -496,8 +563,65 @@ export const ProductDetailPage: React.FC = () => {
                 >
                   <GitCompare className="w-5 h-5" />
                 </button>
+
+                <div className="relative">
+                  <button
+                    onClick={() => setIsShareMenuOpen((prev) => !prev)}
+                    className="w-12 h-12 rounded-xl border border-slate-300 bg-white text-slate-700 hover:text-[#561269] flex items-center justify-center transition-colors cursor-pointer"
+                    title="Share product"
+                    aria-label="Share product"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </button>
+
+                  {isShareMenuOpen && (
+                    <div className="absolute right-0 top-14 z-30 w-44 rounded-xl border border-slate-200 bg-white shadow-xl p-2">
+                      <button
+                        onClick={() => { setIsShareMenuOpen(false); void handleShare('native'); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                      >
+                        <Share2 className="w-4 h-4 text-[#561269]" />
+                        Share product
+                      </button>
+                      <button
+                        onClick={() => { setIsShareMenuOpen(false); void handleShare('copy'); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                      >
+                        <Copy className="w-4 h-4 text-slate-500" />
+                        Copy link
+                      </button>
+                      <button
+                        onClick={() => { setIsShareMenuOpen(false); void handleShare('whatsapp'); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                      >
+                        <MessageCircle className="w-4 h-4 text-emerald-600" />
+                        WhatsApp
+                      </button>
+                      <button
+                        onClick={() => { setIsShareMenuOpen(false); void handleShare('x'); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                      >
+                        <span className="w-4 h-4 rounded-full bg-slate-900 text-[9px] text-white flex items-center justify-center font-bold">X</span>
+                        Share on X
+                      </button>
+                      <button
+                        onClick={() => { setIsShareMenuOpen(false); void handleShare('email'); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                      >
+                        <Mail className="w-4 h-4 text-violet-600" />
+                        Email
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+
+            {shareStatus && (
+              <div className="mt-2 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5">
+                {shareStatus}
+              </div>
+            )}
           </div>
 
           {/* Short description & datasheet quick download */}
