@@ -484,9 +484,9 @@ export const ProductDetailPage: React.FC = () => {
             )}
 
             {/* Quantity Selector & Action Buttons */}
-            <div className="pt-2 sm:pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <div className="pt-2 sm:pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 lg:gap-3">
               {/* Quantity counter */}
-              <div className="inline-flex rounded-lg sm:rounded-xl border border-slate-300 bg-white items-center overflow-hidden h-10 sm:h-12 shrink-0 self-start">
+              <div className="inline-flex rounded-lg sm:rounded-xl border border-slate-300 bg-white items-center overflow-hidden h-10 sm:h-12 shrink-0 self-start sm:self-center lg:self-auto">
                 <button
                   onClick={() => setSelectedQty((q) => Math.max(1, q - 1))}
                   className="px-3 sm:px-4 text-sm font-bold text-slate-600 hover:bg-slate-100 h-full cursor-pointer"
@@ -518,17 +518,17 @@ export const ProductDetailPage: React.FC = () => {
                   added
                     ? 'bg-emerald-600 text-white'
                     : 'bg-[#561269] hover:bg-[#460e56] text-white'
-                }`}
+                }`} 
               >
                 {added ? (
                   <>
-                    <Check className="w-4 h-4" />
-                    <span>Added {selectedQty} pcs to Cart</span>
+                    <Check className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Added {selectedQty} pcs to Cart</span>
                   </>
                 ) : (
                   <>
-                    <ShoppingCart className="w-4 h-4 text-[#FF6B00]" />
-                    <span>Add to Cart (₹{totalPrice.toLocaleString('en-IN')})</span>
+                    <ShoppingCart className="w-4 h-4 text-[#FF6B00] shrink-0" />
+                    <span className="truncate">Add to Cart (₹{totalPrice.toLocaleString('en-IN')})</span>
                   </>
                 )}
               </button>
@@ -538,7 +538,7 @@ export const ProductDetailPage: React.FC = () => {
                 id="pdp-buy-now-btn"
                 onClick={handleBuyNow}
                 disabled={!product.inStock || product.stockCount <= 0}
-                className="w-full sm:w-auto h-10 sm:h-12 bg-[#FF6B00] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-6 rounded-lg sm:rounded-xl transition-colors cursor-pointer shadow-md shadow-orange-950/10"
+                className="w-full sm:w-auto sm:min-w-[140px] lg:min-w-[170px] h-10 sm:h-12 bg-[#FF6B00] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-5 sm:px-6 rounded-lg sm:rounded-xl transition-colors cursor-pointer shadow-md shadow-orange-950/10"
               >
                 Buy Now
               </button>
