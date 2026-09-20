@@ -31,9 +31,19 @@ export const CustomerDashboardPage: React.FC = () => {
   const { user } = useAuth();
 
   const customerOrders = user
-    ? orders.filter((order) =>
-        order.userId === user.id || order.userId === user.email || order.customer?.email === user.email
-      )
+    ? orders.filter((order) => {
+        const orderUserId = String(order.userId || '').trim();
+        const orderCustomerEmail = String(order.customer?.email || '').trim().toLowerCase();
+        const currentUserEmail = String(user.email || '').trim().toLowerCase();
+        const currentUserId = String(user.id || '').trim();
+
+        return (
+          orderUserId === currentUserId ||
+          orderUserId === currentUserEmail ||
+          orderCustomerEmail === currentUserEmail ||
+          orderCustomerEmail === String(user.email || '').trim().toLowerCase()
+        );
+      })
     : [];
 
   const activeTab = searchParams.get('tab') || 'orders';

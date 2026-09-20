@@ -295,9 +295,14 @@ export const normalizeProduct = (p: Partial<Product> & Record<string, any>): Pro
 // Normalization helper for orders ensuring seller assignment fields
 export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order => {
   const isAssigned = Boolean(o.assignedSellerId);
-  const status: OrderStatus = !isAssigned && (o.status === 'placed' || !o.status) 
-    ? 'pending_assignment' 
-    : (o.status || 'pending_assignment');
+  const rawStatus = (o.status || 'pending_assignment') as OrderStatus;
+  const computedStatus: OrderStatus = isAssigned && rawStatus === 'pending_assignment'
+    ? 'assigned'
+    : rawStatus;
+
+  const status: OrderStatus = !isAssigned && (computedStatus === 'placed' || !computedStatus)
+    ? 'pending_assignment'
+    : computedStatus;
 
   return {
     id: o.id || `ORD-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -1278,7 +1283,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((order) => {
         if (order.id === orderId) {
           const isCurrentPending = !order.assignedSellerId || order.status === 'pending_assignment' || order.status === 'placed';
-          const nextStatus: OrderStatus = isCurrentPending ? 'assigned' : order.status;
+          const nextStatus: OrderStatus = isCurrentPending || (order.assignedSellerId && order.status === 'pending_assignment') ? 'assigned' : order.status;
 
           const newTimelineEntry = {
             status: nextStatus,
