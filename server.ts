@@ -37,8 +37,12 @@ app.post('/api/ai/product-description', async (req, res) => {
   try {
     const ai = new GoogleGenAI({ apiKey });
     const result = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: `Write a professional electronics e-commerce product description for SEMIX LABS.\n\nProduct title: ${productName}\nCategory: ${category}\n\nUse only the product title and category as factual inputs. Do not invent specifications, ratings, compatibility claims, measurements, certifications, included items, or performance figures. Write 2 concise paragraphs, plain text only, suitable for a product catalog.`,
+      model: 'gemini-2.5-flash',
+      contents: `Research the product online using Google Search and write a professional electronics catalog description for SEMIX LABS.\n\nProduct title: ${productName}\nCategory: ${category}\n\nRequirements:\n- Use a professional, technical, electronics-focused tone suitable for engineers and buyers.\n- Include verified technical details when available from official sources or trusted product listings, such as voltage rating, current rating, pin count / pinout, package type, operating voltage, interface, mounting type, compatibility, power requirements, and application use cases.\n- Write in clear prose with short point-wise technical bullets when useful.\n- If a detail is not confidently verified, do not invent it. State it as "varies by variant" or omit it.\n- Do not write childish, vague, or salesy filler. Keep it precise, technical, and catalog-ready.\n- Do not mention that you are using Google Search or AI.\n- Keep the output in plain text and make it easy to paste into a product page.\n\nFormatting:\n- 2 short paragraphs or 4-8 concise technical bullet points with one brief intro sentence.\n- Make it specific to the product category and technical buyer.`,
+      config: {
+        temperature: 0.2,
+        tools: [{ googleSearch: {} }],
+      },
     });
     const description = result.text?.trim();
 
