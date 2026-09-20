@@ -83,6 +83,7 @@ interface AuthContextType {
   user: AuthUser | null;
   role: UserRole | null;
   isAuthenticated: boolean;
+  authReady: boolean;
   isAuthModalOpen: boolean;
   authModalTab: 'signin' | 'register';
   authRedirectUrl: string | null;
@@ -1105,6 +1106,7 @@ setAuthNoticeMessage(null);
         user,
         role: user?.role || null,
         isAuthenticated: !!user,
+        authReady,
         isAuthModalOpen,
         authModalTab,
         authRedirectUrl,

@@ -165,7 +165,15 @@ export async function fetchOrdersFromFirestore(): Promise<Order[]> {
     const snapshot = await getDocs(q);
     const orders: Order[] = [];
     snapshot.forEach((docSnap) => {
-      orders.push(docSnap.data() as Order);
+      const raw = docSnap.data() as Partial<Order> & Record<string, any>;
+      orders.push({
+        ...raw,
+        id: raw.id || docSnap.id,
+        status: raw.status || 'pending_assignment',
+        assignedSellerId: raw.assignedSellerId ?? null,
+        assignedSellerName: raw.assignedSellerName ?? null,
+        assignedAt: raw.assignedAt ?? null,
+      } as Order);
     });
     return orders;
   } catch (error) {
@@ -205,7 +213,15 @@ export function subscribeToOrders(onData: (orders: Order[]) => void, onError?: (
     (snapshot) => {
       const orders: Order[] = [];
       snapshot.forEach((docSnap) => {
-        orders.push(docSnap.data() as Order);
+        const raw = docSnap.data() as Partial<Order> & Record<string, any>;
+        orders.push({
+          ...raw,
+          id: raw.id || docSnap.id,
+          status: raw.status || 'pending_assignment',
+          assignedSellerId: raw.assignedSellerId ?? null,
+          assignedSellerName: raw.assignedSellerName ?? null,
+          assignedAt: raw.assignedAt ?? null,
+        } as Order);
       });
       onData(orders);
     },

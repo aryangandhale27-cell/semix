@@ -15,9 +15,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   requireAuth = true,
 }) => {
-  const { user, isAuthenticated, openAuthModal } = useAuth();
+  const { user, isAuthenticated, authReady, openAuthModal } = useAuth();
   const { showToast } = useApp();
   const location = useLocation();
+
+  if (requireAuth && !authReady) {
+    return null;
+  }
 
   // If requires auth and user is not authenticated
   if (requireAuth && !isAuthenticated) {

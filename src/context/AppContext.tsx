@@ -567,6 +567,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [availableSellers, setAvailableSellers] = useState<AvailableSeller[]>([]);
 
+  useEffect(() => {
+    clearCachedData(STORAGE_KEYS.ORDERS);
+    clearCachedData(STORAGE_KEYS.SELLERS);
+  }, []);
+
+  useEffect(() => {
+    if (orders.length > 0) {
+      writeCachedData(STORAGE_KEYS.ORDERS, orders);
+    } else {
+      clearCachedData(STORAGE_KEYS.ORDERS);
+    }
+  }, [orders]);
+
+  useEffect(() => {
+    if (availableSellers.length > 0) {
+      writeCachedData(STORAGE_KEYS.SELLERS, availableSellers);
+    } else {
+      clearCachedData(STORAGE_KEYS.SELLERS);
+    }
+  }, [availableSellers]);
+
   const addAvailableSeller = (seller: AvailableSeller) => {
     setAvailableSellers((prev) => {
       const exists = prev.some((s) => s.id === seller.id || s.email.toLowerCase() === seller.email.toLowerCase());
@@ -706,7 +727,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchOrdersFromFirestore()
         .then((remoteOrders) => {
           if (!isMounted) return;
-          setOrders(remoteOrders.map(normalizeOrder));
+          const nextOrders = (remoteOrders || []).map(normalizeOrder);
+          setOrders(nextOrders);
+          writeCachedData(STORAGE_KEYS.ORDERS, nextOrders);
         })
         .catch((err) => {
           console.warn('[Firestore] Orders load notice:', err?.message || err);
@@ -714,7 +737,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       unsubscribeOrders = subscribeToOrders((remoteOrders) => {
         if (!isMounted) return;
-        setOrders(remoteOrders.map(normalizeOrder));
+        const nextOrders = (remoteOrders || []).map(normalizeOrder);
+        setOrders(nextOrders);
+        writeCachedData(STORAGE_KEYS.ORDERS, nextOrders);
       });
     });
 
