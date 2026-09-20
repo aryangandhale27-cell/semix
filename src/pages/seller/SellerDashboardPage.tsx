@@ -55,21 +55,27 @@ export const SellerDashboardPage: React.FC = () => {
   // Analytics Date Range State (FR-5.4)
   const [analyticsDateRange, setAnalyticsDateRange] = useState<SellerDateRange>('This Month');
 
-  // Active seller hub identifier (defaults to logged-in user or first available seller Vikram Patel)
-  const defaultSellerId = availableSellers.find((s) => s.email === user?.email)?.id || 'usr-seller-01';
+  // Active seller hub identifier defaults to the logged-in seller account and never falls back to hardcoded demo data.
+  const defaultSellerId = availableSellers.find((s) => s.email === user?.email)?.id || (user?.role === 'seller' ? user.id : '') || availableSellers[0]?.id || '';
   const [selectedSellerId, setSelectedSellerId] = useState<string>(defaultSellerId);
 
+  React.useEffect(() => {
+    if (defaultSellerId) {
+      setSelectedSellerId(defaultSellerId);
+    }
+  }, [defaultSellerId]);
+
   const currentSeller = useMemo(() => {
-    return availableSellers.find((s) => s.id === selectedSellerId) || availableSellers[0] || {
-      id: 'usr-seller-01',
-      name: 'Vikram Patel',
-      email: 'seller@semixlabs.com',
-      phone: '+91 98111 22334',
-      warehouseHub: 'SEMIX LABS Hub Alpha, Outer Ring Road, Bengaluru',
-      gstin: '29ABCDE1234F1Z5',
-      rating: 4.92,
+    return availableSellers.find((s) => s.id === selectedSellerId) || availableSellers.find((s) => s.email === user?.email) || {
+      id: user?.id || 'seller-profile',
+      name: user?.name || 'Seller Profile',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      warehouseHub: '',
+      gstin: '',
+      rating: 0,
     };
-  }, [availableSellers, selectedSellerId]);
+  }, [availableSellers, selectedSellerId, user]);
 
   // Real-time Firestore Seller KPIs and Scoped Data
   const sellerKpis = useFirestoreSellerKPIs(

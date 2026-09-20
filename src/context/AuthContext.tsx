@@ -42,7 +42,7 @@ export const DEMO_CREDENTIALS: Record<UserRole, DemoCredential> = {
     roleTitle: 'Seller / Fulfilment Staff',
     email: 'seller@semixlabs.com',
     password: 'Seller@123',
-    name: 'Vikram Patel',
+    name: 'Seller Hub',
     department: 'Seller Fulfilment & Vendor Dispatch',
     defaultRedirect: '/seller',
     description: 'Component merchant, packing lists, order dispatches & revenue analytics',
@@ -142,70 +142,7 @@ const DEFAULT_USERS: Array<AuthUser & { passwordHash: string }> = [
     status: 'active',
     createdAt: '2025-11-20',
   },
-  {
-    id: 'usr-seller-01',
-    name: 'Vikram Patel',
-    email: 'seller@semixlabs.com',
-    passwordHash: 'Seller@123',
-    password: 'Seller@123',
-    role: 'seller',
-    phone: '+91 98111 22334',
-    businessName: 'Patel Electronics & Semiconductor Hub',
-    gstin: '29ABCDE1234F1Z5',
-    warehouseHub: 'SEMIX LABS Hub Alpha, Outer Ring Road, Bengaluru',
-    commissionRate: '7.5% Platform Fee',
-    settlementTerms: 'Net 7 Weekly Cycle',
-    status: 'active',
-    createdAt: '2026-02-01',
-  },
-  {
-    id: 'usr-seller-02',
-    name: 'Priya Sharma',
-    email: 'priya.sharma@semixlabs.com',
-    passwordHash: 'Seller@123',
-    password: 'Seller@123',
-    role: 'seller',
-    phone: '+91 98220 33445',
-    businessName: 'ElectroComponents Hub',
-    gstin: '27AABCS1429B1Z8',
-    warehouseHub: 'West Zone Hub, Pune Solapur Road, Pune',
-    commissionRate: '8.0% Platform Fee',
-    settlementTerms: 'Net 14 Bi-weekly',
-    status: 'active',
-    createdAt: '2026-02-15',
-  },
-  {
-    id: 'usr-seller-03',
-    name: 'Rajesh Nair',
-    email: 'rajesh.nair@semixlabs.com',
-    passwordHash: 'Seller@123',
-    password: 'Seller@123',
-    role: 'seller',
-    phone: '+91 94455 66778',
-    businessName: 'MicroSilicon Express',
-    gstin: '36AAACE9876C1Z4',
-    warehouseHub: 'South Central Hub, Hitec City, Hyderabad',
-    commissionRate: '6.5% Platform Fee',
-    settlementTerms: 'T+3 Business Days',
-    status: 'active',
-    createdAt: '2026-02-20',
-  },
-  {
-    id: 'usr-seller-04',
-    name: 'Ananya Desai',
-    email: 'ananya.desai@semixlabs.com',
-    passwordHash: 'Seller@123',
-    password: 'Seller@123',
-    role: 'seller',
-    phone: '+91 97230 44556',
-    businessName: 'Silicon Valley Logistics Hub',
-    gstin: '24AACCD5543D1Z2',
-    warehouseHub: 'North-West Hub, SG Highway, Ahmedabad',
-    commissionRate: '7.0% Platform Fee',
-    settlementTerms: 'Net 7 Weekly Cycle',
-    status: 'active',
-    createdAt: '2026-03-01',
-  },
+
   {
     id: 'usr-cust-01',
     name: 'Aryan Gandhale',
@@ -302,11 +239,11 @@ const matchDemoUser = (inputEmail: string, inputPass: string): AuthUser | null =
 
   if (isSeller && isSellerPass) {
     return {
-      id: 'usr-seller-01',
-      name: 'Vikram Patel',
+      id: 'usr-seller-demo',
+      name: 'Seller Hub',
       email: 'seller@semixlabs.com',
       role: 'seller',
-      phone: '+91 98111 22334',
+      phone: '',
       department: 'Seller Fulfilment & Vendor Dispatch',
       createdAt: '2026-02-01',
     };
@@ -367,6 +304,24 @@ const [usersLoaded, setUsersLoaded] = useState(false);
             });
             return Array.from(map.values());
           });
+
+          remoteUsers
+            .filter((user) => user.role === 'seller')
+            .forEach((seller) => {
+              addAvailableSeller({
+                id: seller.id,
+                name: seller.businessName ? `${seller.name} (${seller.businessName})` : seller.name,
+                email: seller.email,
+                phone: seller.phone || '',
+                warehouseHub: seller.warehouseHub || 'Warehouse Hub',
+                gstin: seller.gstin || '',
+                rating: 5.0,
+                status: seller.status || 'active',
+                businessName: seller.businessName,
+                commissionRate: seller.commissionRate,
+                settlementTerms: seller.settlementTerms,
+              });
+            });
         }
       })
           .catch((err) => {
