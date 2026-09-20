@@ -5,14 +5,14 @@ export const INITIAL_ORDERS: Order[] = [
     id: 'ORD-89214',
     trackingNumber: 'RTZ-IN-8921498',
     customer: {
-      fullName: 'Vikramaditya Sharma',
-      phone: '+91 98451 23098',
-      email: 'vikram.maker@gmail.com',
-      street: 'Flat 402, Prithvi Silicon Heights, Outer Ring Road',
-      landmark: 'Near Marathahalli Bridge',
+      fullName: 'Demo Customer',
+      phone: '+91 90000 00000',
+      email: 'customer@example.com',
+      street: 'Address will be saved here',
+      landmark: 'Customer profile address',
       city: 'Bengaluru',
       state: 'Karnataka',
-      pincode: '560037',
+      pincode: '000000',
       isDefault: true
     },
     items: [

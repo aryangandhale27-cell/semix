@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { CustomerAddress, OrderItem } from '../../types';
+import { getEmptyCustomerAddress, readSavedCustomerAddresses } from '../../utils/customerAddress';
 import confetti from 'canvas-confetti';
 import { 
   ShieldCheck, 
@@ -67,16 +68,17 @@ export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Form State
-  const [address, setAddress] = useState<CustomerAddress>({
-    fullName: user?.displayName || 'Vikramaditya Sharma',
-    phone: '+91 98451 23098',
-    email: user?.email || 'vikram.maker@gmail.com',
-    street: 'Flat 402, Prithvi Silicon Heights, Outer Ring Road',
-    landmark: 'Near Marathahalli Bridge',
-    city: 'Bengaluru',
-    state: 'Karnataka',
-    pincode: '560037',
-    isDefault: true
+  const [address, setAddress] = useState<CustomerAddress>(() => {
+    const saved = readSavedCustomerAddresses();
+    const fallback = saved.find((item) => item.isDefault) || saved[0];
+
+    return fallback
+      ? { ...fallback, email: user?.email || fallback.email }
+      : getEmptyCustomerAddress({
+          fullName: user?.displayName || user?.name || '',
+          phone: user?.phone || '',
+          email: user?.email || '',
+        });
   });
 
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'NetBanking' | 'COD' | 'MakersCredit'>('UPI');

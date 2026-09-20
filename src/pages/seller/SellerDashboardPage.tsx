@@ -208,13 +208,13 @@ export const SellerDashboardPage: React.FC = () => {
         id: newOrderId,
         trackingNumber: `TRK-${orderNum}-BLUEDART`,
         customer: {
-          fullName: 'Ananya Sharma',
-          email: 'ananya.sharma@example.com',
-          phone: '+91 98765 43210',
-          street: 'Flat 402, Green Glen Layout, Bellandur',
+          fullName: 'Customer',
+          email: 'customer@example.com',
+          phone: '+91 90000 00000',
+          street: 'Address will be saved here',
           city: 'Bengaluru',
           state: 'Karnataka',
-          pincode: '560103',
+          pincode: '000000',
         },
         items: [
           {

@@ -3,7 +3,8 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { StatusTimeline } from '../../components/common/StatusTimeline';
-import { Order, EscalationType, EscalationPriority } from '../../types';
+import { CustomerAddress, Order, EscalationType, EscalationPriority } from '../../types';
+import { CustomerAddressEntry, getEmptyCustomerAddress, readSavedCustomerAddresses, writeSavedCustomerAddresses } from '../../utils/customerAddress';
 import { 
   Package, 
   Heart, 
@@ -38,6 +39,75 @@ export const CustomerDashboardPage: React.FC = () => {
   const activeTab = searchParams.get('tab') || 'orders';
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(customerOrders[0] || null);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<CustomerAddressEntry[]>(() => readSavedCustomerAddresses());
+  const [addressForm, setAddressForm] = useState<CustomerAddress>(() =>
+    getEmptyCustomerAddress({
+      fullName: user?.name || '',
+      phone: user?.phone || '',
+      email: user?.email || '',
+    })
+  );
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSavedAddresses(readSavedCustomerAddresses());
+  }, [activeTab]);
+
+  useEffect(() => {
+    setAddressForm((previous) => ({
+      ...previous,
+      fullName: user?.name || previous.fullName || '',
+      phone: user?.phone || previous.phone || '',
+      email: user?.email || previous.email || '',
+    }));
+  }, [user]);
+
+  const defaultAddress = savedAddresses.find((address) => address.isDefault) || savedAddresses[0];
+
+  const saveAddress = () => {
+    if (!addressForm.fullName.trim() || !addressForm.phone.trim() || !addressForm.street.trim() || !addressForm.city.trim() || !addressForm.state.trim() || !addressForm.pincode.trim()) {
+      showToast('Address Required', 'Please fill in all required address fields before saving.', 'warning');
+      return;
+    }
+
+    const nextEntries = editingAddressId
+      ? savedAddresses.map((item) => item.id === editingAddressId ? { ...item, ...addressForm } : item)
+      : [...savedAddresses, { ...(addressForm as CustomerAddress & { id?: string }), id: `addr-${Date.now()}` }];
+
+    const normalized = nextEntries.map((item) => ({
+      ...item,
+      isDefault: item.id === editingAddressId ? item.isDefault : item.id === (nextEntries.find((entry) => entry.isDefault)?.id || nextEntries[0]?.id),
+    }));
+
+    const finalEntries = normalized.map((item) => ({
+      ...item,
+      isDefault: editingAddressId ? item.id === (nextEntries.find((entry) => entry.isDefault)?.id || nextEntries[0]?.id) : item.id === (nextEntries[nextEntries.length - 1]?.id || item.id),
+    }));
+
+    if (editingAddressId) {
+      const selected = finalEntries.find((item) => item.id === editingAddressId) || finalEntries[0];
+      const updated = finalEntries.map((item) => ({ ...item, isDefault: item.id === (selected?.id || item.id) }));
+      setSavedAddresses(updated);
+      writeSavedCustomerAddresses(updated);
+    } else {
+      const newEntry = { ...addressForm, id: `addr-${Date.now()}`, isDefault: savedAddresses.length === 0 } as CustomerAddressEntry;
+      const updated = [...savedAddresses, newEntry];
+      setSavedAddresses(updated);
+      writeSavedCustomerAddresses(updated);
+    }
+
+    setAddressForm(getEmptyCustomerAddress({ fullName: user?.name || '', phone: user?.phone || '', email: user?.email || '' }));
+    setEditingAddressId(null);
+    showToast('Address Saved', 'Your delivery address has been updated successfully.', 'success');
+  };
+
+  const deleteAddress = (id: string) => {
+    const remaining = savedAddresses.filter((address) => address.id !== id);
+    const next = remaining.map((entry, index) => ({ ...entry, isDefault: index === 0 && remaining.length > 0 ? true : false }));
+    setSavedAddresses(next);
+    writeSavedCustomerAddresses(next);
+    showToast('Address Removed', 'The selected address was deleted from your saved list.', 'info');
+  };
 
   // Ticket form state
   const [ticketSubject, setTicketSubject] = useState('');
@@ -589,14 +659,111 @@ export const CustomerDashboardPage: React.FC = () => {
 
       {/* Tab 4: Address */}
       {activeTab === 'address' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs max-w-2xl space-y-4">
-          <h3 className="font-extrabold text-sm text-[#561269]">Saved Billing & Delivery Information</h3>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-1 text-slate-700">
-            <p className="font-bold text-slate-900 text-sm">Vikramaditya Sharma (Primary Prototyping Lab)</p>
-            <p>Flat 402, Prithvi Silicon Heights, Outer Ring Road, Near Marathahalli Bridge</p>
-            <p>Bengaluru, Karnataka - 560037</p>
-            <p className="font-mono text-slate-500 pt-1">Phone: +91 98451 23098</p>
-            <p className="font-mono text-emerald-700 font-bold">GSTIN: 29AABCR8902P1Z5 (Registered for B2B Invoicing)</p>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs max-w-3xl space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-extrabold text-sm text-[#561269]">Saved Billing & Delivery Information</h3>
+            <button
+              onClick={() => {
+                setEditingAddressId(null);
+                setAddressForm(getEmptyCustomerAddress({ fullName: user?.name || '', phone: user?.phone || '', email: user?.email || '' }));
+              }}
+              className="flex items-center gap-2 bg-[#561269] text-white px-3 py-2 rounded-xl text-[11px] font-bold cursor-pointer"
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              Add New Address
+            </button>
+          </div>
+
+          {savedAddresses.length === 0 ? (
+            <div className="border border-dashed border-slate-300 rounded-2xl bg-slate-50 p-6 text-center">
+              <p className="text-sm font-bold text-slate-700">No saved address yet</p>
+              <p className="text-xs text-slate-500 mt-1">Add your shipping or billing address to continue checkout.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {savedAddresses.map((addressEntry) => (
+                <div
+                  key={addressEntry.id}
+                  className={`rounded-2xl border p-4 text-xs space-y-2 ${addressEntry.isDefault ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-slate-50'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">{addressEntry.fullName}</p>
+                      <p>{addressEntry.street}</p>
+                      <p>{addressEntry.landmark ? `${addressEntry.landmark}, ` : ''}{addressEntry.city}, {addressEntry.state} - {addressEntry.pincode}</p>
+                      <p className="font-mono text-slate-500 pt-1">Phone: {addressEntry.phone}</p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {addressEntry.isDefault && (
+                        <span className="bg-emerald-600 text-white px-2 py-1 rounded-full text-[10px] font-bold">Default</span>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingAddressId(addressEntry.id);
+                            setAddressForm(addressEntry);
+                          }}
+                          className="text-[#561269] font-bold cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteAddress(addressEntry.id)}
+                          className="text-rose-600 font-bold cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  {!addressEntry.isDefault && (
+                    <button
+                      onClick={() => {
+                        const updated = savedAddresses.map((entry) => ({ ...entry, isDefault: entry.id === addressEntry.id }));
+                        setSavedAddresses(updated);
+                        writeSavedCustomerAddresses(updated);
+                      }}
+                      className="text-[#561269] font-bold text-[10px] uppercase tracking-wide cursor-pointer"
+                    >
+                      Set as Default
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="font-extrabold text-xs uppercase tracking-wide text-slate-700 mb-3">{editingAddressId ? 'Edit Address' : 'Add New Address'}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input value={addressForm.fullName} onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })} placeholder="Full name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+              <input value={addressForm.phone} onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })} placeholder="Phone" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+              <input value={addressForm.email} onChange={(e) => setAddressForm({ ...addressForm, email: e.target.value })} placeholder="Email" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs md:col-span-2" />
+              <input value={addressForm.street} onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })} placeholder="Street / Flat / Building" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs md:col-span-2" />
+              <input value={addressForm.landmark || ''} onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })} placeholder="Landmark (optional)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs md:col-span-2" />
+              <input value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} placeholder="City" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+              <input value={addressForm.state} onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })} placeholder="State" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+              <input value={addressForm.pincode} onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })} placeholder="Pincode" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs md:col-span-2" />
+            </div>
+            <div className="mt-4 flex justify-end gap-3">
+              {editingAddressId && (
+                <button
+                  onClick={() => {
+                    setEditingAddressId(null);
+                    setAddressForm(getEmptyCustomerAddress({ fullName: user?.name || '', phone: user?.phone || '', email: user?.email || '' }));
+                  }}
+                  className="text-slate-600 font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                onClick={saveAddress}
+                className="bg-[#561269] text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                {editingAddressId ? 'Update Address' : 'Save Address'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -170,7 +170,7 @@ export const INITIAL_RECURRING_ORDERS: RecurringOrder[] = [
   },
   {
     id: 'REC-9022',
-    subscriberName: 'Vikramaditya Sharma',
+    subscriberName: 'Customer',
     organization: 'Vidyashilp Robotics STEM Guild',
     frequency: 'monthly',
     nextScheduledDate: '2026-09-20',
