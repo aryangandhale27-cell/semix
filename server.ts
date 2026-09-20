@@ -345,7 +345,7 @@ async function sendResendOrderConfirmationEmail(order: any): Promise<{ sent: boo
     const html = buildResendOrderConfirmationHtml(order);
     const text = buildOrderConfirmationText(order);
     const response = await resend.emails.send({
-      from: 'orders@semixlabs.com',
+      from: 'office@semixlabs.com',
       to: [order.customer.email],
       subject: `SEMIX LABS — Order Confirmed #${order.id}`,
       html,
