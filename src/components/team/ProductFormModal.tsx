@@ -7,6 +7,7 @@ import { CATEGORIES } from '../../mockData/products';
 import { uploadImageDataUrl } from '../../services/storageService';
 import { generateProductDescription } from '../../services/aiService';
 import { validateImageFile } from '../../utils/imageOptimizer';
+import { getProductPriceBreakdown } from '../../utils/pricing';
 import { 
   X, 
   Upload, 
@@ -66,6 +67,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
+  const [semixPrice, setSemixPrice] = useState<number | ''>(0);
   const [price, setPrice] = useState<number | ''>(0);
   const [originalPrice, setOriginalPrice] = useState<number | ''>(0);
   const [stockCount, setStockCount] = useState<number | ''>(10);
@@ -90,6 +92,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setBrand(initialProduct.brand);
       setCategory(initialProduct.category);
       setSubcategory(initialProduct.subcategory || '');
+      setSemixPrice(initialProduct.semixPrice ?? initialProduct.price ?? 0);
       setPrice(initialProduct.price);
       setOriginalPrice(initialProduct.originalPrice || initialProduct.price);
       setStockCount(initialProduct.stockCount);
@@ -111,6 +114,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setBrand('');
       setCategory('');
       setSubcategory('');
+      setSemixPrice('');
       setPrice('');
       setOriginalPrice('');
       setStockCount(50);
@@ -235,12 +239,16 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   };
 
+  const derivedPriceInfo = semixPrice !== '' && Number(semixPrice) >= 0
+    ? getProductPriceBreakdown(Number(semixPrice))
+    : null;
+
   const validateForm = () => {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = 'Product name is required';
     if (!sku.trim()) errs.sku = 'SKU is required';
     if (!category.trim()) errs.category = 'Category is required';
-    if (price === '' || price < 0) errs.price = 'Valid price is required';
+    if (semixPrice === '' || Number(semixPrice) < 0) errs.price = 'Valid Semix price is required';
     if (stockCount === '' || stockCount < 0) errs.stockCount = 'Valid stock count is required';
     if (images.length === 0) errs.images = 'At least one product image is required';
 
@@ -255,9 +263,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       return;
     }
 
-    const numPrice = Number(price);
+    const numSemixPrice = Number(semixPrice);
+    const computedPricing = getProductPriceBreakdown(numSemixPrice);
+    const numPrice = Number(price) || computedPricing.sellingPrice;
     const numStock = Number(stockCount);
-    const numOriginal = originalPrice === '' ? numPrice : Number(originalPrice);
+    const numOriginal = Number(originalPrice) || computedPricing.mrp;
     const validImages = images.filter((img) => img.trim().length > 0);
     const coverImage = validImages[0] || PRESET_SILICON_IMAGES[0].url;
 
@@ -268,6 +278,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       brand: brand.trim(),
       category: category.trim(),
       subcategory: subcategory.trim() || 'Components',
+      semixPrice: numSemixPrice,
       price: numPrice,
       originalPrice: numOriginal > numPrice ? numOriginal : numPrice,
       inStock: numStock > 0,
@@ -482,10 +493,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Selling Price */}
+                  {/* Semix Price */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Selling Price (₹ INR) <span className="text-rose-500">*</span>
+                      Semix Price (₹ INR) <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs font-mono">₹</span>
@@ -493,9 +504,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                         type="number"
                         min="0"
                         step="1"
-                        placeholder="250"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder="300"
+                        value={semixPrice}
+                        onChange={(e) => {
+                          const nextValue = e.target.value === '' ? '' : Number(e.target.value);
+                          setSemixPrice(nextValue);
+                          if (nextValue !== '') {
+                            const nextPricing = getProductPriceBreakdown(Number(nextValue));
+                            setPrice(nextPricing.sellingPrice);
+                            setOriginalPrice(nextPricing.mrp);
+                          }
+                        }}
                         className={`w-full bg-slate-50 border rounded-xl pl-8 pr-3 py-2 text-xs font-mono font-extrabold text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all ${
                           errors.price ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
                         }`}
@@ -504,10 +523,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     {errors.price && <p className="text-[11px] text-rose-500 mt-1">{errors.price}</p>}
                   </div>
 
-                  {/* MRP / Original Price */}
+                  {/* Selling Price */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      MSRP / Original Price (₹)
+                      Selling Price (₹ INR)
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs font-mono">₹</span>
@@ -515,10 +534,31 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                         type="number"
                         min="0"
                         step="1"
-                        placeholder="299"
+                        placeholder="420"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-full bg-slate-100 border border-slate-300 rounded-xl pl-8 pr-3 py-2 text-xs font-mono font-extrabold text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
+                        readOnly={semixPrice !== '' && Number(semixPrice) >= 0}
+                      />
+                    </div>
+                  </div>
+
+                  {/* MRP / Original Price */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      MRP / Original Price (₹)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs font-mono">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="488"
                         value={originalPrice}
                         onChange={(e) => setOriginalPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-8 pr-3 py-2 text-xs font-mono font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
+                        className="w-full bg-slate-100 border border-slate-300 rounded-xl pl-8 pr-3 py-2 text-xs font-mono font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
+                        readOnly={semixPrice !== '' && Number(semixPrice) >= 0}
                       />
                     </div>
                   </div>
@@ -542,6 +582,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     {errors.stockCount && <p className="text-[11px] text-rose-500 mt-1">{errors.stockCount}</p>}
                   </div>
                 </div>
+
+                {derivedPriceInfo && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800 flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-bold uppercase tracking-wide">Derived pricing</span>
+                    <span>Semix ₹{derivedPriceInfo.semixPrice.toLocaleString('en-IN')} → Selling ₹{derivedPriceInfo.sellingPrice.toLocaleString('en-IN')} → MRP ₹{derivedPriceInfo.mrp.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
               </div>
 
               {/* Section 3: Product Image Management */}

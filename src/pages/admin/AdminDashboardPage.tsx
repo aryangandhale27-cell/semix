@@ -42,6 +42,7 @@ import { getLocalSentEmails } from '../../services/emailService';
 import { Tag, Mail, SlidersHorizontal, FolderTree, Image as ImageIcon, Award, ShieldAlert } from 'lucide-react';
 import { CATEGORIES } from '../../mockData/products';
 import { generateProductDescription } from '../../services/aiService';
+import { getProductPriceBreakdown } from '../../utils/pricing';
 
 export const AdminDashboardPage: React.FC = () => {
   const { 
@@ -86,6 +87,7 @@ export const AdminDashboardPage: React.FC = () => {
     brand: 'SEMIX LABS',
     category: 'Electronic Modules and Development Boards',
     subcategory: 'Microcontrollers',
+    semixPrice: 399,
     price: 499,
     originalPrice: 650,
     stockCount: 50,
@@ -131,14 +133,18 @@ export const AdminDashboardPage: React.FC = () => {
       return;
     }
 
+    const semixEntryPrice = Number(newProduct.semixPrice ?? newProduct.price ?? 299);
+    const calculatedPrice = getProductPriceBreakdown(semixEntryPrice);
+
     const fullProduct: Omit<Product, 'id'> = {
       name: newProduct.name!,
       sku: newProduct.sku!.toUpperCase(),
       brand: newProduct.brand || 'SEMIX LABS',
       category: newProduct.category || 'Electronic Modules and Development Boards',
       subcategory: newProduct.subcategory || 'Microcontrollers',
-      price: Number(newProduct.price) || 299,
-      originalPrice: Number(newProduct.originalPrice) || Number(newProduct.price) || 399,
+      semixPrice: semixEntryPrice,
+      price: Number(newProduct.price) || calculatedPrice.sellingPrice,
+      originalPrice: Number(newProduct.originalPrice) || calculatedPrice.mrp,
       stockCount: Number(newProduct.stockCount) || 25,
       minOrderQty: 1,
       inStock: (Number(newProduct.stockCount) || 0) > 0,
