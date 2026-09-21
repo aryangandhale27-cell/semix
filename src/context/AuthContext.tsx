@@ -367,10 +367,6 @@ const [usersLoaded, setUsersLoaded] = useState(false);
         const sameUser = prev && prev.id === authPayload.id && prev.role === authPayload.role && prev.email === authPayload.email;
         return sameUser ? prev : authPayload;
       });
-
-      syncUserToFirestore(authPayload).catch((err) => {
-        console.warn('[Auth] Could not sync authenticated user to Firestore:', err);
-      });
     });
 
     return () => unsubscribe();

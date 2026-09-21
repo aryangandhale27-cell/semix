@@ -1349,7 +1349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, order: finalizedOrder };
   };
 
-  const assignSellerToOrder = async (
+  const assignSellerToOrder = (
     orderId: string,
     sellerId: string,
     sellerName: string,
@@ -1358,100 +1358,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date();
     const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
-    const existingOrder = orders.find((order) => order.id === orderId);
-    if (!existingOrder) {
-      showToast('Assignment Failed', `Order ${orderId} could not be found for reassignment.`, 'error');
-      return;
-    }
+    setOrders((prev) =>
+      prev.map((order) => {
+        if (order.id === orderId) {
+          const isCurrentPending = !order.assignedSellerId || order.status === 'pending_assignment' || order.status === 'placed';
+          const nextStatus: OrderStatus = isCurrentPending || (order.assignedSellerId && order.status === 'pending_assignment') ? 'assigned' : order.status;
 
-    const isCurrentPending = !existingOrder.assignedSellerId || existingOrder.status === 'pending_assignment' || existingOrder.status === 'placed';
-    const nextStatus: OrderStatus = isCurrentPending || (existingOrder.assignedSellerId && existingOrder.status === 'pending_assignment') ? 'assigned' : existingOrder.status;
+          const newTimelineEntry = {
+            status: nextStatus,
+            timestamp: formattedDate,
+            note: notes 
+              ? `Assigned to ${sellerName} by Admin. Note: ${notes}` 
+              : `Assigned to fulfillment seller: ${sellerName} by Admin Operations.`,
+            updatedBy: 'Admin Operations'
+          };
 
-    const candidateOrder: Order = {
-      ...existingOrder,
-      status: nextStatus,
-      assignedSellerId: sellerId,
-      assignedSellerName: sellerName,
-      assignedAt: now.toISOString(),
-      statusTimeline: [
-        ...existingOrder.statusTimeline,
-        {
-          status: nextStatus,
-          timestamp: formattedDate,
-          note: notes
-            ? `Assigned to ${sellerName} by Admin. Note: ${notes}`
-            : `Assigned to fulfillment seller: ${sellerName} by Admin Operations.`,
-          updatedBy: 'Admin Operations'
+          const updatedOrder = {
+            ...order,
+            status: nextStatus,
+            assignedSellerId: sellerId,
+            assignedSellerName: sellerName,
+            assignedAt: now.toISOString(),
+            statusTimeline: [...order.statusTimeline, newTimelineEntry]
+          };
+          syncOrderToFirestore(updatedOrder).catch((e) => console.warn('Firestore sync deferred:', e));
+
+          // Trigger automated email: Seller Assignment notification
+          const matchedSeller = availableSellers.find((s) => s.id === sellerId) || {
+            id: sellerId,
+            name: sellerName,
+            email: 'seller@semixlabs.com',
+            phone: '+91 98765 43210',
+            warehouseHub: 'Regional Warehouse Hub',
+            gstin: '29ABCDE1234F1Z5',
+            rating: 4.9,
+          };
+          sendSellerAssignmentEmail(updatedOrder, matchedSeller, notes).catch((e) => {
+            console.warn('[EmailService] Seller assignment email deferred:', e);
+          });
+
+          // Record immutable audit log
+          recordActivityLog({
+            userId: 'usr-admin-01',
+            userEmail: 'aryangandhale27@gmail.com',
+            userName: 'Admin Operations',
+            userRole: 'admin',
+            actionType: 'ASSIGNMENT',
+            targetEntity: 'orders',
+            targetId: orderId,
+            changes: {
+              diffs: {
+                assignedSellerId: { oldValue: order.assignedSellerId || null, newValue: sellerId },
+                assignedSellerName: { oldValue: order.assignedSellerName || null, newValue: sellerName },
+                status: { oldValue: order.status, newValue: nextStatus },
+              },
+              affectedFields: ['assignedSellerId', 'assignedSellerName', 'status'],
+              summary: `Assigned order ${orderId} to fulfillment seller ${sellerName}`,
+            },
+            metadata: {
+              source: 'web_client',
+              reason: notes || 'Fulfillment assignment',
+              route: '/admin',
+            },
+          }).catch((e) => console.warn('[AuditService] assign log deferred:', e));
+
+          return updatedOrder;
         }
-      ]
-    };
+        return order;
+      })
+    );
 
-    try {
-      await syncOrderToFirestore(candidateOrder);
-
-      const freshOrders = await fetchOrdersFromFirestore();
-      const freshOrder = freshOrders.find((order) => order.id === orderId);
-      const verifiedOrder = freshOrder ? normalizeOrder(freshOrder) : candidateOrder;
-
-      if (freshOrder && (freshOrder.assignedSellerId !== sellerId || freshOrder.assignedSellerName !== sellerName)) {
-        console.error('[AppContext] Reassignment verification failed. Firestore still has stale seller assignment:', freshOrder);
-        showToast(
-          'Assignment Failed',
-          'The reassignment was rejected or not yet persisted in Firestore. The old seller is still active in the backend.',
-          'error'
-        );
-        return;
-      }
-
-      setOrders((prev) => prev.map((order) => (order.id === orderId ? verifiedOrder : order)));
-
-      const matchedSeller = availableSellers.find((s) => s.id === sellerId) || {
-        id: sellerId,
-        name: sellerName,
-        email: 'seller@semixlabs.com',
-        phone: '+91 98765 43210',
-        warehouseHub: 'Regional Warehouse Hub',
-        gstin: '29ABCDE1234F1Z5',
-        rating: 4.9,
-      };
-
-      await sendSellerAssignmentEmail(verifiedOrder, matchedSeller, notes).catch((e) => {
-        console.warn('[EmailService] Seller assignment email deferred:', e);
-      });
-
-      await recordActivityLog({
-        userId: auth.currentUser?.uid || 'usr-admin-01',
-        userEmail: auth.currentUser?.email || 'aryangandhale27@gmail.com',
-        userName: 'Admin Operations',
-        userRole: 'admin',
-        actionType: 'ASSIGNMENT',
-        targetEntity: 'orders',
-        targetId: orderId,
-        changes: {
-          diffs: {
-            assignedSellerId: { oldValue: existingOrder.assignedSellerId || null, newValue: sellerId },
-            assignedSellerName: { oldValue: existingOrder.assignedSellerName || null, newValue: sellerName },
-            status: { oldValue: existingOrder.status, newValue: nextStatus },
-          },
-          affectedFields: ['assignedSellerId', 'assignedSellerName', 'status'],
-          summary: `Assigned order ${orderId} to fulfillment seller ${sellerName}`,
-        },
-        metadata: {
-          source: 'web_client',
-          reason: notes || 'Fulfillment assignment',
-          route: '/admin',
-        },
-      }).catch((e) => console.warn('[AuditService] assign log deferred:', e));
-
-      showToast('Seller Assigned', `Order ${orderId} assigned to ${sellerName}. Dispatch email sent to hub!`, 'success');
-    } catch (error) {
-      console.error('[AppContext] Seller assignment write failed:', error);
-      showToast(
-        'Assignment Failed',
-        'The seller reassignment was rejected by Firestore. Check the active admin account permissions and try again.',
-        'error'
-      );
-    }
+    showToast('Seller Assigned', `Order ${orderId} assigned to ${sellerName}. Dispatch email sent to hub!`, 'success');
   };
 
   const updateOrderStatus = (

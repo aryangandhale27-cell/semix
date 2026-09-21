@@ -55,17 +55,14 @@ export const AdminOrderAssignmentModal: React.FC<AdminOrderAssignmentModalProps>
     ).length;
   };
 
-  const handleConfirm = async (e: React.FormEvent) => {
+  const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSeller) return;
 
     setIsSubmitting(true);
-    try {
-      await assignSellerToOrder(order.id, selectedSeller.id, selectedSeller.name, assignmentNote.trim() || undefined);
-      onClose();
-    } finally {
-      setIsSubmitting(false);
-    }
+    assignSellerToOrder(order.id, selectedSeller.id, selectedSeller.name, assignmentNote.trim() || undefined);
+    setIsSubmitting(false);
+    onClose();
   };
 
   return (
