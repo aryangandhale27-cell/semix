@@ -404,41 +404,42 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       };
     }
 
-    // 1. Guaranteed Demo Account Matching (handles aliases, lowercase passwords, shorthand role names)
-    const demoUser = null;
-    if (demoUser) {
-      try {
-        let firebaseUser;
-        try {
-          firebaseUser = await signInWithEmailPassword(demoUser.email, cleanPass);
-        } catch (demoSignInError: any) {
-          if (demoSignInError?.code !== 'auth/user-not-found' || cleanPass.length < 6) {
-            throw demoSignInError;
-          }
-          firebaseUser = await registerWithEmailPassword(demoUser.email, cleanPass, demoUser.name);
-        }
+    const normalizedEmail = cleanEmail.replace('@rietzz.com', '@semixlabs.com');
+    const matchedLocalUser = registeredUsers.find(
+      (u) => u.email.toLowerCase() === cleanEmail || u.email.toLowerCase() === normalizedEmail
+    );
 
-        const authPayload: AuthUser = {
-          ...demoUser,
-          id: firebaseUser.uid,
-          email: demoUser.email,
-        };
-        setUser(authPayload);
-        setIsAuthModalOpen(false);
-        setAuthNoticeMessage(null);
-        await syncUserToFirestore(authPayload);
-        showToast(
-          `Welcome back, ${authPayload.name}!`,
-          `Signed in via Firebase Auth (${authPayload.role.toUpperCase()})`,
-          'success'
-        );
-        return { success: true, role: authPayload.role };
-      } catch (demoAuthError: any) {
-        console.error('[Auth] Demo role Firebase sign-in failed:', demoAuthError);
-        return {
-          success: false,
-          error: 'This role must be signed in through Firebase Authentication before it can manage catalog data.',
-        };
+    // Ensure known app users are backed by a real Firebase auth identity.
+    // This is required so Firestore writes (seller assignment, product creation, etc.)
+    // are authorized after refresh and not silently reverted.
+    if (matchedLocalUser && !auth.currentUser) {
+      try {
+        const createdUser = await registerWithEmailPassword(cleanEmail, cleanPass, matchedLocalUser.name);
+        if (createdUser?.uid) {
+          const authPayload: AuthUser = {
+            ...matchedLocalUser,
+            id: createdUser.uid,
+            email: cleanEmail,
+            name: matchedLocalUser.name,
+            status: matchedLocalUser.status || 'active',
+          };
+
+          setUser(authPayload);
+          setIsAuthModalOpen(false);
+          setAuthNoticeMessage(null);
+          await syncUserToFirestore(authPayload);
+          showToast(
+            `Welcome back, ${authPayload.name}!`,
+            `Signed in via Firebase Auth (${authPayload.role.toUpperCase()})`,
+            'success'
+          );
+          return { success: true, role: authPayload.role };
+        }
+      } catch (createAuthError: any) {
+        const createCode = createAuthError?.code || '';
+        if (createCode !== 'auth/email-already-in-use') {
+          console.warn('[Auth] Auto-create Firebase account failed:', createAuthError);
+        }
       }
     }
 
@@ -554,12 +555,12 @@ setAuthNoticeMessage(null);
     }
 
     // 3. Normalize domain if needed (@rietzz.com -> @semixlabs.com)
-    const normalizedEmail = cleanEmail.replace('@rietzz.com', '@semixlabs.com');
+    // Reuse the normalized email from the earlier authentication branch.
 
     // 4. Check registered accounts from state (case-insensitive on password for ease-of-use)
     const matched = registeredUsers.find(
       (u) => 
-        (u.email.toLowerCase() === cleanEmail || u.email.toLowerCase() === normalizedEmail) && 
+        (u.email.toLowerCase() === cleanEmail || u.email.toLowerCase() === cleanEmail.replace('@rietzz.com', '@semixlabs.com')) && 
         (u.passwordHash === cleanPass || u.passwordHash.toLowerCase() === cleanPass.toLowerCase() || u.password === cleanPass)
     );
 
@@ -572,7 +573,7 @@ setAuthNoticeMessage(null);
       }
 
       const authPayload: AuthUser = {
-        id: matched.id,
+        id: auth.currentUser?.uid || matched.id,
         name: matched.name,
         email: matched.email,
         role: matched.role,
@@ -1028,7 +1029,7 @@ setAuthNoticeMessage(null);
     }
 
     const authPayload: AuthUser = {
-      id: target.id,
+      id: auth.currentUser?.uid || target.id,
       name: target.name,
       email: target.email,
       role: target.role,
