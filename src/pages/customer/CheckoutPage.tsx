@@ -427,7 +427,7 @@ export const CheckoutPage: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Full Name / Lab Name</label>
+                <label className="block font-bold text-slate-700 mb-1">Full Name / Lab Name <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={address.fullName}
@@ -438,7 +438,7 @@ export const CheckoutPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Phone Number (for Courier SMS)</label>
+                <label className="block font-bold text-slate-700 mb-1">Phone Number (for Courier SMS) <span className="text-rose-500">*</span></label>
                 <input
                   type="tel"
                   value={address.phone}
@@ -449,7 +449,7 @@ export const CheckoutPage: React.FC = () => {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-700 mb-1">Street Address / Building / Department</label>
+                <label className="block font-bold text-slate-700 mb-1">Street Address / Building / Department <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={address.street}
@@ -460,7 +460,7 @@ export const CheckoutPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">City</label>
+                <label className="block font-bold text-slate-700 mb-1">City <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={address.city}
@@ -472,7 +472,7 @@ export const CheckoutPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">State</label>
+                  <label className="block font-bold text-slate-700 mb-1">State <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     value={address.state}
@@ -483,7 +483,7 @@ export const CheckoutPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">PIN Code</label>
+                  <label className="block font-bold text-slate-700 mb-1">PIN Code <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     value={address.pincode}

@@ -118,7 +118,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Center Links */}
-          <div className="hidden lg:flex flex-1 min-w-0 items-center justify-center gap-0.5 xl:gap-1">
+          <div className="hidden lg:flex flex-1 min-w-0 items-center justify-start gap-0.5 xl:gap-1 overflow-hidden">
             <Link
               to="/"
               id="nav-link-home"

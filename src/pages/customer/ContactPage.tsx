@@ -60,6 +60,8 @@ export const ContactPage: React.FC = () => {
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+    } else {
+      setActiveTab('all');
     }
   }, [location.pathname, location.hash]);
 
