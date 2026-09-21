@@ -20,6 +20,7 @@ import {
   CustomProjectSubmission,
   AuthUser,
   UserRole,
+  StaffMember,
 } from '../types';
 
 /**
@@ -423,6 +424,61 @@ export function subscribeToUsers(onData: (users: AuthUser[]) => void, onError?: 
     (err) => {
       console.warn('[Firestore] Users real-time listener notice:', err.message);
       if (onError) onError(err);
+    }
+  );
+}
+
+export async function fetchStaffFromFirestore(): Promise<StaffMember[]> {
+  const snapshot = await getDocs(query(collection(db, 'staff'), limit(100)));
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: data.uid || docSnap.id,
+      name: data.name || '',
+      email: data.email || '',
+      role: data.role === 'admin' ? 'admin' : 'team',
+      department: data.department || '',
+      active: data.active !== false,
+      lastActive: data.lastActive || 'Recently updated',
+    } as StaffMember;
+  });
+}
+
+export function subscribeToStaff(onData: (staff: StaffMember[]) => void, onError?: (err: any) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, 'staff'), limit(100)),
+    (snapshot) => {
+      onData(snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: data.uid || docSnap.id,
+          name: data.name || '',
+          email: data.email || '',
+          role: data.role === 'admin' ? 'admin' : 'team',
+          department: data.department || '',
+          active: data.active !== false,
+          lastActive: data.lastActive || 'Recently updated',
+        } as StaffMember;
+      }));
+    },
+    (err) => {
+      console.warn('[Firestore] Staff real-time listener notice:', err.message);
+      onError?.(err);
+    }
+  );
+}
+
+export function subscribeToRecords(
+  collectionName: string,
+  onData: (records: Array<Record<string, any>>) => void,
+  onError?: (err: any) => void
+): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, collectionName), limit(200)),
+    (snapshot) => onData(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))),
+    (err) => {
+      console.warn(`[Firestore] ${collectionName} real-time listener notice:`, err.message);
+      onError?.(err);
     }
   );
 }

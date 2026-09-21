@@ -10,7 +10,7 @@ import {
   sendPasswordReset
 } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { syncUserToFirestore, fetchUsersFromFirestore, deleteUserFromFirestore } from '../services/firebaseService';
+import { syncUserToFirestore, fetchUsersFromFirestore, subscribeToUsers, deleteUserFromFirestore } from '../services/firebaseService';
 import { createAdminManagedUser } from '../services/adminUserService';
 import { sendWelcomeEmail } from '../services/emailService';
 
@@ -286,44 +286,42 @@ const [usersLoaded, setUsersLoaded] = useState(false);
   useEffect(() => {
     if (!authReady || !firebaseAuthUser) return;
 
+    const applyRemoteUsers = (remoteUsers: AuthUser[]) => {
+      setRegisteredUsers((prev) => {
+        const passwordById = new Map(prev.map((entry) => [entry.id, entry.passwordHash]));
+        const rootAdmin = DEFAULT_USERS.find((entry) => entry.role === 'admin');
+        const remoteEntries = remoteUsers
+          .filter((remoteUser) => remoteUser.email.toLowerCase() !== rootAdmin?.email.toLowerCase())
+          .map((remoteUser) => ({
+            ...remoteUser,
+            passwordHash: passwordById.get(remoteUser.id) || '',
+            password: passwordById.get(remoteUser.id) || '',
+          }));
+        return rootAdmin ? [rootAdmin, ...remoteEntries] : remoteEntries;
+      });
+
+      remoteUsers
+        .filter((remoteUser) => remoteUser.role === 'seller')
+        .forEach((seller) => {
+          addAvailableSeller({
+            id: seller.id,
+            name: seller.businessName ? `${seller.name} (${seller.businessName})` : seller.name,
+            email: seller.email,
+            phone: seller.phone || '',
+            warehouseHub: seller.warehouseHub || 'Warehouse Hub',
+            gstin: seller.gstin || '',
+            rating: 5.0,
+            status: seller.status || 'active',
+            businessName: seller.businessName,
+            commissionRate: seller.commissionRate,
+            settlementTerms: seller.settlementTerms,
+          });
+        });
+    };
+
     fetchUsersFromFirestore()
       .then((remoteUsers) => {
-        if (remoteUsers && remoteUsers.length > 0) {
-          setRegisteredUsers((prev) => {
-            const map = new Map<string, AuthUser & { passwordHash: string }>();
-            prev.forEach((u) => map.set(u.id, u));
-            remoteUsers.forEach((ru) => {
-              const previousEntry = Array.from(map.entries()).find(
-                ([, existing]) => existing.email.toLowerCase() === ru.email.toLowerCase()
-              );
-              if (previousEntry) map.delete(previousEntry[0]);
-              map.set(ru.id, {
-                ...ru,
-                passwordHash: '',
-                password: '',
-              });
-            });
-            return Array.from(map.values());
-          });
-
-          remoteUsers
-            .filter((user) => user.role === 'seller')
-            .forEach((seller) => {
-              addAvailableSeller({
-                id: seller.id,
-                name: seller.businessName ? `${seller.name} (${seller.businessName})` : seller.name,
-                email: seller.email,
-                phone: seller.phone || '',
-                warehouseHub: seller.warehouseHub || 'Warehouse Hub',
-                gstin: seller.gstin || '',
-                rating: 5.0,
-                status: seller.status || 'active',
-                businessName: seller.businessName,
-                commissionRate: seller.commissionRate,
-                settlementTerms: seller.settlementTerms,
-              });
-            });
-        }
+        applyRemoteUsers(remoteUsers || []);
       })
           .catch((err) => {
       console.log('[Firestore] User initial fetch status:', err?.message || err);
@@ -332,6 +330,12 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       setUsersLoaded(true);
     });
 
+    const unsubscribe = subscribeToUsers(
+      applyRemoteUsers,
+      (err) => console.warn('[Firestore] User realtime listener notice:', err?.message || err)
+    );
+
+    return () => unsubscribe();
   }, [authReady, firebaseAuthUser]);
 
   // Listen to Firebase Auth state changes and rehydrate the current user after refresh.
@@ -895,18 +899,23 @@ setAuthNoticeMessage(null);
       }
     }
 
-    let targetUpdated: (AuthUser & { passwordHash: string }) | null = null;
+    const target = registeredUsers.find((u) => u.id === id);
+    if (!target) {
+      return { success: false, error: 'User account not found.' };
+    }
+
+    const targetUpdated: AuthUser & { passwordHash: string } = {
+      ...target,
+      ...updates,
+      ...(updates.passwordHash
+        ? { password: updates.passwordHash, passwordHash: updates.passwordHash }
+        : {}),
+    };
 
     setRegisteredUsers((prev) => {
       const next = prev.map((u) => {
         if (u.id === id) {
-          const nextUser = { ...u, ...updates };
-          if (updates.passwordHash) {
-            nextUser.password = updates.passwordHash;
-            nextUser.passwordHash = updates.passwordHash;
-          }
-          targetUpdated = nextUser;
-          return nextUser;
+          return targetUpdated;
         }
         return u;
       });

@@ -39,6 +39,9 @@ import {
   subscribeToOrders,
   syncCustomProjectToFirestore 
   , syncRecordToFirestore
+  , fetchStaffFromFirestore
+  , subscribeToStaff
+  , subscribeToRecords
 } from '../services/firebaseService';
 import {
   fetchBannersFromFirestore,
@@ -481,8 +484,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let isMounted = true;
     fetchCategoriesFromFirestore()
       .then((data) => {
-        if (isMounted && data.length > 0) {
-          const mergedCategories = mergeCategoriesWithDefaults(data);
+        if (isMounted) {
+          const mergedCategories = data.length > 0 ? mergeCategoriesWithDefaults(data) : [];
           setCategories(mergedCategories);
           writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
         }
@@ -490,8 +493,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch((err) => console.warn('[CategoryService] Init error:', err));
 
     const unsub = subscribeToCategories((data) => {
-      if (isMounted && data.length > 0) {
-        const mergedCategories = mergeCategoriesWithDefaults(data);
+      if (isMounted) {
+        const mergedCategories = data.length > 0 ? mergeCategoriesWithDefaults(data) : [];
         setCategories(mergedCategories);
         writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
       }
@@ -526,18 +529,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let isMounted = true;
     fetchBannersFromFirestore()
       .then((data) => {
-        if (isMounted && data && data.length > 0) {
-          setBanners(data);
-          writeCachedData(APP_DATA_CACHE_KEYS.banners, data);
+        if (isMounted) {
+          const nextBanners = data || [];
+          setBanners(nextBanners);
+          writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
         }
       })
       .catch((err) => console.warn('[BannerService] Init error:', err));
 
     const unsub = subscribeToBanners((data) => {
       if (isMounted) {
-        const nextBanners = data.length > 0 ? data : INITIAL_HOMEPAGE_BANNERS;
+        const nextBanners = data || [];
         setBanners(nextBanners);
-        if (data.length > 0) writeCachedData(APP_DATA_CACHE_KEYS.banners, data);
+        writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
       }
     });
 
@@ -557,7 +561,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     await syncBannerToFirestore(newBanner);
-    setBanners((prev) => [...prev, newBanner].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+    const nextBanners = [...banners, newBanner].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    setBanners(nextBanners);
+    writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
     showToast('Banner Added', `Added banner "${newBanner.title}" to homepage`, 'success');
 
     return newBanner;
@@ -570,13 +576,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     await syncBannerToFirestore(withTimestamp);
-    setBanners((prev) => prev.map((b) => (b.id === updatedBanner.id ? withTimestamp : b)));
+    const nextBanners = banners.map((b) => (b.id === updatedBanner.id ? withTimestamp : b));
+    setBanners(nextBanners);
+    writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
     showToast('Banner Updated', `Updated banner "${updatedBanner.title}"`, 'success');
   };
 
   const deleteBanner = async (bannerId: string) => {
     await deleteBannerFromFirestore(bannerId);
-    setBanners((prev) => prev.filter((b) => b.id !== bannerId));
+    const nextBanners = banners.filter((b) => b.id !== bannerId);
+    setBanners(nextBanners);
+    writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
     showToast('Banner Deleted', 'Banner removed from homepage slides', 'info');
   };
 
@@ -655,13 +665,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let isMounted = true;
     let unsubscribeBonuses: (() => void) | undefined;
     const applyBonuses = (map: Record<string, SellerBonusRecord>) => {
-      setSellerBonuses((prev) => ({ ...prev, ...map }));
+      setSellerBonuses(map);
       setAvailableSellers((prev) =>
         prev.map((s) => ({
           ...s,
-          bonusAmount: map[s.id] ? map[s.id].bonusAmount : s.bonusAmount || 0,
-          bonusUpdatedAt: map[s.id] ? map[s.id].updatedAt : s.bonusUpdatedAt,
-          bonusUpdatedBy: map[s.id] ? map[s.id].updatedBy : s.bonusUpdatedBy,
+          bonusAmount: map[s.id]?.bonusAmount || 0,
+          bonusUpdatedAt: map[s.id]?.updatedAt,
+          bonusUpdatedBy: map[s.id]?.updatedBy,
         }))
       );
     };
@@ -673,9 +683,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       fetchAllSellerBonuses()
         .then((remoteBonuses) => {
-          if (!isMounted || !remoteBonuses?.length) return;
+          if (!isMounted) return;
           const map: Record<string, SellerBonusRecord> = {};
-          remoteBonuses.forEach((b) => {
+          (remoteBonuses || []).forEach((b) => {
             map[b.sellerId] = b;
           });
           applyBonuses(map);
@@ -798,8 +808,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Staff
   const [staff, setStaff] = useState<StaffMember[]>([]);
 
+  useEffect(() => {
+    let isMounted = true;
+    fetchStaffFromFirestore()
+      .then((remoteStaff) => {
+        if (isMounted) setStaff(remoteStaff);
+      })
+      .catch((err) => console.warn('[Firestore] Staff load notice:', err?.message || err));
+
+    const unsubscribe = subscribeToStaff((remoteStaff) => {
+      if (isMounted) setStaff(remoteStaff);
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
   // Bulk Enquiries
   const [bulkEnquiries, setBulkEnquiries] = useState<BulkEnquirySubmission[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToRecords(
+      'bulk_enquiries',
+      (records) => setBulkEnquiries(records as BulkEnquirySubmission[]),
+      (err) => console.warn('[Firestore] Bulk enquiry listener notice:', err?.message || err)
+    );
+    return () => unsubscribe();
+  }, []);
 
   const submitBulkEnquiry = (enquiryData: Omit<BulkEnquirySubmission, 'id' | 'createdAt' | 'status'>): BulkEnquirySubmission => {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -820,6 +857,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Custom Projects State & Actions
   const [customProjects, setCustomProjects] = useState<CustomProjectSubmission[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToRecords(
+      'customProjects',
+      (records) => setCustomProjects(records as CustomProjectSubmission[]),
+      (err) => console.warn('[Firestore] Custom project listener notice:', err?.message || err)
+    );
+    return () => unsubscribe();
+  }, []);
 
   const [adminNotifications, setAdminNotifications] = useState<AdminProjectNotification[]>([]);
 
@@ -1195,7 +1241,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteProduct = async (productId: string) => {
     await deleteProductFromFirestore(productId);
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    const nextProducts = products.filter((p) => p.id !== productId);
+    setProducts(nextProducts);
+    writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+    writeQueuedProductWrites(readQueuedProductWrites().filter((p) => p.id !== productId));
     if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'DELETE_PRODUCT', targetCollection: 'products', targetId: productId });
     setCart((prev) => {
       const updatedCart = prev.filter((item) => item.product.id !== productId);
