@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Order, OrderStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { AdminOrderAssignmentModal } from './AdminOrderAssignmentModal';
@@ -27,6 +27,7 @@ import {
   Database,
   Tag,
   Mail
+  , Trash2
 } from 'lucide-react';
 import { EmailPreviewModal } from '../common/EmailPreviewModal';
 import { 
@@ -36,7 +37,7 @@ import {
 } from '../../services/emailService';
 
 export const AdminOrdersTab: React.FC = () => {
-  const { orders, availableSellers, products } = useApp();
+  const { orders, availableSellers, products, deleteOrder } = useApp();
   const [viewMode, setViewMode] = useState<'orders' | 'ordered_products'>('orders');
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'delivered'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -45,6 +46,25 @@ export const AdminOrdersTab: React.FC = () => {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [emailModalRecord, setEmailModalRecord] = useState<SentEmailRecord | null>(null);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [orderPendingDeletion, setOrderPendingDeletion] = useState<Order | null>(null);
+  const [deleteCountdown, setDeleteCountdown] = useState(0);
+
+  useEffect(() => {
+    if (!orderPendingDeletion) return;
+
+    setDeleteCountdown(5);
+    const timer = window.setInterval(() => {
+      setDeleteCountdown((remaining) => {
+        if (remaining <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return remaining - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [orderPendingDeletion]);
 
   const handlePreviewOrderEmail = (order: Order) => {
     const existing = getLocalSentEmails().find((e) => e.orderId === order.id);
@@ -215,6 +235,22 @@ export const AdminOrdersTab: React.FC = () => {
     setExpandedOrderId(prev => prev === orderId ? null : orderId);
   };
 
+  const requestDeleteOrder = (order: Order) => {
+    setOrderPendingDeletion(order);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderPendingDeletion || deleteCountdown > 0) return;
+    try {
+      const orderId = orderPendingDeletion.id;
+      await deleteOrder(orderId);
+      if (expandedOrderId === orderId) setExpandedOrderId(null);
+      setOrderPendingDeletion(null);
+    } catch (error) {
+      console.error('[AdminOrders] Order deletion failed:', error);
+    }
+  };
+
   const renderStatusBadge = (order: Order) => {
     const isUnassigned = !order.assignedSellerId || order.status === 'pending_assignment';
 
@@ -269,6 +305,37 @@ export const AdminOrdersTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {orderPendingDeletion && (
+        <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 shadow-lg sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Trash2 className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+            <div>
+              <p className="text-sm font-extrabold text-rose-950">Confirm deletion of {orderPendingDeletion.id}</p>
+              <p className="mt-0.5 text-xs text-rose-800">
+                This order will be permanently removed from Firestore. Confirmation activates in {deleteCountdown}s.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setOrderPendingDeletion(null)}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDeleteOrder()}
+              disabled={deleteCountdown > 0}
+              className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+            >
+              {deleteCountdown > 0 ? `Wait ${deleteCountdown}s` : 'Confirm Delete'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Navigation View Switcher: Customer Orders vs Ordered Products Overview */}
       <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -838,6 +905,16 @@ export const AdminOrdersTab: React.FC = () => {
                         <span>Reassign Seller</span>
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => requestDeleteOrder(order)}
+                      className="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100 cursor-pointer flex items-center gap-1"
+                      title="Delete order permanently"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
                   </div>
                 </div>
 

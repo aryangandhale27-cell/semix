@@ -35,6 +35,7 @@ import {
   subscribeToProducts,
   syncAllProductsToFirestore,
   syncOrderToFirestore, 
+    deleteOrderFromFirestore,
   fetchOrdersFromFirestore,
   subscribeToOrders,
   syncCustomProjectToFirestore 
@@ -196,6 +197,7 @@ interface AppContextType {
   updateAvailableSeller: (id: string, updates: Partial<AvailableSeller>) => void;
   removeAvailableSeller: (id: string) => void;
   createOrder: (orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>) => Order;
+    deleteOrder: (orderId: string) => Promise<void>;
   assignSellerToOrder: (orderId: string, sellerId: string, sellerName: string, notes?: string) => void;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, note?: string, updatedBy?: string, courierInfo?: { courier?: string; courierTrackingId?: string; packedBy?: string }) => void;
   adminOverrideOrder: (orderId: string, updates: Partial<Order>) => void;
@@ -1315,6 +1317,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newOrder;
   };
 
+  const deleteOrder = async (orderId: string) => {
+    await deleteOrderFromFirestore(orderId);
+    setOrders((prev) => prev.filter((order) => order.id !== orderId));
+    if (auth.currentUser) {
+      void logActivity({
+        userId: auth.currentUser.uid,
+        role: currentRole as 'customer' | 'seller' | 'team' | 'admin',
+        action: 'DELETE_ORDER',
+        targetCollection: 'orders',
+        targetId: orderId,
+      });
+    }
+    showToast('Order Deleted', `Order ${orderId} was permanently removed.`, 'warning');
+  };
+
   const placeOrderWithCoupon = async (
     orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>,
     userId?: string
@@ -1716,6 +1733,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateSellerBonus,
     getSellerBonus,
     createOrder,
+    deleteOrder,
     assignSellerToOrder,
     updateOrderStatus,
     adminOverrideOrder,
