@@ -78,6 +78,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [trendingProductId, setTrendingProductId] = useState('');
   const [freshProductId, setFreshProductId] = useState('');
+  const [trendingProductSearch, setTrendingProductSearch] = useState('');
+  const [freshProductSearch, setFreshProductSearch] = useState('');
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
   // New product form state
@@ -230,6 +232,16 @@ export const AdminDashboardPage: React.FC = () => {
     return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
   });
 
+  const filterHomepageProducts = (query: string) => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return products;
+    return products.filter((product) =>
+      [product.name, product.sku, product.brand].some((value) =>
+        value.toLowerCase().includes(normalizedQuery)
+      )
+    );
+  };
+
   const addProductToHomepageSection = async (productId: string, section: 'trending' | 'fresh') => {
     const product = products.find((item) => item.id === productId);
     if (!product) return;
@@ -244,8 +256,13 @@ export const AdminDashboardPage: React.FC = () => {
         `${product.name} will now appear on the homepage section.`,
         'success'
       );
-      if (section === 'trending') setTrendingProductId('');
-      else setFreshProductId('');
+      if (section === 'trending') {
+        setTrendingProductId('');
+        setTrendingProductSearch('');
+      } else {
+        setFreshProductId('');
+        setFreshProductSearch('');
+      }
     } catch (error) {
       console.error('[Admin] Homepage section assignment failed:', error);
       showToast('Assignment Failed', 'Could not update the product in Firestore.', 'error');
@@ -683,13 +700,24 @@ export const AdminDashboardPage: React.FC = () => {
                 <h4 className="text-xs font-extrabold text-[#561269]">Trending &amp; Best Sellers</h4>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={trendingProductSearch}
+                    onChange={(event) => setTrendingProductSearch(event.target.value)}
+                    placeholder="Search by name, SKU, or brand"
+                    aria-label="Search trending products"
+                    className="w-full rounded-lg border border-orange-200 bg-white py-2 pl-9 pr-3 text-xs font-medium text-slate-800 placeholder:text-slate-400"
+                  />
+                </div>
                 <select
                   value={trendingProductId}
                   onChange={(event) => setTrendingProductId(event.target.value)}
                   className="min-w-0 flex-1 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-medium text-slate-800"
                 >
                   <option value="">Select an existing product</option>
-                  {products.map((product) => (
+                  {filterHomepageProducts(trendingProductSearch).map((product) => (
                     <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>
                   ))}
                 </select>
@@ -710,13 +738,24 @@ export const AdminDashboardPage: React.FC = () => {
                 <h4 className="text-xs font-extrabold text-[#561269]">Fresh Silicon &amp; New Arrivals</h4>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={freshProductSearch}
+                    onChange={(event) => setFreshProductSearch(event.target.value)}
+                    placeholder="Search by name, SKU, or brand"
+                    aria-label="Search new-arrival products"
+                    className="w-full rounded-lg border border-violet-200 bg-white py-2 pl-9 pr-3 text-xs font-medium text-slate-800 placeholder:text-slate-400"
+                  />
+                </div>
                 <select
                   value={freshProductId}
                   onChange={(event) => setFreshProductId(event.target.value)}
                   className="min-w-0 flex-1 rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-medium text-slate-800"
                 >
                   <option value="">Select an existing product</option>
-                  {products.map((product) => (
+                  {filterHomepageProducts(freshProductSearch).map((product) => (
                     <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>
                   ))}
                 </select>
