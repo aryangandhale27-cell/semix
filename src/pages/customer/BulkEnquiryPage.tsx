@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, 
@@ -64,6 +65,7 @@ const POPULAR_SUGGESTIONS = [
 export const BulkEnquiryPage: React.FC = () => {
   const { submitBulkEnquiry, showToast, products } = useApp();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
   // Form State: Customer & Company Details
   const [fullName, setFullName] = useState(user?.name || '');
@@ -97,7 +99,9 @@ export const BulkEnquiryPage: React.FC = () => {
   // Modal & Flow State
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
   const [submittedEnquiry, setSubmittedEnquiry] = useState<BulkEnquirySubmission | null>(null);
-  const [deskMode, setDeskMode] = useState<'bom' | 'custom_project'>('bom');
+  const [deskMode, setDeskMode] = useState<'bom' | 'custom_project'>(() =>
+    searchParams.get('mode') === 'custom-project' ? 'custom_project' : 'bom'
+  );
   const [submittedProject, setSubmittedProject] = useState<CustomProjectSubmission | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});

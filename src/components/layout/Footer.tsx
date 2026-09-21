@@ -16,28 +16,28 @@ export const Footer: React.FC = () => {
   return (
     <footer id="main-footer" className="bg-[#0a0410] text-slate-300 border-t border-white/10 mt-16 font-sans">
       {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14 lg:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-7 sm:gap-10 lg:gap-8">
           
           {/* Column 1: Semix Labs branding and contact details */}
-          <div className="lg:col-span-5 sm:col-span-2 lg:pr-8 space-y-6">
-            <div className="flex items-center min-h-20">
-              <Link to="/" aria-label="SEMIX LABS home" className="inline-flex rounded-xl bg-white p-2 -m-2 shadow-lg shadow-black/20 hover:bg-slate-100 transition-colors">
+          <div className="lg:col-span-5 sm:col-span-2 lg:pr-8 space-y-4 sm:space-y-6">
+            <div className="flex items-center min-h-12 sm:min-h-20">
+              <Link to="/" aria-label="SEMIX LABS home" className="inline-flex rounded-xl bg-white p-1.5 sm:p-2 shadow-lg shadow-black/20 hover:bg-slate-100 transition-colors">
                 <SemixLabsLogo variant="full" size="xl" className="max-w-full" />
               </Link>
             </div>
 
             {/* Description / Subtext */}
-            <p className="text-sm text-slate-400 leading-relaxed max-w-md">
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-md">
               <strong className="text-slate-200 font-semibold">SEMIX LABS</strong> is a specialized electronics engineering, turnkey IoT prototyping, and verified component procurement platform — an initiative powered by <strong className="text-purple-300 font-semibold">RIETZZ</strong> Prime Ventures.
             </p>
 
             {/* Outlined Contact Info with Purple/Violet Accents */}
-            <div className="space-y-3.5 text-sm pt-1">
+            <div className="space-y-2.5 sm:space-y-3.5 text-sm pt-0.5 sm:pt-1">
               {/* Corporate HQ Address */}
               <div className="flex items-start gap-3 text-slate-300 group">
-                <div className="w-8 h-8 rounded-lg bg-[#561269]/20 border border-[#a855f7]/40 text-[#c084fc] flex items-center justify-center shrink-0 mt-0.5 transition-colors group-hover:border-[#a855f7] group-hover:bg-[#561269]/30">
-                  <MapPin className="w-4 h-4" strokeWidth={1.75} />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#561269]/20 border border-[#a855f7]/40 text-[#c084fc] flex items-center justify-center shrink-0 mt-0.5 transition-colors group-hover:border-[#a855f7] group-hover:bg-[#561269]/30">
+                  <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={1.75} />
                 </div>
                 <div className="leading-snug text-xs sm:text-sm text-slate-300">
                   <span className="text-slate-400 font-medium block text-[11px] uppercase tracking-wider mb-0.5 text-[#dfb5e9]">
@@ -50,8 +50,8 @@ export const Footer: React.FC = () => {
 
               {/* Phone */}
               <div className="flex items-center gap-3 group">
-                <div className="w-8 h-8 rounded-lg bg-[#561269]/20 border border-[#a855f7]/40 text-[#c084fc] flex items-center justify-center shrink-0 transition-colors group-hover:border-[#a855f7] group-hover:bg-[#561269]/30">
-                  <Phone className="w-4 h-4" strokeWidth={1.75} />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#561269]/20 border border-[#a855f7]/40 text-[#c084fc] flex items-center justify-center shrink-0 transition-colors group-hover:border-[#a855f7] group-hover:bg-[#561269]/30">
+                  <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={1.75} />
                 </div>
                 <a 
                   href="tel:+917666601086" 
@@ -63,8 +63,8 @@ export const Footer: React.FC = () => {
 
               {/* Email */}
               <div className="flex items-center gap-3 group">
-                <div className="w-8 h-8 rounded-lg bg-[#561269]/20 border border-[#a855f7]/40 text-[#c084fc] flex items-center justify-center shrink-0 transition-colors group-hover:border-[#a855f7] group-hover:bg-[#561269]/30">
-                  <Mail className="w-4 h-4" strokeWidth={1.75} />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#561269]/20 border border-[#a855f7]/40 text-[#c084fc] flex items-center justify-center shrink-0 transition-colors group-hover:border-[#a855f7] group-hover:bg-[#561269]/30">
+                  <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={1.75} />
                 </div>
                 <a 
                   href="mailto:office@semixlabs.com" 
@@ -76,19 +76,19 @@ export const Footer: React.FC = () => {
             </div>
 
             {/* Official MSME Enterprise Verification Tag (from Udyam Registration Certificate) */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-slate-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/10 text-[10px] text-slate-400">
+              <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
               <span>Govt. of India Registered MSME: <span className="font-mono text-slate-300">UDYAM-MH-26-0828789</span></span>
             </div>
           </div>
 
           {/* Column 2: COMPANY (lg:col-span-2) */}
           <div className="lg:col-span-2 sm:col-span-1">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-5 flex items-center gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-3 sm:mb-5 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#a855f7]" />
               COMPANY
             </h4>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-2 sm:space-y-3 text-sm">
               <li>
                 <Link to="/about" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
                   About Us
@@ -114,11 +114,11 @@ export const Footer: React.FC = () => {
 
           {/* Column 3: INFORMATION (lg:col-span-3) */}
           <div className="lg:col-span-3 sm:col-span-1">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-5 flex items-center gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-3 sm:mb-5 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#a855f7]" />
               INFORMATION
             </h4>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-2 sm:space-y-3 text-sm">
               <li>
                 <Link to="/contact" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
                   FAQs
@@ -156,11 +156,11 @@ export const Footer: React.FC = () => {
 
           {/* Column 4: CONTACT (lg:col-span-2) */}
           <div className="lg:col-span-2 sm:col-span-2 lg:col-span-2">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-5 flex items-center gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-3 sm:mb-5 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#a855f7]" />
               CONTACT
             </h4>
-            <ul className="space-y-3.5 text-sm">
+            <ul className="space-y-2 sm:space-y-3.5 text-sm">
               <li>
                 <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block mb-0.5">
                   Phone
@@ -188,7 +188,7 @@ export const Footer: React.FC = () => {
                   Office Location
                 </span>
                 <span className="text-xs sm:text-sm text-slate-300 block">
-                  Pune Solapur Road, Pune
+                  Crystal Towers, Govind Nagar, Pune Solapur Road, Pune
                 </span>
               </li>
               <li className="pt-1">

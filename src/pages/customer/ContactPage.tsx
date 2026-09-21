@@ -92,29 +92,29 @@ export const ContactPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen py-8 sm:py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+    <div className="bg-slate-50 min-h-screen py-5 sm:py-12">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-10">
         
         {/* Navigation Switcher Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-3 sm:pb-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">
               <span className="text-[#561269]">SEMIX LABS</span>
               <span>/</span>
               <span>Hardware Desk & Company Info</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
               {activeTab === 'about' ? 'About Semix Labs' : activeTab === 'contact' ? 'Contact & Engineering Desk' : 'About Us & Contact Desk'}
             </h1>
           </div>
 
-          <div className="flex items-center p-1 bg-slate-200/80 rounded-xl">
+          <div className="flex w-full items-center gap-0.5 p-0.5 bg-slate-200/80 rounded-lg sm:w-auto sm:gap-0 sm:p-1 sm:rounded-xl">
             <button
               onClick={() => {
                 setActiveTab('all');
                 navigate('/contact');
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 px-2 py-1.5 rounded-md text-[10px] leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'all'
                   ? 'bg-white text-[#561269] shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -127,13 +127,13 @@ export const ContactPage: React.FC = () => {
                 setActiveTab('about');
                 scrollToSection('about-us');
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`flex-1 justify-center px-2 py-1.5 rounded-md text-[10px] leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                 activeTab === 'about'
                   ? 'bg-[#561269] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Info className="w-3.5 h-3.5" />
+              <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span>About Us</span>
             </button>
             <button
@@ -141,13 +141,13 @@ export const ContactPage: React.FC = () => {
                 setActiveTab('contact');
                 scrollToSection('contact-desk');
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`flex-1 justify-center px-2 py-1.5 rounded-md text-[10px] leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                 activeTab === 'contact'
                   ? 'bg-[#FF6B00] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <PhoneCall className="w-3.5 h-3.5" />
+              <PhoneCall className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span>Contact Us</span>
             </button>
           </div>
@@ -160,33 +160,33 @@ export const ContactPage: React.FC = () => {
           <section id="about-us" className="space-y-10 scroll-mt-20">
             
             {/* 1. Company Overview Banner */}
-            <div className="bg-gradient-to-br from-[#561269] via-[#380847] to-slate-950 rounded-3xl p-6 sm:p-10 lg:p-12 text-white shadow-2xl relative overflow-hidden border border-[#561269]/40">
+            <div className="bg-gradient-to-br from-[#561269] via-[#380847] to-slate-950 rounded-2xl sm:rounded-3xl p-4 sm:p-10 lg:p-12 text-white shadow-2xl relative overflow-hidden border border-[#561269]/40">
               {/* Subtle Ambient Decorative Circles */}
               <div className="absolute -right-20 -top-20 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl pointer-events-none" />
               <div className="absolute right-1/3 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
               
-              <div className="relative z-10 max-w-4xl space-y-5">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-orange-300 text-xs font-bold uppercase tracking-wider backdrop-blur-md">
-                  <Sparkles className="w-4 h-4 text-[#FF6B00]" />
+              <div className="relative z-10 max-w-4xl space-y-3 sm:space-y-5">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white/10 border border-white/15 text-orange-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md">
+                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FF6B00]" />
                   <span>About Semix Labs</span>
                 </div>
                 
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
+                <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
                   Empowering Next-Gen <span className="text-[#FF6B00]">Hardware Innovation</span>
                 </h2>
                 
-                <p className="text-sm sm:text-base lg:text-lg text-purple-100 leading-relaxed max-w-3xl">
+                <p className="text-xs sm:text-base lg:text-lg text-purple-100 leading-relaxed max-w-3xl">
                   Semix Labs is a premier one-stop destination for electronic components, high-density PCB prototyping, 3D printing, and engineering development tools for makers, startups, and industrial R&D. We empower the creators of tomorrow with authentic hardware, lightning-fast turnaround, and dedicated technical expertise.
                 </p>
 
                 {/* Quick Action Navigation Buttons */}
-                <div className="flex flex-wrap items-center gap-3 pt-2">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-1 sm:pt-2">
                   <Link
                     to="/shop"
-                    className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#e05e00] text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-all"
+                    className="px-3.5 py-2 sm:px-5 sm:py-2.5 bg-[#FF6B00] hover:bg-[#e05e00] text-white font-bold text-[11px] sm:text-sm rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/20 flex items-center gap-1.5 sm:gap-2 transition-all"
                   >
                     <Package className="w-4 h-4" />
-                    <span>Explore 1,000+ Components</span>
+                    <span>Explore 5,000+ Products</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                   <Link
@@ -224,7 +224,7 @@ export const ContactPage: React.FC = () => {
                   <Package className="w-5 h-5" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
-                  1,000+
+                  5,000+
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-slate-800 mt-1">
                   Components & Boards in Stock

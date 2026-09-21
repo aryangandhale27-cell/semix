@@ -193,7 +193,7 @@ export const Navbar: React.FC = () => {
             </Link>
 
             <Link
-              to="/contact"
+              to="/contact#contact-desk"
               id="nav-link-contact"
               className={`px-2.5 xl:px-3 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                 isActive('/contact') && location.pathname !== '/about'
@@ -219,14 +219,14 @@ export const Navbar: React.FC = () => {
               Bulk
             </Link>
             <Link
-              to="/bulk-enquiry"
+              to="/bulk-enquiry?mode=custom-project"
               className="flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap text-purple-100 hover:bg-white/10 hover:text-white transition-colors"
             >
               <Layers className="w-2.5 h-2.5 text-cyan-300" />
               Projects
             </Link>
             <Link
-              to="/contact"
+              to="/contact#contact-desk"
               className={`flex shrink-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
                 isActive('/contact')
                   ? 'bg-white/15 text-white'
@@ -351,7 +351,7 @@ export const Navbar: React.FC = () => {
           About Us
         </Link>
         <Link
-          to="/contact"
+          to="/contact#contact-desk"
           className={`px-2 py-0.5 rounded-md font-semibold transition-colors ${
             isActive('/contact') && location.pathname !== '/about'
               ? 'bg-[#FF6B00] text-white font-bold'

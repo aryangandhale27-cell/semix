@@ -64,7 +64,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
           )}
 
           <div className="absolute bottom-0 left-0 right-0 z-10 p-3 sm:p-4">
-            <h3 className="line-clamp-2 min-h-[2.3rem] font-mono text-[13px] font-black uppercase leading-tight tracking-wide text-[#FFF1DF] drop-shadow-[0_2px_5px_rgba(0,0,0,0.65)] transition-colors group-hover:text-[#FFB45C] sm:min-h-[2.75rem] sm:text-base">
+            <h3 className="line-clamp-3 min-h-[2.7rem] font-mono text-[11px] font-black normal-case leading-snug tracking-[0.03em] text-[#FFF1DF] drop-shadow-[0_2px_5px_rgba(0,0,0,0.65)] transition-colors group-hover:text-[#FFB45C] sm:line-clamp-2 sm:min-h-[2.75rem] sm:text-base sm:uppercase sm:leading-tight sm:tracking-wide">
               {category.name}
             </h3>
           </div>

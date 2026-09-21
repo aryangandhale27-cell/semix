@@ -112,15 +112,15 @@ export const leadershipTeam: TeamMember[] = [
 
 export const OurTeamSection: React.FC = () => {
   return (
-    <div id="meet-our-team" className="space-y-8 scroll-mt-24 pt-4">
+    <div id="meet-our-team" className="space-y-6 sm:space-y-8 scroll-mt-24 pt-2 sm:pt-4">
       {/* Section Heading & Subtitle */}
-      <div className="text-center max-w-3xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-purple-50 text-[#561269] border border-purple-200/80 text-xs font-bold uppercase tracking-wider">
-          <Users className="w-3.5 h-3.5 text-[#561269]" />
+      <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-3">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 rounded-full bg-purple-50 text-[#561269] border border-purple-200/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+          <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#561269]" />
           <span>Leadership &amp; Core Team</span>
         </div>
         
-        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+        <h3 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
           Meet Our Team
         </h3>
         
@@ -130,7 +130,7 @@ export const OurTeamSection: React.FC = () => {
       </div>
 
       {/* 4-Column Layout (1 col mobile, 2 col tablet, 4 col desktop) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {leadershipTeam.map((member, index) => {
           const IconComponent = member.icon;
           
@@ -141,7 +141,7 @@ export const OurTeamSection: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.35, delay: index * 0.08 }}
-              className={`rounded-2xl p-6 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative group border ${
+              className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative group border ${
                 member.isCeo
                   ? 'bg-gradient-to-b from-purple-50/40 via-white to-white border-purple-200/90 hover:border-[#561269]/70 ring-1 ring-[#561269]/10'
                   : 'bg-white border-slate-200 hover:border-[#561269]/40'
@@ -149,18 +149,18 @@ export const OurTeamSection: React.FC = () => {
             >
               {/* Optional Subtle CEO Distinction Pill */}
               {member.isCeo && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#561269] to-[#8a1e8a] text-white text-[10px] font-bold uppercase tracking-widest px-3 py-0.5 rounded-full shadow-xs flex items-center gap-1 border border-purple-300/40 whitespace-nowrap">
-                  <Sparkles className="w-3 h-3 text-amber-300" />
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#561269] to-[#8a1e8a] text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-widest px-2.5 sm:px-3 py-0.5 rounded-full shadow-xs flex items-center gap-1 border border-purple-300/40 whitespace-nowrap">
+                  <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-300" />
                   <span>Founder &amp; Vision</span>
                 </div>
               )}
 
               {/* Card Top Section: Avatar & Badges */}
-              <div className="space-y-4 text-center">
+              <div className="space-y-3 sm:space-y-4 text-center">
                 {/* Profile Image / Avatar Area */}
                 <div className="relative inline-block mx-auto pt-1">
                   <div
-                    className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl ${member.avatarBg} ${member.avatarRing} shadow-md flex items-center justify-center text-white relative transition-transform duration-300 group-hover:scale-105 overflow-hidden`}
+                    className={`w-20 h-20 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl ${member.avatarBg} ${member.avatarRing} shadow-md flex items-center justify-center text-white relative transition-transform duration-300 group-hover:scale-105 overflow-hidden`}
                   >
                     {member.image ? (
                       <img
@@ -175,7 +175,7 @@ export const OurTeamSection: React.FC = () => {
                         <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:10px_10px]" />
                         
                         {/* Monogram Initials */}
-                        <span className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-sm font-mono select-none">
+                        <span className="text-xl sm:text-3xl font-black tracking-tight drop-shadow-sm font-mono select-none">
                           {member.initials}
                         </span>
                       </>
@@ -190,7 +190,7 @@ export const OurTeamSection: React.FC = () => {
 
                 {/* Name & Position */}
                 <div className="space-y-1">
-                  <h4 className="text-lg font-black text-slate-900 tracking-tight group-hover:text-[#561269] transition-colors">
+                  <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight group-hover:text-[#561269] transition-colors">
                     {member.name}
                   </h4>
                   
@@ -210,13 +210,13 @@ export const OurTeamSection: React.FC = () => {
                 </div>
 
                 {/* Short, Professional Description */}
-                <p className="text-xs text-slate-600 leading-relaxed text-left pt-1 min-h-[4.5rem]">
+                <p className="text-xs text-slate-600 leading-relaxed text-left pt-1 sm:min-h-[4.5rem]">
                   {member.description}
                 </p>
               </div>
 
               {/* Card Footer: Social & Contact Links */}
-              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-3 mt-3 sm:pt-4 sm:mt-4 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-400">
                   Connect
                 </span>
