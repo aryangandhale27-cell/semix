@@ -77,6 +77,27 @@ const APP_DATA_CACHE_KEYS = {
   banners: 'semix-cache-banners-v1',
 } as const;
 
+const PRODUCT_WRITE_QUEUE_KEY = 'semix-product-write-queue-v1';
+
+function readQueuedProductWrites(): Product[] {
+  try {
+    const cached = localStorage.getItem(PRODUCT_WRITE_QUEUE_KEY);
+    if (!cached) return [];
+    const parsed = JSON.parse(cached) as Product[];
+    return Array.isArray(parsed) ? parsed.map(normalizeProduct) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeQueuedProductWrites(products: Product[]): void {
+  try {
+    localStorage.setItem(PRODUCT_WRITE_QUEUE_KEY, JSON.stringify(products));
+  } catch {
+    // Ignore storage write failures.
+  }
+}
+
 function readCachedData<T>(key: string, fallback: T): T {
   try {
     const cached = localStorage.getItem(key);
@@ -371,18 +392,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .then((remoteProducts) => {
         if (!isMounted) return;
         const normalizedProducts = remoteProducts.map(normalizeProduct);
-        setProducts(normalizedProducts);
-        if (normalizedProducts.length > 0) writeCachedData(APP_DATA_CACHE_KEYS.products, normalizedProducts);
+        const queuedProducts = readQueuedProductWrites();
+        const mergedProducts = [...queuedProducts, ...normalizedProducts];
+        const deduped = new Map<string, Product>();
+        mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
+        const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+        setProducts(nextProducts);
+        writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+        const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
+        writeQueuedProductWrites(remainingQueuedProducts);
       })
       .catch((err) => {
         console.warn('[Firestore] Product load notice:', err?.message || err);
+        const queuedProducts = readQueuedProductWrites();
+        if (queuedProducts.length > 0) {
+          setProducts(queuedProducts.map(normalizeProduct));
+          writeCachedData(APP_DATA_CACHE_KEYS.products, queuedProducts.map(normalizeProduct));
+        }
       });
 
     const unsubscribe = subscribeToProducts((remoteProducts) => {
       if (!isMounted) return;
       const normalizedProducts = remoteProducts.map(normalizeProduct);
-      setProducts(normalizedProducts);
-      if (normalizedProducts.length > 0) writeCachedData(APP_DATA_CACHE_KEYS.products, normalizedProducts);
+      const queuedProducts = readQueuedProductWrites();
+      const mergedProducts = [...queuedProducts, ...normalizedProducts];
+      const deduped = new Map<string, Product>();
+      mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
+      const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+      setProducts(nextProducts);
+      writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+      const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
+      writeQueuedProductWrites(remainingQueuedProducts);
     });
 
     return () => {
@@ -1103,7 +1145,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : `prod-${Date.now().toString().slice(-6)}`;
 
     const nowIso = new Date().toISOString();
-    const authUserName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0]?.replace(/[._]/g, ' ') || 'Team Member';
+    const authUserName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0]?.replace(/[._]/g, ' ') || (productData as any).addedBy || 'Team Member';
     const authUserEmail = auth.currentUser?.email || (productData as any).addedByEmail || '';
     const teamAuthor = currentRole === 'admin'
       ? 'Central Engineering Admin'
@@ -1118,15 +1160,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: nowIso,
       addedBy: (productData as any).addedBy || authUserName || teamAuthor,
       addedByEmail: (productData as any).addedByEmail || authUserEmail,
-      addedByRole: (productData as any).addedByRole || currentRole,
+      addedByRole: (productData as any).addedByRole || currentRole || 'team',
       addedByUid: (productData as any).addedByUid || auth.currentUser?.uid || undefined,
     });
 
-    await syncProductToFirestore(normalized);
     setProducts((prev) => [normalized, ...prev.filter((p) => p.id !== id)]);
-    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'CREATE_PRODUCT', targetCollection: 'products', targetId: id, metadata: { addedBy: normalized.addedBy, addedByEmail: normalized.addedByEmail } });
+    writeCachedData(APP_DATA_CACHE_KEYS.products, [normalized, ...products.filter((p) => p.id !== id)]);
 
-    showToast('Product Stored in Firebase', `${normalized.name} successfully published to catalog & Firestore`, 'success');
+    try {
+      await syncProductToFirestore(normalized);
+      const queuedProducts = readQueuedProductWrites().filter((queuedProduct) => queuedProduct.id !== normalized.id);
+      writeQueuedProductWrites(queuedProducts);
+      if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'CREATE_PRODUCT', targetCollection: 'products', targetId: id, metadata: { addedBy: normalized.addedBy, addedByEmail: normalized.addedByEmail } });
+      showToast('Product Stored in Firebase', `${normalized.name} successfully published to catalog & Firestore`, 'success');
+    } catch (error) {
+      console.warn('[AppContext] Product sync failed; preserved locally for retry:', error);
+      const queuedProducts = [normalized, ...readQueuedProductWrites().filter((queuedProduct) => queuedProduct.id !== normalized.id)];
+      writeQueuedProductWrites(queuedProducts);
+      showToast('Product Saved Locally', `${normalized.name} was preserved locally and will sync once the team profile is restored.`, 'warning');
+    }
   };
 
   const syncAllProductsToFirebase = async () => {
