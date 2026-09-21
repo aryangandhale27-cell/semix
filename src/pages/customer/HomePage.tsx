@@ -35,6 +35,7 @@ export const HomePage: React.FC = () => {
   );
 
   const currentSlideIndex = activeBanners.length > 0 ? heroSlide % activeBanners.length : 0;
+  const currentSlide = activeBanners[currentSlideIndex];
 
   // Auto rotate hero slides
   useEffect(() => {
@@ -88,40 +89,31 @@ export const HomePage: React.FC = () => {
           onTouchEnd={handleHeroTouchEnd}
           className="w-full relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y"
         >
-            {activeBanners.map((slide, idx) => {
-              const isActive = currentSlideIndex === idx;
-
-              return (
-                <div
-                  key={slide.id}
-                  className={`transition-opacity duration-700 ${
-                    isActive ? 'relative opacity-100 z-10' : 'absolute inset-0 opacity-0 z-0 pointer-events-none'
-                  }`}
+            {currentSlide && (
+              <div className="relative z-10">
+                <Link
+                  to={currentSlide.linkUrl || '/shop'}
+                  onClick={(event) => {
+                    if (isSwiping.current) event.preventDefault();
+                  }}
+                  className="block w-full"
                 >
-                  <Link
-                    to={slide.linkUrl || '/shop'}
-                    onClick={(event) => {
-                      if (isSwiping.current) event.preventDefault();
-                    }}
-                    className="block w-full"
-                  >
-                    <picture className="block w-full">
-                      {slide.mobileImage && (
-                        <source media="(max-width: 640px)" srcSet={slide.mobileImage} />
-                      )}
-                      <img
-                        src={slide.desktopImage || slide.mobileImage}
-                        alt={slide.title}
-                        loading={idx === 0 ? 'eager' : 'lazy'}
-                        fetchPriority={idx === 0 ? 'high' : 'auto'}
-                        decoding={idx === 0 ? 'sync' : 'async'}
-                        className="block w-full h-auto"
-                      />
-                    </picture>
-                  </Link>
-                </div>
-              );
-            })}
+                  <picture className="block w-full">
+                    {currentSlide.mobileImage && (
+                      <source media="(max-width: 640px)" srcSet={currentSlide.mobileImage} />
+                    )}
+                    <img
+                      src={currentSlide.desktopImage || currentSlide.mobileImage}
+                      alt={currentSlide.title}
+                      loading={currentSlideIndex === 0 ? 'eager' : 'lazy'}
+                      fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
+                      decoding="async"
+                      className="block w-full h-auto"
+                    />
+                  </picture>
+                </Link>
+              </div>
+            )}
 
             {activeBanners.length > 1 && (
               <div className="flex items-center justify-center gap-2 py-3" aria-label="Homepage banner slides">
