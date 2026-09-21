@@ -187,13 +187,13 @@ export const INITIAL_ORDERS: Order[] = [
       {
         status: 'pending_assignment',
         timestamp: '2026-08-26 08:45 AM',
-        note: 'Order placed by customer via Maker Line Credit. Awaiting Admin seller allocation.',
+        note: 'Order placed by customer. Awaiting Admin seller allocation.',
         updatedBy: 'System Gateway'
       }
     ],
     createdAt: '2026-08-26T08:45:00.000Z',
-    paymentMethod: 'MakersCredit',
-    paymentStatus: 'Paid',
+    paymentMethod: 'COD',
+    paymentStatus: 'Pending',
     packingNotes: 'Dangerous Goods Class 9 Battery warning label mandatory on outer carton.',
     assignedSellerId: null,
     assignedSellerName: null,
