@@ -120,11 +120,6 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // If an item in the suggestions list is selected via arrow keys
-    if (selectedIndex >= 0 && searchResult && searchResult.results[selectedIndex]) {
-      handleProductSelect(searchResult.results[selectedIndex].product);
-      return;
-    }
     executeSearch(inputValue);
   };
 
@@ -149,6 +144,12 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
   // Keyboard navigation through suggestions
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeSearch(inputValue);
+      return;
+    }
+
     if (!isOpen || !searchResult || searchResult.results.length === 0) {
       if (e.key === 'Escape') setIsOpen(false);
       return;

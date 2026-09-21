@@ -129,13 +129,13 @@ export function recordSearchQuery(
   clickedProductName?: string
  ): void {
   if (!query || query.trim().length < 2) return;
-  const newRecord: SearchAnalyticsRecord = {
+    const newRecord: SearchAnalyticsRecord = {
       query: query.trim(),
       normalizedQuery,
       resultCount,
       timestamp: Date.now(),
-      clickedProductId,
-      clickedProductName
+      ...(clickedProductId ? { clickedProductId } : {}),
+      ...(clickedProductName ? { clickedProductName } : {})
   };
   void addDoc(collection(db, ANALYTICS_COLLECTION), newRecord).catch((error) => {
     console.error('[SearchAnalytics] Firestore write failed:', error);

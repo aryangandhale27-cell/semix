@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
@@ -54,12 +54,41 @@ export const ProductDetailPage: React.FC = () => {
   const [cartBurst, setCartBurst] = useState<{ x: number; y: number; endX: number; endY: number } | null>(null);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState('');
+  const lightboxHistoryPushed = useRef(false);
+
+  const openLightbox = () => {
+    if (!isLightboxOpen) {
+      window.history.pushState({ ...window.history.state, productLightbox: true }, '', window.location.href);
+      lightboxHistoryPushed.current = true;
+      setIsLightboxOpen(true);
+    }
+  };
+
+  const closeLightbox = () => {
+    if (lightboxHistoryPushed.current) {
+      lightboxHistoryPushed.current = false;
+      window.history.back();
+    }
+    setIsLightboxOpen(false);
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (lightboxHistoryPushed.current) {
+        lightboxHistoryPushed.current = false;
+        setIsLightboxOpen(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Keyboard navigation for gallery & lightbox
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isLightboxOpen) {
-        setIsLightboxOpen(false);
+        closeLightbox();
       } else if (e.key === 'ArrowLeft') {
         setSelectedImgIdx((prev) => (prev > 0 ? prev - 1 : images.length - 1));
       } else if (e.key === 'ArrowRight') {
@@ -317,7 +346,7 @@ export const ProductDetailPage: React.FC = () => {
             {/* Lightbox Trigger Button */}
             <button
               type="button"
-              onClick={() => setIsLightboxOpen(true)}
+              onClick={openLightbox}
               className="absolute top-4 right-4 z-10 w-8 h-8 rounded-xl bg-white/90 hover:bg-white text-slate-700 hover:text-[#561269] shadow-xs border border-slate-200/80 flex items-center justify-center transition-all cursor-pointer"
               title="Click to expand high-resolution photo"
             >
@@ -362,7 +391,7 @@ export const ProductDetailPage: React.FC = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.2 }}
-                onClick={() => setIsLightboxOpen(true)}
+                onClick={openLightbox}
                 className="max-h-64 sm:max-h-72 w-full object-contain mix-blend-multiply cursor-zoom-in transition-all"
               />
             </AnimatePresence>
@@ -892,7 +921,7 @@ export const ProductDetailPage: React.FC = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col justify-between p-4 sm:p-6"
-            onClick={() => setIsLightboxOpen(false)}
+            onClick={closeLightbox}
           >
             {/* Lightbox Header Bar */}
             <div className="flex items-center justify-between text-white z-10" onClick={(e) => e.stopPropagation()}>
@@ -905,7 +934,7 @@ export const ProductDetailPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setIsLightboxOpen(false)}
+                onClick={closeLightbox}
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
                 title="Close lightbox (Esc)"
               >
