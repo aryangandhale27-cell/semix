@@ -11,7 +11,6 @@ import {
   CreditCard, 
   QrCode, 
   Building, 
-  Wallet, 
   CheckCircle2, 
   ArrowRight, 
   ArrowLeft,
@@ -81,7 +80,7 @@ export const CheckoutPage: React.FC = () => {
         });
   });
 
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'NetBanking' | 'COD' | 'MakersCredit'>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'NetBanking' | 'COD'>('UPI');
   const [packingNotes, setPackingNotes] = useState('Please double tape antistatic bags.');
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
@@ -670,32 +669,6 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Makers Line of Credit */}
-              <label
-                className={`p-4 rounded-xl border-2 flex items-start gap-3 cursor-pointer transition-all ${
-                  paymentMethod === 'MakersCredit'
-                    ? 'border-[#561269] bg-[#561269]/5 shadow-xs'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="payment"
-                  value="MakersCredit"
-                  checked={paymentMethod === 'MakersCredit'}
-                  onChange={() => setPaymentMethod('MakersCredit')}
-                  className="mt-1 text-[#561269]"
-                />
-                <div>
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
-                    <Wallet className="w-4 h-4 text-emerald-600" />
-                    <span>Maker Line Credit (Net 30)</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Approved university labs and verified hardware startups.
-                  </p>
-                </div>
-              </label>
             </div>
           </div>
         </div>

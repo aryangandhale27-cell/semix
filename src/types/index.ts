@@ -208,7 +208,7 @@ export interface Order {
   status: OrderStatus;
   statusTimeline: StatusTimelineEntry[];
   createdAt: string;
-  paymentMethod: 'UPI' | 'Card' | 'NetBanking' | 'COD' | 'MakersCredit';
+  paymentMethod: 'UPI' | 'Card' | 'NetBanking' | 'COD';
   paymentStatus: 'Paid' | 'Pending';
   packingNotes?: string;
   courier?: string;
