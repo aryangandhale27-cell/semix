@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowUpRight, Cpu } from 'lucide-react';
+import { Cpu } from 'lucide-react';
 import { Category } from '../../types';
 
 interface CategoryCardProps {
@@ -39,72 +39,37 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
       <Link
         to={`/shop?category=${encodeURIComponent(category.name)}`}
         id={`category-card-${category.id}`}
-        className="group flex flex-col h-full rounded-xl sm:rounded-2xl overflow-hidden bg-white border border-slate-200/90 shadow-2xs hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-300 transition-all duration-300"
+        className="group flex h-full min-h-[220px] flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-slate-950 shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-900/15 sm:min-h-[270px] sm:rounded-2xl"
       >
-        {/* Upper Area: Vibrant Orange Image Showcase with Watermark Pattern & Cutout */}
-        <div className="relative aspect-square sm:aspect-4/3 w-full bg-gradient-to-br from-[#FF6A00] via-[#FF5F00] to-[#E55500] flex items-center justify-center overflow-hidden p-2 sm:p-4">
-          {/* Subtle Circuit Board Watermark Pattern */}
-          <svg
-            className="absolute inset-0 w-full h-full opacity-15 pointer-events-none text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 200 160"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M10 20 h30 l20 20 v40 l20 20 h60 M180 30 h-40 l-20 20 v30 M30 140 h50 l20 -20 v-20 M140 140 l20 -20 h30"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeDasharray="2 3"
+        {/* Full-bleed image treatment keeps the admin-managed image as the visual focus. */}
+        <div className="relative min-h-[220px] flex-1 overflow-hidden bg-slate-900 sm:min-h-[270px]">
+          {!imageError && (
+            <img
+              src={displayImage}
+              alt={category.name}
+              onError={() => setImageError(true)}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+              loading="lazy"
             />
-            <circle cx="60" cy="40" r="3" fill="currentColor" />
-            <circle cx="80" cy="100" r="3" fill="currentColor" />
-            <circle cx="120" cy="50" r="3" fill="currentColor" />
-            <circle cx="100" cy="120" r="3" fill="currentColor" />
-          </svg>
+          )}
 
-          {/* Radial Center Highlight for depth */}
-          <div className="absolute inset-0 bg-radial from-white/20 via-transparent to-black/10 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-slate-950/5" />
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,transparent_62%,rgba(255,255,255,0.12)_62%,transparent_63%)] opacity-60" />
 
-          {/* Top-Right Diagonal Arrow Icon (hidden on mobile to match clean reference screenshot) */}
-          <div className="hidden sm:flex absolute top-3 right-3 z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/25 backdrop-blur-xs border border-white/35 text-white items-center justify-center transition-all duration-300 group-hover:bg-white group-hover:text-[#FF5F00] group-hover:shadow-md">
-            <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          {/* Fallback graphic when an admin-managed image cannot be loaded. */}
+          {imageError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#561269] to-slate-950 text-white">
+              <Cpu className="h-12 w-12 opacity-80 sm:h-16 sm:w-16" />
+            </div>
+          )}
+
+          <div className="absolute bottom-0 left-0 right-0 z-10 p-3 sm:p-4">
+            <div className="mb-2 h-1 w-10 rounded-full" style={{ backgroundColor: category.color || '#FF6B00' }} />
+            <h3 className="line-clamp-2 min-h-[2.3rem] text-sm font-extrabold leading-tight text-white sm:min-h-[2.75rem] sm:text-base">
+              {category.name}
+            </h3>
           </div>
 
-          {/* Centered Product Cutout Image */}
-          <div className="relative z-1 w-full h-full flex items-center justify-center">
-            {!imageError ? (
-              <img
-                src={displayImage}
-                alt={category.name}
-                onError={() => setImageError(true)}
-                className="w-full h-full max-h-[78%] sm:max-h-[82%] object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.25)] rounded-lg transition-transform duration-300 ease-out group-hover:scale-105"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-white/25 backdrop-blur-xs flex items-center justify-center text-white border border-white/40 shadow-inner group-hover:scale-105 transition-transform duration-300">
-                <Cpu className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-md" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Lower Area: Clean White Details & Centered Typography Panel matching reference image */}
-        <div className="p-2 sm:p-4 bg-white flex flex-col justify-center flex-1 border-t border-slate-100 text-center">
-          <h3 className="font-bold text-[11px] sm:text-sm md:text-base text-slate-800 leading-tight group-hover:text-[#FF5F00] transition-colors line-clamp-2 min-h-[1.8rem] sm:min-h-[2.75rem] flex items-center justify-center">
-            {category.name}
-          </h3>
-
-          <div className="hidden sm:flex mt-2.5 pt-2 border-t border-slate-100 items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 bg-slate-100/90 px-2.5 py-0.5 rounded-full border border-slate-200/60 group-hover:bg-orange-50 group-hover:text-[#FF5F00] group-hover:border-orange-200 transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FF5F00] animate-pulse" />
-              {category.count}+ Components
-            </span>
-
-            <span className="text-[11px] font-bold text-[#FF5F00] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-              Explore →
-            </span>
-          </div>
         </div>
       </Link>
     </motion.div>
