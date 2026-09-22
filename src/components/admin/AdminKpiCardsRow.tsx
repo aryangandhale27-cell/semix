@@ -11,15 +11,17 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-react';
-import { useFirestoreAdminKPIs } from '../../hooks/useFirestoreAdminKPIs';
+import { FirestoreAdminKPIs } from '../../hooks/useFirestoreAdminKPIs';
 
 interface AdminKpiCardsRowProps {
+  kpis: FirestoreAdminKPIs;
   onOpenAddProduct?: () => void;
   onNavigateToOrders?: () => void;
   onNavigateToCatalog?: () => void;
 }
 
 export const AdminKpiCardsRow: React.FC<AdminKpiCardsRowProps> = ({
+  kpis,
   onNavigateToOrders,
   onNavigateToCatalog
 }) => {
@@ -35,7 +37,7 @@ export const AdminKpiCardsRow: React.FC<AdminKpiCardsRowProps> = ({
     isLowStockWarning,
     isLoading,
     lastUpdated,
-  } = useFirestoreAdminKPIs();
+  } = kpis;
 
   return (
     <div className="space-y-2">

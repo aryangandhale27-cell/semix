@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, StaffMember } from '../../types';
 import { SemixLabsLogo } from '../../components/common/SemixLabsLogo';
@@ -25,6 +25,7 @@ import {
   Flame,
   Sparkles
 } from 'lucide-react';
+
 import { CustomProjectsManager } from '../../components/admin/CustomProjectsManager';
 import { AdminOrdersTab } from '../../components/admin/AdminOrdersTab';
 import { AdminUserManagementTab } from '../../components/admin/AdminUserManagementTab';
@@ -43,6 +44,8 @@ import { Tag, Mail, SlidersHorizontal, FolderTree, Image as ImageIcon, Award, Sh
 import { CATEGORIES } from '../../mockData/products';
 import { generateProductDescription } from '../../services/aiService';
 import { getProductPriceBreakdown } from '../../utils/pricing';
+
+const ADMIN_PRODUCT_BATCH_SIZE = 50;
 
 export const AdminDashboardPage: React.FC = () => {
   const { 
@@ -74,6 +77,7 @@ export const AdminDashboardPage: React.FC = () => {
     return pendingOrdersCount > 0 ? 'orders' : 'orders';
   });
   const [productSearch, setProductSearch] = useState('');
+  const [visibleProductCount, setVisibleProductCount] = useState(ADMIN_PRODUCT_BATCH_SIZE);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [trendingProductId, setTrendingProductId] = useState('');
@@ -123,7 +127,7 @@ export const AdminDashboardPage: React.FC = () => {
   });
 
   // Real-time Firestore Admin KPIs
-  const firestoreKPIs = useFirestoreAdminKPIs();
+  const firestoreKPIs = useFirestoreAdminKPIs(orders, products);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [adminSectionsOpen, setAdminSectionsOpen] = useState(false);
   const sentEmailsList = getLocalSentEmails();
@@ -232,6 +236,12 @@ export const AdminDashboardPage: React.FC = () => {
     return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
   });
 
+  useEffect(() => {
+    setVisibleProductCount(ADMIN_PRODUCT_BATCH_SIZE);
+  }, [productSearch, products.length]);
+
+  const visibleProducts = filteredProducts.slice(0, visibleProductCount);
+
   const filterHomepageProducts = (query: string) => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return products;
@@ -319,6 +329,7 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Real-time Dynamic Firestore KPI Cards Row */}
       <AdminKpiCardsRow
+        kpis={firestoreKPIs}
         onNavigateToOrders={() => setActiveTab('orders')}
         onNavigateToCatalog={() => setActiveTab('catalog')}
       />
@@ -785,7 +796,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredProducts.map((p) => (
+                {visibleProducts.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50/70">
                     <td className="p-3">
                       <div className="flex items-center gap-2.5">
@@ -854,6 +865,17 @@ export const AdminDashboardPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            {visibleProducts.length < filteredProducts.length && (
+              <div className="flex justify-center border-t border-slate-100 p-4">
+                <button
+                  type="button"
+                  onClick={() => setVisibleProductCount((count) => Math.min(count + ADMIN_PRODUCT_BATCH_SIZE, filteredProducts.length))}
+                  className="rounded-xl border border-[#561269]/20 bg-white px-4 py-2 text-xs font-bold text-[#561269] shadow-xs transition-colors hover:border-[#561269]/40 hover:bg-[#561269]/5"
+                >
+                  Load More Products
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

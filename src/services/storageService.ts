@@ -1,18 +1,17 @@
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, storage } from '../lib/firebase';
 
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [header, encoded] = dataUrl.split(',');
-  if (!header || !encoded || !header.startsWith('data:')) {
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  if (!dataUrl.startsWith('data:')) {
     throw new Error('Invalid image data.');
   }
-  const mimeType = header.match(/data:([^;]+)/)?.[1] || 'image/webp';
-  const binary = atob(encoded);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
+
+  const response = await fetch(dataUrl);
+  if (!response.ok) {
+    throw new Error('Could not prepare image data.');
   }
-  return new Blob([bytes], { type: mimeType });
+
+  return response.blob();
 }
 
 export async function uploadImageDataUrl(
@@ -23,7 +22,7 @@ export async function uploadImageDataUrl(
     throw new Error('You must be signed in to upload product images.');
   }
 
-  const blob = dataUrlToBlob(dataUrl);
+  const blob = await dataUrlToBlob(dataUrl);
   const safeFilename = options.filename.replace(/[^a-zA-Z0-9._-]/g, '-');
   const uniqueId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()

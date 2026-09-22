@@ -102,16 +102,35 @@ export async function fetchProductsFromFirestore(): Promise<Product[]> {
   }
 }
 
-export function subscribeToProducts(onData: (products: Product[]) => void, onError?: (err: any) => void): Unsubscribe {
+export interface ProductSnapshotChange {
+  type: 'added' | 'modified' | 'removed';
+  product: Product;
+}
+
+export function subscribeToProducts(
+  onData: (products: Product[]) => void,
+  onError?: (err: any) => void,
+  onChanges?: (changes: ProductSnapshotChange[]) => void
+): Unsubscribe {
   const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+  let hasInitialSnapshot = false;
+
   return onSnapshot(
     q,
     (snapshot) => {
-      const items: Product[] = [];
-      snapshot.forEach((docSnap) => {
-        items.push(docSnap.data() as Product);
-      });
-      onData(items);
+      if (!hasInitialSnapshot) {
+        const items: Product[] = [];
+        snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
+        hasInitialSnapshot = true;
+        onData(items);
+        return;
+      }
+
+      const changes = snapshot.docChanges().map((change) => ({
+        type: change.type,
+        product: { id: change.doc.id, ...change.doc.data() } as Product,
+      }));
+      if (changes.length > 0) onChanges?.(changes);
     },
     (err) => {
       console.warn('[Firestore] Products real-time listener notice:', err.message);

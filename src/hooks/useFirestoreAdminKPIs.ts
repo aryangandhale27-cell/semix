@@ -1,12 +1,4 @@
 import { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  Unsubscribe 
-} from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Order, Product } from '../types';
 
 export interface FirestoreAdminKPIs {
@@ -70,95 +62,12 @@ const DEFAULT_KPIS: FirestoreAdminKPIs = {
  * Hook to aggregate real-time admin KPIs directly from Cloud Firestore collections
  * Queries 'orders' and 'products' collections with real-time listeners.
  */
-export function useFirestoreAdminKPIs(): FirestoreAdminKPIs {
+export function useFirestoreAdminKPIs(orders: Order[], products: Product[]): FirestoreAdminKPIs {
   const [kpis, setKpis] = useState<FirestoreAdminKPIs>(DEFAULT_KPIS);
-  const [ordersData, setOrdersData] = useState<Order[] | null>(null);
-  const [productsData, setProductsData] = useState<Product[] | null>(null);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
-  const [productsError, setProductsError] = useState<string | null>(null);
-
-  // 1. Real-time listener for 'orders' collection
+  // Compute metrics from the existing AppContext snapshots instead of opening duplicate listeners.
   useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
-    try {
-      const ordersColRef = collection(db, 'orders');
-      // Listen to all order updates in real-time
-      unsubscribe = onSnapshot(
-        ordersColRef,
-        (snapshot) => {
-          const list: Order[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            list.push({
-              id: docSnap.id,
-              ...data,
-            } as Order);
-          });
-          setOrdersData(list);
-          setOrdersError(null);
-        },
-        (err) => {
-          console.warn('[Firestore KPI] Orders listener notice:', err.message);
-          setOrdersError(err.message);
-          // Set empty array so loading skeleton resolves safely
-          setOrdersData((prev) => prev || []);
-        }
-      );
-    } catch (err: any) {
-      console.error('[Firestore KPI] Error attaching orders listener:', err);
-      setOrdersError(err.message);
-      setOrdersData([]);
-    }
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  // 2. Real-time listener for 'products' collection
-  useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
-    try {
-      const productsColRef = collection(db, 'products');
-      unsubscribe = onSnapshot(
-        productsColRef,
-        (snapshot) => {
-          const list: Product[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            list.push({
-              id: docSnap.id,
-              ...data,
-            } as Product);
-          });
-          setProductsData(list);
-          setProductsError(null);
-        },
-        (err) => {
-          console.warn('[Firestore KPI] Products listener notice:', err.message);
-          setProductsError(err.message);
-          setProductsData((prev) => prev || []);
-        }
-      );
-    } catch (err: any) {
-      console.error('[Firestore KPI] Error attaching products listener:', err);
-      setProductsError(err.message);
-      setProductsData([]);
-    }
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  // 3. Compute all metrics whenever ordersData or productsData updates
-  useEffect(() => {
-    if (ordersData === null && productsData === null) {
-      return;
-    }
-
-    const currentOrders = ordersData || [];
-    const currentProducts = productsData || [];
+    const currentOrders = orders;
+    const currentProducts = products;
 
     // --- Order Calculations ---
     // Rule: status != 'cancelled'
@@ -231,7 +140,7 @@ export function useFirestoreAdminKPIs(): FirestoreAdminKPIs {
 
     // Sub-badge: Count of orders marked specifically with status 'pending' or 'pending_assignment'
     const pendingOrders = currentOrders.filter(
-      (o) => !o.assignedSellerId || o.status === 'pending_assignment' || o.status === 'pending'
+      (o) => !o.assignedSellerId || o.status === 'pending_assignment'
     );
     const pendingOrdersCount = pendingOrders.length;
 
@@ -259,9 +168,9 @@ export function useFirestoreAdminKPIs(): FirestoreAdminKPIs {
 
     const isLowStockWarning = lowStockSkusCount > 0;
 
-    const isOrdersLoaded = ordersData !== null;
-    const isProductsLoaded = productsData !== null;
-    const isLoading = !isOrdersLoaded || !isProductsLoaded;
+    const isOrdersLoaded = true;
+    const isProductsLoaded = true;
+    const isLoading = false;
 
     setKpis({
       grossRevenue,
@@ -282,10 +191,10 @@ export function useFirestoreAdminKPIs(): FirestoreAdminKPIs {
       isLoading,
       isOrdersLoaded,
       isProductsLoaded,
-      error: ordersError || productsError || null,
+      error: null,
       lastUpdated: new Date(),
     });
-  }, [ordersData, productsData, ordersError, productsError]);
+  }, [orders, products]);
 
   return kpis;
 }

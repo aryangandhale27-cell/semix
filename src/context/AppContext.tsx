@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   Product, 
   CartItem, 
@@ -33,6 +33,7 @@ import {
   deleteProductFromFirestore, 
   fetchProductsFromFirestore,
   subscribeToProducts,
+  ProductSnapshotChange,
   syncAllProductsToFirestore,
   syncOrderToFirestore, 
     deleteOrderFromFirestore,
@@ -82,6 +83,12 @@ const APP_DATA_CACHE_KEYS = {
 } as const;
 
 const PRODUCT_WRITE_QUEUE_KEY = 'semix-product-write-queue-v1';
+
+function writeProductCacheWhenIdle(products: Product[]): void {
+  window.setTimeout(() => {
+    writeCachedData(APP_DATA_CACHE_KEYS.products, products);
+  }, 0);
+}
 
 function readQueuedProductWrites(): Product[] {
   try {
@@ -396,6 +403,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [products, setProducts] = useState<Product[]>(() =>
     readCachedData<Product[]>(APP_DATA_CACHE_KEYS.products, INITIAL_PRODUCTS.map(normalizeProduct))
   );
+  const productsRef = useRef(products);
+
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
 
   const [isProductSyncing, setIsProductSyncing] = useState(false);
 
@@ -423,6 +435,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setProducts(queuedProducts.map(normalizeProduct));
         writeCachedData(APP_DATA_CACHE_KEYS.products, queuedProducts.map(normalizeProduct));
       }
+    }, (changes: ProductSnapshotChange[]) => {
+      if (!isMounted || changes.length === 0) return;
+
+      const changedIds = new Set(changes.map((change) => change.product.id));
+      const productsById = new Map<string, Product>(
+        productsRef.current.map((product) => [product.id, product])
+      );
+
+      changes.forEach((change) => {
+        const normalized = normalizeProduct(change.product);
+        if (change.type === 'removed') {
+          productsById.delete(normalized.id);
+          return;
+        }
+        productsById.set(normalized.id, normalized);
+      });
+
+      const nextProducts = Array.from(productsById.values());
+      nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      productsRef.current = nextProducts;
+      setProducts(nextProducts);
+      writeProductCacheWhenIdle(nextProducts);
+      writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
     });
 
     return () => {
@@ -1193,8 +1228,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addedByUid: (productData as any).addedByUid || auth.currentUser?.uid || undefined,
     });
 
-    setProducts((prev) => [normalized, ...prev.filter((p) => p.id !== id)]);
-    writeCachedData(APP_DATA_CACHE_KEYS.products, [normalized, ...products.filter((p) => p.id !== id)]);
+    const nextProducts = [normalized, ...products.filter((p) => p.id !== id)];
+    setProducts(nextProducts);
+    writeProductCacheWhenIdle(nextProducts);
 
     try {
       await syncProductToFirestore(normalized);

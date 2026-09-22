@@ -34,6 +34,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+const INVENTORY_BATCH_SIZE = 50;
+
 export const TeamPortalPage: React.FC = () => {
   const { 
     orders, 
@@ -81,6 +83,7 @@ export const TeamPortalPage: React.FC = () => {
   const [stockSearch, setStockSearch] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+  const [visibleInventoryCount, setVisibleInventoryCount] = useState(INVENTORY_BATCH_SIZE);
   
   // Product Modal (Add / Edit)
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -185,6 +188,12 @@ export const TeamPortalPage: React.FC = () => {
       return true;
     });
   }, [products, selectedCategoryFilter, stockStatusFilter, stockSearch]);
+
+  useEffect(() => {
+    setVisibleInventoryCount(INVENTORY_BATCH_SIZE);
+  }, [filteredProducts]);
+
+  const visibleInventoryProducts = filteredProducts.slice(0, visibleInventoryCount);
 
   // Filtered Orders for Packing Queue
   const filteredOrders = useMemo(() => {
@@ -682,7 +691,7 @@ export const TeamPortalPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredProducts.map((prod) => {
+                    visibleInventoryProducts.map((prod) => {
                       const isLow = prod.stockCount > 0 && prod.stockCount <= 20;
                       const isOut = prod.stockCount === 0;
                       const isInline = inlineEditingStockId === prod.id;
@@ -855,6 +864,17 @@ export const TeamPortalPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            {visibleInventoryProducts.length < filteredProducts.length && (
+              <div className="flex justify-center border-t border-slate-100 p-4">
+                <button
+                  type="button"
+                  onClick={() => setVisibleInventoryCount((count) => Math.min(count + INVENTORY_BATCH_SIZE, filteredProducts.length))}
+                  className="rounded-xl border border-[#561269]/20 bg-white px-4 py-2 text-xs font-bold text-[#561269] shadow-xs transition-colors hover:border-[#561269]/40 hover:bg-[#561269]/5"
+                >
+                  Load More Inventory
+                </button>
+              </div>
+            )}
           </div>
         </motion.div>
       )}
