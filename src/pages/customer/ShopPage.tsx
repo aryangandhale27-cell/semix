@@ -19,6 +19,8 @@ import {
   Zap
 } from 'lucide-react';
 
+const PRODUCT_BATCH_SIZE = 24;
+
 export const ShopPage: React.FC = () => {
   const { products, categories, searchQuery, setSearchQuery } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,6 +37,7 @@ export const ShopPage: React.FC = () => {
   const [maxPrice, setMaxPrice] = useState<number>(10000);
   const [sortBy, setSortBy] = useState<string>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [visibleProductState, setVisibleProductState] = useState({ key: '', count: PRODUCT_BATCH_SIZE });
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -164,6 +167,24 @@ export const ShopPage: React.FC = () => {
     maxPrice,
     sortBy,
   ]);
+
+  const filteredProductsKey = useMemo(
+    () => filteredProducts.map((product) => product.id).join('|'),
+    [filteredProducts]
+  );
+
+  useEffect(() => {
+    setVisibleProductState({ key: filteredProductsKey, count: PRODUCT_BATCH_SIZE });
+  }, [filteredProductsKey]);
+
+  const visibleProductCount = visibleProductState.key === filteredProductsKey
+    ? visibleProductState.count
+    : PRODUCT_BATCH_SIZE;
+
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleProductCount),
+    [filteredProducts, visibleProductCount]
+  );
 
   const activeFilterCount =
     (selectedCategory !== 'All' ? 1 : 0) +
@@ -474,7 +495,7 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
-              {filteredProducts.map((product) => (
+              {visibleProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -484,7 +505,7 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredProducts.map((product) => (
+              {visibleProducts.map((product) => (
                 <div
                   key={product.id}
                   className="bg-white rounded-xl border border-slate-200 p-4 hover:border-[#561269]/40 hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4"
@@ -524,6 +545,22 @@ export const ShopPage: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {visibleProducts.length < filteredProducts.length && (
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => setVisibleProductState({
+                  key: filteredProductsKey,
+                  count: Math.min(visibleProductCount + PRODUCT_BATCH_SIZE, filteredProducts.length),
+                })}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#561269]/20 bg-white px-5 py-2.5 text-xs font-bold text-[#561269] shadow-xs transition-colors hover:border-[#561269]/40 hover:bg-[#561269]/5"
+              >
+                Load More Products
+                <ChevronDown className="h-4 w-4" />
+              </button>
             </div>
           )}
         </main>
