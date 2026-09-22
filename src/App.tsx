@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider } from './context/AppContext';
@@ -14,23 +14,36 @@ import { CompareDrawer } from './components/common/CompareDrawer';
 import { AuthModal } from './components/common/AuthModal';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 
-// Customer Pages
-import { HomePage } from './pages/customer/HomePage';
-import { CategoriesPage } from './pages/customer/CategoriesPage';
-import { ShopPage } from './pages/customer/ShopPage';
-import { ProductDetailPage } from './pages/customer/ProductDetailPage';
-import { CartPage } from './pages/customer/CartPage';
-import { CheckoutPage } from './pages/customer/CheckoutPage';
-import { BomToolPage } from './pages/customer/BomToolPage';
-import { ServicesPage } from './pages/customer/ServicesPage';
-import { BulkEnquiryPage } from './pages/customer/BulkEnquiryPage';
-import { ContactPage } from './pages/customer/ContactPage';
-import { CustomerDashboardPage } from './pages/customer/CustomerDashboardPage';
+const HomePage = lazy(() => import('./pages/customer/HomePage').then((module) => ({ default: module.HomePage })));
+const CategoriesPage = lazy(() => import('./pages/customer/CategoriesPage').then((module) => ({ default: module.CategoriesPage })));
+const ShopPage = lazy(() => import('./pages/customer/ShopPage').then((module) => ({ default: module.ShopPage })));
+const ProductDetailPage = lazy(() => import('./pages/customer/ProductDetailPage').then((module) => ({ default: module.ProductDetailPage })));
+const CartPage = lazy(() => import('./pages/customer/CartPage').then((module) => ({ default: module.CartPage })));
+const CheckoutPage = lazy(() => import('./pages/customer/CheckoutPage').then((module) => ({ default: module.CheckoutPage })));
+const BomToolPage = lazy(() => import('./pages/customer/BomToolPage').then((module) => ({ default: module.BomToolPage })));
+const ServicesPage = lazy(() => import('./pages/customer/ServicesPage').then((module) => ({ default: module.ServicesPage })));
+const BulkEnquiryPage = lazy(() => import('./pages/customer/BulkEnquiryPage').then((module) => ({ default: module.BulkEnquiryPage })));
+const ContactPage = lazy(() => import('./pages/customer/ContactPage').then((module) => ({ default: module.ContactPage })));
+const CustomerDashboardPage = lazy(() => import('./pages/customer/CustomerDashboardPage').then((module) => ({ default: module.CustomerDashboardPage })));
+const TeamPortalPage = lazy(() => import('./pages/team/TeamPortalPage').then((module) => ({ default: module.TeamPortalPage })));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })));
+const SellerDashboardPage = lazy(() => import('./pages/seller/SellerDashboardPage').then((module) => ({ default: module.SellerDashboardPage })));
 
-// Team & Admin Pages
-import { TeamPortalPage } from './pages/team/TeamPortalPage';
-import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
-import { SellerDashboardPage } from './pages/seller/SellerDashboardPage';
+function PageRouteFallback() {
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 w-40 rounded bg-slate-200" />
+        <div className="h-64 w-full rounded-2xl bg-slate-200" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="h-52 rounded-xl bg-slate-200" />
+          <div className="h-52 rounded-xl bg-slate-200" />
+          <div className="h-52 rounded-xl bg-slate-200" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Helper component to scroll to top on route change, or to hash if present
 function ScrollToTop() {
@@ -68,114 +81,116 @@ function AnimatedRoutes() {
         transition={{ duration: 0 }}
         className="w-full"
       >
-        <Routes location={location}>
-          {/* Public Customer Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/categories" element={<CategoriesPage />} />
-          <Route path="/shop" element={<ShopPage />} />
-          <Route path="/product/:productId" element={<ProductDetailPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/bom-tool" element={<BomToolPage />} />
-          <Route path="/services" element={<ServicesPage />} />
-          <Route path="/bulk-enquiry" element={<BulkEnquiryPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/about" element={<ContactPage />} />
+        <Suspense fallback={<PageRouteFallback />}>
+          <Routes location={location}>
+            {/* Public Customer Routes */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/shop" element={<ShopPage />} />
+            <Route path="/product/:productId" element={<ProductDetailPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/bom-tool" element={<BomToolPage />} />
+            <Route path="/services" element={<ServicesPage />} />
+            <Route path="/bulk-enquiry" element={<BulkEnquiryPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/about" element={<ContactPage />} />
 
-          {/* Protected Customer Dashboard */}
-          <Route 
-            path="/customer/dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={['customer', 'team', 'admin']}>
-                <CustomerDashboardPage />
-              </ProtectedRoute>
-            } 
-          />
+            {/* Protected Customer Dashboard */}
+            <Route 
+              path="/customer/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['customer', 'team', 'admin']}>
+                  <CustomerDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
 
-          {/* Protected Team Fulfillment & Inventory Routes */}
-          <Route 
-            path="/team" 
-            element={
-              <ProtectedRoute allowedRoles={['team', 'admin']}>
-                <TeamPortalPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/team/portal" 
-            element={
-              <ProtectedRoute allowedRoles={['team', 'admin']}>
-                <TeamPortalPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/team/fulfillment" 
-            element={
-              <ProtectedRoute allowedRoles={['team', 'admin']}>
-                <TeamPortalPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/fulfillment" 
-            element={
-              <ProtectedRoute allowedRoles={['team', 'admin']}>
-                <TeamPortalPage />
-              </ProtectedRoute>
-            } 
-          />
+            {/* Protected Team Fulfillment & Inventory Routes */}
+            <Route 
+              path="/team" 
+              element={
+                <ProtectedRoute allowedRoles={['team', 'admin']}>
+                  <TeamPortalPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/team/portal" 
+              element={
+                <ProtectedRoute allowedRoles={['team', 'admin']}>
+                  <TeamPortalPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/team/fulfillment" 
+              element={
+                <ProtectedRoute allowedRoles={['team', 'admin']}>
+                  <TeamPortalPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/fulfillment" 
+              element={
+                <ProtectedRoute allowedRoles={['team', 'admin']}>
+                  <TeamPortalPage />
+                </ProtectedRoute>
+              } 
+            />
 
-          {/* Protected Admin Master Routes */}
-          <Route 
-            path="/admin" 
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboardPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/admin/dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboardPage />
-              </ProtectedRoute>
-            } 
-          />
+            {/* Protected Admin Master Routes */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
 
-          {/* Protected Seller Dashboard Routes */}
-          <Route 
-            path="/seller" 
-            element={
-              <ProtectedRoute allowedRoles={['seller', 'admin']}>
-                <SellerDashboardPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/seller/dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={['seller', 'admin']}>
-                <SellerDashboardPage />
-              </ProtectedRoute>
-            } 
-          />
+            {/* Protected Seller Dashboard Routes */}
+            <Route 
+              path="/seller" 
+              element={
+                <ProtectedRoute allowedRoles={['seller', 'admin']}>
+                  <SellerDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/seller/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['seller', 'admin']}>
+                  <SellerDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
 
-          {/* Utility / Customer Redirects */}
-          <Route 
-            path="/orders" 
-            element={
-              <ProtectedRoute allowedRoles={['customer', 'team', 'admin', 'seller']}>
-                <CustomerDashboardPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/compare" element={<ShopPage />} />
+            {/* Utility / Customer Redirects */}
+            <Route 
+              path="/orders" 
+              element={
+                <ProtectedRoute allowedRoles={['customer', 'team', 'admin', 'seller']}>
+                  <CustomerDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/compare" element={<ShopPage />} />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </motion.div>
     </AnimatePresence>
   );

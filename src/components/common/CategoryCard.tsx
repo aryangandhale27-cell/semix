@@ -50,6 +50,9 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
               onError={() => setImageError(true)}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
               loading="lazy"
+              width={800}
+              height={600}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           )}
 

@@ -108,6 +108,9 @@ export const HomePage: React.FC = () => {
                       loading={currentSlideIndex === 0 ? 'eager' : 'lazy'}
                       fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
                       decoding="async"
+                      width={1600}
+                      height={700}
+                      sizes="100vw"
                       className="block w-full h-auto"
                     />
                   </picture>

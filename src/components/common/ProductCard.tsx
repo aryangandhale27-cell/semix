@@ -178,6 +178,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           src={(product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80')}
           alt={product.name}
           loading="lazy"
+          width={480}
+          height={360}
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className="w-full h-full max-h-[90%] object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
         />
         {product.images && product.images.length > 1 && (

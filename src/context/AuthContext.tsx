@@ -353,7 +353,7 @@ const [usersLoaded, setUsersLoaded] = useState(false);
 
       const cleanEmail = firebaseUser.email?.toLowerCase() || '';
       const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
-      const matchedUser = registeredUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+      const matchedUser = registeredUsersRef.current.find((u) => u.email.toLowerCase() === cleanEmail);
       const assignedRole: UserRole = matchedUser?.role || (isAryanAdmin ? 'admin' : 'customer');
 
       const authPayload: AuthUser = {
@@ -374,6 +374,11 @@ const [usersLoaded, setUsersLoaded] = useState(false);
     });
 
     return () => unsubscribe();
+  }, []);
+
+  const registeredUsersRef = useRef(registeredUsers);
+  useEffect(() => {
+    registeredUsersRef.current = registeredUsers;
   }, [registeredUsers]);
 
   // Firebase Auth owns session persistence; React only mirrors the current session.
@@ -383,7 +388,7 @@ const [usersLoaded, setUsersLoaded] = useState(false);
     } else {
       setCurrentRole('customer');
     }
-  }, [user]);
+  }, [user, setCurrentRole]);
 
   const openAuthModal = (tab: 'signin' | 'register' = 'signin', redirectUrl?: string, notice?: string) => {
     setAuthModalTab(tab);

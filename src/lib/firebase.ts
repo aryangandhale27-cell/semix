@@ -106,9 +106,6 @@ export async function testFirestoreConnection() {
   }
 }
 
-// Kick off initial connection test
-testFirestoreConnection();
-
 // Google Sign-In helper
 export async function signInWithGoogle() {
   try {

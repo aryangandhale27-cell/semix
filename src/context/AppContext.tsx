@@ -367,6 +367,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Firebase Live Sync status
   const [isFirebaseLive, setIsFirebaseLive] = useState(true);
 
+  const isAdminOrSellerOrTeam = () => {
+    const email = auth.currentUser?.email?.trim().toLowerCase() || '';
+    return email.includes('admin@') || email.includes('seller@') || email.includes('team@');
+  };
+
+  const isAdminOnly = () => {
+    const email = auth.currentUser?.email?.trim().toLowerCase() || '';
+    return email.includes('admin@');
+  };
+
   useEffect(() => {
     testFirestoreConnection()
       .then(() => setIsFirebaseLive(true))
@@ -393,30 +403,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     let isMounted = true;
 
-    fetchProductsFromFirestore()
-      .then((remoteProducts) => {
-        if (!isMounted) return;
-        const normalizedProducts = remoteProducts.map(normalizeProduct);
-        const queuedProducts = readQueuedProductWrites();
-        const mergedProducts = [...queuedProducts, ...normalizedProducts];
-        const deduped = new Map<string, Product>();
-        mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
-        const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-        setProducts(nextProducts);
-        writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
-        const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
-        writeQueuedProductWrites(remainingQueuedProducts);
-      })
-      .catch((err) => {
-        console.warn('[Firestore] Product load notice:', err?.message || err);
-        const queuedProducts = readQueuedProductWrites();
-        if (queuedProducts.length > 0) {
-          setProducts(queuedProducts.map(normalizeProduct));
-          writeCachedData(APP_DATA_CACHE_KEYS.products, queuedProducts.map(normalizeProduct));
-        }
-      });
-
     const unsubscribe = subscribeToProducts((remoteProducts) => {
       if (!isMounted) return;
       const normalizedProducts = remoteProducts.map(normalizeProduct);
@@ -430,6 +416,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
       const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
       writeQueuedProductWrites(remainingQueuedProducts);
+    }, (err) => {
+      console.warn('[Firestore] Product live listener notice:', err?.message || err);
+      const queuedProducts = readQueuedProductWrites();
+      if (queuedProducts.length > 0) {
+        setProducts(queuedProducts.map(normalizeProduct));
+        writeCachedData(APP_DATA_CACHE_KEYS.products, queuedProducts.map(normalizeProduct));
+      }
     });
 
     return () => {
@@ -484,15 +477,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     let isMounted = true;
-    fetchCategoriesFromFirestore()
-      .then((data) => {
-        if (isMounted) {
-          const mergedCategories = data.length > 0 ? mergeCategoriesWithDefaults(data) : [];
-          setCategories(mergedCategories);
-          writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
-        }
-      })
-      .catch((err) => console.warn('[CategoryService] Init error:', err));
 
     const unsub = subscribeToCategories((data) => {
       if (isMounted) {
@@ -500,7 +484,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCategories(mergedCategories);
         writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
       }
-    });
+    }, (err) => console.warn('[CategoryService] Listener error:', err));
 
     return () => {
       isMounted = false;
@@ -529,15 +513,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     let isMounted = true;
-    fetchBannersFromFirestore()
-      .then((data) => {
-        if (isMounted) {
-          const nextBanners = data || [];
-          setBanners(nextBanners);
-          writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
-        }
-      })
-      .catch((err) => console.warn('[BannerService] Init error:', err));
 
     const unsub = subscribeToBanners((data) => {
       if (isMounted) {
@@ -545,7 +520,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setBanners(nextBanners);
         writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
       }
-    });
+    }, (err) => console.warn('[BannerService] Listener error:', err));
 
     return () => {
       isMounted = false;
@@ -681,7 +656,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       unsubscribeBonuses?.();
       unsubscribeBonuses = undefined;
-      if (!firebaseUser) return;
+      if (!firebaseUser || !isAdminOrSellerOrTeam()) return;
 
       fetchAllSellerBonuses()
         .then((remoteBonuses) => {
@@ -778,22 +753,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
 
-      fetchOrdersFromFirestore()
-        .then((remoteOrders) => {
-          if (!isMounted) return;
-          const nextOrders = (remoteOrders || []).map(normalizeOrder);
-          setOrders(nextOrders);
-          writeCachedData(STORAGE_KEYS.ORDERS, nextOrders);
-        })
-        .catch((err) => {
-          console.warn('[Firestore] Orders load notice:', err?.message || err);
-        });
-
       unsubscribeOrders = subscribeToOrders((remoteOrders) => {
         if (!isMounted) return;
         const nextOrders = (remoteOrders || []).map(normalizeOrder);
         setOrders(nextOrders);
         writeCachedData(STORAGE_KEYS.ORDERS, nextOrders);
+      }, (err) => {
+        console.warn('[Firestore] Orders live listener notice:', err?.message || err);
       });
     });
 
@@ -812,6 +778,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     let isMounted = true;
+    if (!isAdminOnly()) {
+      setStaff([]);
+      return;
+    }
+
     fetchStaffFromFirestore()
       .then((remoteStaff) => {
         if (isMounted) setStaff(remoteStaff);
@@ -832,6 +803,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [bulkEnquiries, setBulkEnquiries] = useState<BulkEnquirySubmission[]>([]);
 
   useEffect(() => {
+    if (!isAdminOnly()) {
+      setBulkEnquiries([]);
+      return;
+    }
+
     const unsubscribe = subscribeToRecords(
       'bulk_enquiries',
       (records) => setBulkEnquiries(records as BulkEnquirySubmission[]),
@@ -861,6 +837,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [customProjects, setCustomProjects] = useState<CustomProjectSubmission[]>([]);
 
   useEffect(() => {
+    if (!isAdminOnly()) {
+      setCustomProjects([]);
+      return;
+    }
+
     const unsubscribe = subscribeToRecords(
       'customProjects',
       (records) => setCustomProjects(records as CustomProjectSubmission[]),
