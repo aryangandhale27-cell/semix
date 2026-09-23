@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
@@ -24,6 +24,7 @@ const BomToolPage = lazy(() => import('./pages/customer/BomToolPage').then((modu
 const ServicesPage = lazy(() => import('./pages/customer/ServicesPage').then((module) => ({ default: module.ServicesPage })));
 const BulkEnquiryPage = lazy(() => import('./pages/customer/BulkEnquiryPage').then((module) => ({ default: module.BulkEnquiryPage })));
 const ContactPage = lazy(() => import('./pages/customer/ContactPage').then((module) => ({ default: module.ContactPage })));
+const ReturnPolicyPage = lazy(() => import('./pages/customer/ReturnPolicyPage').then((module) => ({ default: module.ReturnPolicyPage })));
 const CustomerDashboardPage = lazy(() => import('./pages/customer/CustomerDashboardPage').then((module) => ({ default: module.CustomerDashboardPage })));
 const TeamPortalPage = lazy(() => import('./pages/team/TeamPortalPage').then((module) => ({ default: module.TeamPortalPage })));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })));
@@ -95,6 +96,7 @@ function AnimatedRoutes() {
             <Route path="/bulk-enquiry" element={<BulkEnquiryPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/about" element={<ContactPage />} />
+            <Route path="/return-policy" element={<ReturnPolicyPage />} />
 
             {/* Protected Customer Dashboard */}
             <Route 
@@ -219,6 +221,14 @@ export default function App() {
 
             {/* Footer with Service Value Props & Links */}
             <Footer />
+            <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 text-center sm:py-5">
+              <Link
+                to="/return-policy"
+                className="text-sm font-semibold text-slate-600 transition-colors hover:text-[#561269]"
+              >
+                Return &amp; Refund Policy
+              </Link>
+            </div>
 
             {/* Global Modals & Notifications */}
             <AuthModal />
