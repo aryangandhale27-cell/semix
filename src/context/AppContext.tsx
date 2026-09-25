@@ -205,7 +205,7 @@ interface AppContextType {
   removeAvailableSeller: (id: string) => void;
   createOrder: (orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>) => Order;
     deleteOrder: (orderId: string) => Promise<void>;
-  assignSellerToOrder: (orderId: string, sellerId: string, sellerName: string, notes?: string) => void;
+  assignSellerToOrder: (orderId: string, sellerId: string, sellerName: string, notes?: string) => Promise<void>;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, note?: string, updatedBy?: string, courierInfo?: { courier?: string; courierTrackingId?: string; packedBy?: string }) => void;
   adminOverrideOrder: (orderId: string, updates: Partial<Order>) => void;
   flagMissingOrderItems: (orderId: string, missingItems: Array<{ productId: string; sku: string; name: string; quantity: number; reason?: string }>, note?: string) => void;
@@ -1432,84 +1432,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, order: finalizedOrder };
   };
 
-  const assignSellerToOrder = (
+  const assignSellerToOrder = async (
     orderId: string,
     sellerId: string,
     sellerName: string,
     notes?: string
-  ) => {
+  ): Promise<void> => {
     const now = new Date();
     const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const currentOrder = orders.find((order) => order.id === orderId);
 
-    setOrders((prev) =>
-      prev.map((order) => {
-        if (order.id === orderId) {
-          const isCurrentPending = !order.assignedSellerId || order.status === 'pending_assignment' || order.status === 'placed';
-          const nextStatus: OrderStatus = isCurrentPending || (order.assignedSellerId && order.status === 'pending_assignment') ? 'assigned' : order.status;
+    if (!currentOrder) {
+      throw new Error(`Order ${orderId} could not be found.`);
+    }
 
-          const newTimelineEntry = {
-            status: nextStatus,
-            timestamp: formattedDate,
-            note: notes 
-              ? `Assigned to ${sellerName} by Admin. Note: ${notes}` 
-              : `Assigned to fulfillment seller: ${sellerName} by Admin Operations.`,
-            updatedBy: 'Admin Operations'
-          };
+    const isCurrentPending = !currentOrder.assignedSellerId || currentOrder.status === 'pending_assignment' || currentOrder.status === 'placed';
+    const nextStatus: OrderStatus = isCurrentPending || (currentOrder.assignedSellerId && currentOrder.status === 'pending_assignment') ? 'assigned' : currentOrder.status;
+    const newTimelineEntry = {
+      status: nextStatus,
+      timestamp: formattedDate,
+      note: notes
+        ? `Assigned to ${sellerName} by Admin. Note: ${notes}`
+        : `Assigned to fulfillment seller: ${sellerName} by Admin Operations.`,
+      updatedBy: 'Admin Operations'
+    };
+    const updatedOrder = {
+      ...currentOrder,
+      status: nextStatus,
+      assignedSellerId: sellerId,
+      assignedSellerName: sellerName,
+      assignedAt: now.toISOString(),
+      statusTimeline: [...currentOrder.statusTimeline, newTimelineEntry]
+    };
 
-          const updatedOrder = {
-            ...order,
-            status: nextStatus,
-            assignedSellerId: sellerId,
-            assignedSellerName: sellerName,
-            assignedAt: now.toISOString(),
-            statusTimeline: [...order.statusTimeline, newTimelineEntry]
-          };
-          syncOrderToFirestore(updatedOrder).catch((e) => console.warn('Firestore sync deferred:', e));
+    await syncOrderToFirestore(updatedOrder);
 
-          // Trigger automated email: Seller Assignment notification
-          const matchedSeller = availableSellers.find((s) => s.id === sellerId) || {
-            id: sellerId,
-            name: sellerName,
-            email: 'seller@semixlabs.com',
-            phone: '+91 98765 43210',
-            warehouseHub: 'Regional Warehouse Hub',
-            gstin: '29ABCDE1234F1Z5',
-            rating: 4.9,
-          };
-          sendSellerAssignmentEmail(updatedOrder, matchedSeller, notes).catch((e) => {
-            console.warn('[EmailService] Seller assignment email deferred:', e);
-          });
+    setOrders((prev) => prev.map((order) => order.id === orderId ? updatedOrder : order));
 
-          // Record immutable audit log
-          recordActivityLog({
-            userId: 'usr-admin-01',
-            userEmail: 'aryangandhale27@gmail.com',
-            userName: 'Admin Operations',
-            userRole: 'admin',
-            actionType: 'ASSIGNMENT',
-            targetEntity: 'orders',
-            targetId: orderId,
-            changes: {
-              diffs: {
-                assignedSellerId: { oldValue: order.assignedSellerId || null, newValue: sellerId },
-                assignedSellerName: { oldValue: order.assignedSellerName || null, newValue: sellerName },
-                status: { oldValue: order.status, newValue: nextStatus },
-              },
-              affectedFields: ['assignedSellerId', 'assignedSellerName', 'status'],
-              summary: `Assigned order ${orderId} to fulfillment seller ${sellerName}`,
-            },
-            metadata: {
-              source: 'web_client',
-              reason: notes || 'Fulfillment assignment',
-              route: '/admin',
-            },
-          }).catch((e) => console.warn('[AuditService] assign log deferred:', e));
+    // Trigger automated email: Seller Assignment notification
+    const matchedSeller = availableSellers.find((s) => s.id === sellerId) || {
+      id: sellerId,
+      name: sellerName,
+      email: 'seller@semixlabs.com',
+      phone: '+91 98765 43210',
+      warehouseHub: 'Regional Warehouse Hub',
+      gstin: '29ABCDE1234F1Z5',
+      rating: 4.9,
+    };
+    sendSellerAssignmentEmail(updatedOrder, matchedSeller, notes).catch((e) => {
+      console.warn('[EmailService] Seller assignment email deferred:', e);
+    });
 
-          return updatedOrder;
-        }
-        return order;
-      })
-    );
+    // Record immutable audit log
+    recordActivityLog({
+      userId: 'usr-admin-01',
+      userEmail: 'aryangandhale27@gmail.com',
+      userName: 'Admin Operations',
+      userRole: 'admin',
+      actionType: 'ASSIGNMENT',
+      targetEntity: 'orders',
+      targetId: orderId,
+      changes: {
+        diffs: {
+          assignedSellerId: { oldValue: currentOrder.assignedSellerId || null, newValue: sellerId },
+          assignedSellerName: { oldValue: currentOrder.assignedSellerName || null, newValue: sellerName },
+          status: { oldValue: currentOrder.status, newValue: nextStatus },
+        },
+        affectedFields: ['assignedSellerId', 'assignedSellerName', 'status'],
+        summary: `Assigned order ${orderId} to fulfillment seller ${sellerName}`,
+      },
+      metadata: {
+        source: 'web_client',
+        reason: notes || 'Fulfillment assignment',
+        route: '/admin',
+      },
+    }).catch((e) => console.warn('[AuditService] assign log deferred:', e));
 
     showToast('Seller Assigned', `Order ${orderId} assigned to ${sellerName}. Dispatch email sent to hub!`, 'success');
   };

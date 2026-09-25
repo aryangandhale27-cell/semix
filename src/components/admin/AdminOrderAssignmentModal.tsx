@@ -26,7 +26,7 @@ export const AdminOrderAssignmentModal: React.FC<AdminOrderAssignmentModalProps>
   isOpen,
   onClose,
 }) => {
-  const { availableSellers, orders, assignSellerToOrder } = useApp();
+  const { availableSellers, orders, assignSellerToOrder, showToast } = useApp();
   const [selectedSellerId, setSelectedSellerId] = useState<string>(() => {
     return order?.assignedSellerId || (availableSellers[0]?.id || '');
   });
@@ -55,14 +55,20 @@ export const AdminOrderAssignmentModal: React.FC<AdminOrderAssignmentModalProps>
     ).length;
   };
 
-  const handleConfirm = (e: React.FormEvent) => {
+  const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSeller) return;
 
     setIsSubmitting(true);
-    assignSellerToOrder(order.id, selectedSeller.id, selectedSeller.name, assignmentNote.trim() || undefined);
-    setIsSubmitting(false);
-    onClose();
+    try {
+      await assignSellerToOrder(order.id, selectedSeller.id, selectedSeller.name, assignmentNote.trim() || undefined);
+      onClose();
+    } catch (error) {
+      console.error('[Admin] Seller reassignment failed:', error);
+      showToast('Seller Reassignment Failed', 'The assignment could not be saved. Check your connection and try again.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

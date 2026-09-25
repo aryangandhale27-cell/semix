@@ -145,7 +145,7 @@ export function subscribeToProducts(
 export async function syncOrderToFirestore(order: Order): Promise<void> {
   const path = `orders/${order.id}`;
   try {
-    await setDoc(doc(db, 'orders', order.id), order, { merge: true });
+    await setDoc(doc(db, 'orders', order.id), sanitizeForFirestore(order), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
