@@ -348,29 +348,7 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       if (!firebaseUser) {
         isSigningOutRef.current = false;
         setUser(null);
-        return;
       }
-
-      const cleanEmail = firebaseUser.email?.toLowerCase() || '';
-      const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
-      const matchedUser = registeredUsersRef.current.find((u) => u.email.toLowerCase() === cleanEmail);
-      const assignedRole: UserRole = matchedUser?.role || (isAryanAdmin ? 'admin' : 'customer');
-
-      const authPayload: AuthUser = {
-        id: firebaseUser.uid,
-        name: firebaseUser.displayName || matchedUser?.name || cleanEmail.split('@')[0].replace(/[._]/g, ' '),
-        email: cleanEmail,
-        role: assignedRole,
-        phone: firebaseUser.phoneNumber || matchedUser?.phone || '',
-        department: matchedUser?.department || (assignedRole === 'admin' ? 'Executive Operations' : undefined),
-        status: matchedUser?.status || 'active',
-        createdAt: matchedUser?.createdAt || new Date().toISOString().slice(0, 10),
-      };
-
-      setUser((prev) => {
-        const sameUser = prev && prev.id === authPayload.id && prev.role === authPayload.role && prev.email === authPayload.email;
-        return sameUser ? prev : authPayload;
-      });
     });
 
     return () => unsubscribe();
@@ -380,6 +358,32 @@ const [usersLoaded, setUsersLoaded] = useState(false);
   useEffect(() => {
     registeredUsersRef.current = registeredUsers;
   }, [registeredUsers]);
+
+  // Resolve the role only after the Firestore user directory has loaded. The
+  // Firebase auth callback can run before that directory is available.
+  useEffect(() => {
+    if (!authReady || !usersLoaded || !firebaseAuthUser) return;
+
+    const cleanEmail = firebaseAuthUser.email?.toLowerCase() || '';
+    const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
+    const matchedUser = registeredUsers.find((entry) => entry.email.toLowerCase() === cleanEmail);
+    const assignedRole: UserRole = matchedUser?.role || (isAryanAdmin ? 'admin' : 'customer');
+    const authPayload: AuthUser = {
+      id: firebaseAuthUser.uid,
+      name: firebaseAuthUser.displayName || matchedUser?.name || cleanEmail.split('@')[0].replace(/[._]/g, ' '),
+      email: cleanEmail,
+      role: assignedRole,
+      phone: firebaseAuthUser.phoneNumber || matchedUser?.phone || '',
+      department: matchedUser?.department || (assignedRole === 'admin' ? 'Executive Operations' : undefined),
+      status: matchedUser?.status || 'active',
+      createdAt: matchedUser?.createdAt || new Date().toISOString().slice(0, 10),
+    };
+
+    setUser((prev) => {
+      const sameUser = prev && prev.id === authPayload.id && prev.role === authPayload.role && prev.email === authPayload.email;
+      return sameUser ? prev : authPayload;
+    });
+  }, [authReady, usersLoaded, firebaseAuthUser, registeredUsers]);
 
   // Firebase Auth owns session persistence; React only mirrors the current session.
   useEffect(() => {
