@@ -140,13 +140,16 @@ export const HomePage: React.FC = () => {
             )}
 
             {currentSlide && currentSlide.id !== displayedSlide?.id && (
-              <img
-                src={currentSlide.desktopImage || currentSlide.mobileImage}
-                alt=""
-                aria-hidden="true"
-                onLoad={() => setDisplayedSlide(currentSlide)}
-                className="pointer-events-none absolute h-px w-px opacity-0"
-              />
+              <picture className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden="true">
+                {currentSlide.mobileImage && (
+                  <source media="(max-width: 640px)" srcSet={currentSlide.mobileImage} />
+                )}
+                <img
+                  src={currentSlide.desktopImage || currentSlide.mobileImage}
+                  alt=""
+                  onLoad={() => setDisplayedSlide(currentSlide)}
+                />
+              </picture>
             )}
 
             {activeBanners.length > 1 && (
