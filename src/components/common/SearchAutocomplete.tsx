@@ -99,6 +99,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
     setSearchQuery(q);
     setIsOpen(false);
+    inputRef.current?.blur();
 
     recordSearchQuery(
       q,

@@ -54,6 +54,9 @@ export const CategoriesPage: React.FC = () => {
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur();
+              }}
               placeholder="Search categories"
               aria-label="Search categories"
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-xs font-medium text-slate-800 shadow-2xs outline-none transition focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/10"
