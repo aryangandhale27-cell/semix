@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, StaffMember } from '../../types';
 import { SemixLabsLogo } from '../../components/common/SemixLabsLogo';
@@ -131,6 +131,25 @@ export const AdminDashboardPage: React.FC = () => {
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [adminSectionsOpen, setAdminSectionsOpen] = useState(false);
   const sentEmailsList = getLocalSentEmails();
+  const productAttribution = useMemo(() => {
+    const counts = new Map<string, { name: string; email: string; role: string; count: number }>();
+
+    products.forEach((product) => {
+      const name = product.addedBy || 'Semix Team';
+      const email = product.addedByEmail || '';
+      const role = product.addedByRole || 'team';
+      const key = email || name;
+      const current = counts.get(key) || { name, email, role, count: 0 };
+      current.count += 1;
+      counts.set(key, current);
+    });
+
+    return Array.from(counts.values())
+      .sort((a, b) => b.count - a.count)
+      .map((member, index) => ({ ...member, rank: index + 1 }));
+  }, [products]);
+
+  const topProductContributor = productAttribution[0];
 
   const handleSaveNewProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -666,6 +685,56 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Tab 2: Catalog Management */}
       {activeTab === 'catalog' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+          <div className="grid grid-cols-1 gap-4 border-b border-slate-200 pb-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+              <div className="mb-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Lifetime Product Adds</p>
+                <h3 className="mt-1 text-lg font-black text-slate-900">{products.length} products attributed</h3>
+              </div>
+              <div className="space-y-2">
+                {productAttribution.length === 0 ? (
+                  <p className="text-xs text-slate-500">No product attribution data is available yet.</p>
+                ) : productAttribution.map((member) => (
+                  <div
+                    key={`${member.email || member.name}-${member.role}`}
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2 ${member.rank === 1 ? 'border-[#561269]/30 bg-[#561269]/5' : 'border-slate-200 bg-slate-50'}`}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black ${member.rank === 1 ? 'bg-[#561269] text-white' : 'bg-slate-200 text-slate-700'}`}>
+                        {member.rank}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-xs font-bold text-slate-800">{member.name}</p>
+                          {member.rank === 1 && (
+                            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">
+                              Top contributor
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500">{member.email || 'no email on file'} • {member.role}</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-[#561269] px-2 py-1 text-[10px] font-bold text-white">{member.count}</span>
+                  </div>
+                ))}
+              </div>
+              {topProductContributor && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-800">
+                  Leaderboard leader: {topProductContributor.name} with {topProductContributor.count} total products added.
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Product Attribution</p>
+              <div className="space-y-2 text-xs leading-relaxed text-slate-600">
+                <p>Each product keeps the creator name, email, and role in Firestore.</p>
+                <p>Use this view to identify who added an item and contact them directly about quality or listing issues.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
             <div>
               <h3 className="font-extrabold text-sm text-[#561269]">Component Catalog Directory</h3>
