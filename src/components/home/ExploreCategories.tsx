@@ -179,7 +179,7 @@ export const ExploreCategories: React.FC<ExploreCategoriesProps> = ({
       {/* Responsive CSS Grid: 2 columns on mobile, 2 on tablet, 4 on desktop */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
         {categories.length > 0 ? categories.map((category) => (
-          <CategoryCard key={category.id} category={category} />
+          <CategoryCard key={category.id} category={category} priority />
         )) : Array.from({ length: 4 }, (_, index) => (
           <div
             key={`category-loading-${index}`}

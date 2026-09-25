@@ -82,7 +82,7 @@ export const CategoriesPage: React.FC = () => {
             <CategoryCard
               key={category.id}
               category={category}
-              priority={visibleCategories.indexOf(category) < 4}
+              priority
             />
           ))}
         </div>

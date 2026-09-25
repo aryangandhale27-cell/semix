@@ -10,13 +10,6 @@ interface CategoryCardProps {
   priority?: boolean;
 }
 
-const PRIORITY_CATEGORY_IDS = new Set([
-  'cat-electronic-components',
-  'cat-electronic-modules-dev-boards',
-  'cat-batteries-power-supply',
-  'cat-smd-sample-books-kits',
-]);
-
 // Curated high-resolution cutout product images for electronics categories
 export const CATEGORY_IMAGE_MAP: Record<string, string> = {
   'cat-electronic-components': 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&w=600&q=80',
@@ -37,7 +30,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
   const [imageError, setImageError] = useState(false);
 
   const displayImage = category.image;
-  const shouldPrioritizeImage = priority && PRIORITY_CATEGORY_IDS.has(category.id);
+  const shouldPrioritizeImage = priority;
 
   return (
     <motion.div
