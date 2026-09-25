@@ -9,7 +9,7 @@ export const CATEGORIES: Category[] = [
     description: 'Resistors, capacitors, diodes, transistors, relays, crystals, fuses, and IC sockets',
     count: 184,
     color: '#FF6B00',
-    image: 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&w=600&q=80',
+    image: 'https://firebasestorage.googleapis.com/v0/b/semix-ai-stdio.firebasestorage.app/o/categories%2Fcat-electronic-components%2F1789989336094-8900f6b0-b7af-45c7-85d5-9aa283957fc8-dsefgrthfyjghuk.webp?alt=media&token=d5809d6f-e878-4333-ab59-14081de2ae93',
     popularItems: ['1/4W Metal Film Resistors', '1N4007 Diode Pack', '5V SPDT Relay']
   },
   {
@@ -20,7 +20,7 @@ export const CATEGORIES: Category[] = [
     description: 'Arm Cortex, ESP32, Raspberry Pi, Arduino, STM32, IoT compute, and breakout modules',
     count: 142,
     color: '#561269',
-    image: 'https://images.unsplash.com/photo-1553406830-ef2513450d76?auto=format&fit=crop&w=600&q=80',
+    image: 'https://firebasestorage.googleapis.com/v0/b/semix-ai-stdio.firebasestorage.app/o/categories%2Fcat-electronic-modules-dev-boards%2F1789989029256-06d71bce-09dc-4894-bff7-85a5a6581eab-fvhnmjk-j.webp?alt=media&token=2874d67d-7cf5-4fb5-87fa-008db201481a',
     popularItems: ['Raspberry Pi 5', 'Arduino Uno R4', 'ESP32-WROOM-32D']
   },
   {
@@ -31,7 +31,7 @@ export const CATEGORIES: Category[] = [
     description: 'LiPo packs, 18650 cells, TP4056 chargers, buck-boost converters, SMPS, and BMS boards',
     count: 76,
     color: '#FF6B00',
-    image: 'https://images.unsplash.com/photo-1619725002198-6a689b72f41d?auto=format&fit=crop&w=600&q=80',
+    image: 'https://firebasestorage.googleapis.com/v0/b/semix-ai-stdio.firebasestorage.app/o/categories%2Fcat-batteries-power-supply%2F1789988651648-874f0b56-284a-407e-aa36-3616c0a0c1dc-drdhtfyjuk.webp?alt=media&token=fba3433b-4235-41c0-8050-38aaa3b93b93',
     popularItems: ['3S 2200mAh LiPo', 'TP4056 Type-C Charger', 'LM2596 Buck Converter']
   },
   {
@@ -42,7 +42,7 @@ export const CATEGORIES: Category[] = [
     description: '0402, 0603, 0805, 1206 resistor & capacitor sample books, lab component binder kits',
     count: 32,
     color: '#561269',
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80',
+    image: 'https://firebasestorage.googleapis.com/v0/b/semix-ai-stdio.firebasestorage.app/o/categories%2Fcat-smd-sample-books-kits%2F1789989312704-d57b5291-23bf-41c3-972d-53be4f964a4d-fghjki.webp?alt=media&token=3316971f-7a8b-4de7-a610-c2b540145b30',
     popularItems: ['0805 SMD Resistor Book', '0603 Capacitor Kit', 'SMD Diode Sample Binder']
   },
   {

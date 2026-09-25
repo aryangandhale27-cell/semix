@@ -385,9 +385,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    testFirestoreConnection()
-      .then(() => setIsFirebaseLive(true))
-      .catch(() => setIsFirebaseLive(false));
+    const scheduleConnectionCheck = window.setTimeout(() => {
+      testFirestoreConnection()
+        .then(() => setIsFirebaseLive(true))
+        .catch(() => setIsFirebaseLive(false));
+    }, 2000);
+
+    return () => window.clearTimeout(scheduleConnectionCheck);
   }, []);
 
   // Role state
@@ -507,7 +511,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Categories State & Management
   const [categories, setCategories] = useState<Category[]>(() =>
-    readCachedData<Category[]>(APP_DATA_CACHE_KEYS.categories, [])
+    readCachedData<Category[]>(APP_DATA_CACHE_KEYS.categories, CATEGORIES)
   );
 
   useEffect(() => {
@@ -543,7 +547,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Homepage Banners State & Management
   const [banners, setBanners] = useState<HomepageBanner[]>(() =>
-    readCachedData<HomepageBanner[]>(APP_DATA_CACHE_KEYS.banners, [])
+    readCachedData<HomepageBanner[]>(APP_DATA_CACHE_KEYS.banners, INITIAL_HOMEPAGE_BANNERS)
   );
 
   useEffect(() => {
