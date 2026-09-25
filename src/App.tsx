@@ -13,9 +13,9 @@ import { ToastContainer } from './components/common/Toast';
 import { CompareDrawer } from './components/common/CompareDrawer';
 import { AuthModal } from './components/common/AuthModal';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { HomePage } from './pages/customer/HomePage';
+import { CategoriesPage } from './pages/customer/CategoriesPage';
 
-const HomePage = lazy(() => import('./pages/customer/HomePage').then((module) => ({ default: module.HomePage })));
-const CategoriesPage = lazy(() => import('./pages/customer/CategoriesPage').then((module) => ({ default: module.CategoriesPage })));
 const ShopPage = lazy(() => import('./pages/customer/ShopPage').then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import('./pages/customer/ProductDetailPage').then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import('./pages/customer/CartPage').then((module) => ({ default: module.CartPage })));
