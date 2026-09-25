@@ -178,8 +178,14 @@ export const ExploreCategories: React.FC<ExploreCategoriesProps> = ({
 
       {/* Responsive CSS Grid: 2 columns on mobile, 2 on tablet, 4 on desktop */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-        {categories.map((category) => (
+        {categories.length > 0 ? categories.map((category) => (
           <CategoryCard key={category.id} category={category} />
+        )) : Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={`category-loading-${index}`}
+            className="min-h-[220px] animate-pulse rounded-xl border border-slate-200 bg-slate-200 sm:min-h-[270px] sm:rounded-2xl"
+            aria-label="Loading category"
+          />
         ))}
       </div>
     </section>

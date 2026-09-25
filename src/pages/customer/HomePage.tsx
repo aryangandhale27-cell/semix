@@ -89,6 +89,10 @@ export const HomePage: React.FC = () => {
           onTouchEnd={handleHeroTouchEnd}
           className="w-full relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y"
         >
+            {!currentSlide && (
+              <div className="aspect-[1600/700] w-full animate-pulse bg-slate-200" aria-label="Loading homepage banner" />
+            )}
+
             {currentSlide && (
               <div className="relative z-10">
                 <Link

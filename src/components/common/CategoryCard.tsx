@@ -7,6 +7,7 @@ import { Category } from '../../types';
 interface CategoryCardProps {
   category: Category;
   className?: string;
+  priority?: boolean;
 }
 
 const PRIORITY_CATEGORY_IDS = new Set([
@@ -32,11 +33,11 @@ export const CATEGORY_IMAGE_MAP: Record<string, string> = {
   'cat-smd-components': 'https://images.unsplash.com/photo-1608755728617-aefab37d45f1?auto=format&fit=crop&w=600&q=80',
 };
 
-export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className = '' }) => {
+export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className = '', priority = false }) => {
   const [imageError, setImageError] = useState(false);
 
   const displayImage = category.image;
-  const shouldPrioritizeImage = PRIORITY_CATEGORY_IDS.has(category.id);
+  const shouldPrioritizeImage = priority && PRIORITY_CATEGORY_IDS.has(category.id);
 
   return (
     <motion.div

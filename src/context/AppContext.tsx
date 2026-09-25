@@ -506,18 +506,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [cart, wishlist, compareList, userStateReady]);
 
   // Categories State & Management
-  const [categories, setCategories] = useState<Category[]>(() =>
-    readCachedData<Category[]>(APP_DATA_CACHE_KEYS.categories, CATEGORIES)
-  );
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     let isMounted = true;
+    clearCachedData(APP_DATA_CACHE_KEYS.categories);
 
     const unsub = subscribeToCategories((data) => {
       if (isMounted) {
         const mergedCategories = data.length > 0 ? mergeCategoriesWithDefaults(data) : [];
         setCategories(mergedCategories);
-        writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
       }
     }, (err) => console.warn('[CategoryService] Listener error:', err));
 
@@ -542,18 +540,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Homepage Banners State & Management
-  const [banners, setBanners] = useState<HomepageBanner[]>(() =>
-    readCachedData<HomepageBanner[]>(APP_DATA_CACHE_KEYS.banners, INITIAL_HOMEPAGE_BANNERS)
-  );
+  const [banners, setBanners] = useState<HomepageBanner[]>([]);
 
   useEffect(() => {
     let isMounted = true;
+    clearCachedData(APP_DATA_CACHE_KEYS.banners);
 
     const unsub = subscribeToBanners((data) => {
       if (isMounted) {
         const nextBanners = data || [];
         setBanners(nextBanners);
-        writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
       }
     }, (err) => console.warn('[BannerService] Listener error:', err));
 
@@ -575,7 +571,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await syncBannerToFirestore(newBanner);
     const nextBanners = [...banners, newBanner].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     setBanners(nextBanners);
-    writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
     showToast('Banner Added', `Added banner "${newBanner.title}" to homepage`, 'success');
 
     return newBanner;
@@ -590,7 +585,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await syncBannerToFirestore(withTimestamp);
     const nextBanners = banners.map((b) => (b.id === updatedBanner.id ? withTimestamp : b));
     setBanners(nextBanners);
-    writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
     showToast('Banner Updated', `Updated banner "${updatedBanner.title}"`, 'success');
   };
 
@@ -598,7 +592,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await deleteBannerFromFirestore(bannerId);
     const nextBanners = banners.filter((b) => b.id !== bannerId);
     setBanners(nextBanners);
-    writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
     showToast('Banner Deleted', 'Banner removed from homepage slides', 'info');
   };
 

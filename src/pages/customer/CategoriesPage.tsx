@@ -62,14 +62,28 @@ export const CategoriesPage: React.FC = () => {
         </div>
       </div>
 
-      {visibleCategories.length === 0 ? (
+      {categories.length === 0 ? (
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2.5 px-3 sm:grid-cols-2 sm:gap-4 sm:px-6 md:grid-cols-3 lg:grid-cols-4 lg:gap-5">
+          {Array.from({ length: 8 }, (_, index) => (
+            <div
+              key={`categories-loading-${index}`}
+              className="min-h-[220px] animate-pulse rounded-xl border border-slate-200 bg-slate-200 sm:min-h-[270px] sm:rounded-2xl"
+              aria-label="Loading category"
+            />
+          ))}
+        </div>
+      ) : visibleCategories.length === 0 ? (
         <div className="mx-auto max-w-7xl rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 shadow-2xs">
           No categories match your search.
         </div>
       ) : (
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2.5 px-3 sm:grid-cols-2 sm:gap-4 sm:px-6 md:grid-cols-3 lg:grid-cols-4 lg:gap-5 lg:px-8">
           {visibleCategories.map((category) => (
-            <CategoryCard key={category.id} category={category} />
+            <CategoryCard
+              key={category.id}
+              category={category}
+              priority={visibleCategories.indexOf(category) < 4}
+            />
           ))}
         </div>
       )}
