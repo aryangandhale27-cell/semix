@@ -36,6 +36,13 @@ export const HomePage: React.FC = () => {
 
   const currentSlideIndex = activeBanners.length > 0 ? heroSlide % activeBanners.length : 0;
   const currentSlide = activeBanners[currentSlideIndex];
+  const [displayedSlide, setDisplayedSlide] = useState<HomepageBanner | null>(null);
+
+  useEffect(() => {
+    if (!displayedSlide && currentSlide) {
+      setDisplayedSlide(currentSlide);
+    }
+  }, [currentSlide, displayedSlide]);
 
   useEffect(() => {
     activeBanners.forEach((banner) => {
@@ -98,27 +105,27 @@ export const HomePage: React.FC = () => {
           onTouchEnd={handleHeroTouchEnd}
           className="w-full relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y"
         >
-            {!currentSlide && (
+            {!displayedSlide && (
               <div className="aspect-[1600/700] w-full animate-pulse bg-slate-200" aria-label="Loading homepage banner" />
             )}
 
-            {currentSlide && (
+            {displayedSlide && (
               <div className="relative z-10">
                 <Link
-                  to={currentSlide.linkUrl || '/shop'}
+                  to={displayedSlide.linkUrl || '/shop'}
                   onClick={(event) => {
                     if (isSwiping.current) event.preventDefault();
                   }}
                   className="block w-full"
                 >
                   <picture className="block w-full">
-                    {currentSlide.mobileImage && (
-                      <source media="(max-width: 640px)" srcSet={currentSlide.mobileImage} />
+                    {displayedSlide.mobileImage && (
+                      <source media="(max-width: 640px)" srcSet={displayedSlide.mobileImage} />
                     )}
                     <img
-                      key={currentSlide.id}
-                      src={currentSlide.desktopImage || currentSlide.mobileImage}
-                      alt={currentSlide.title}
+                      key={displayedSlide.id}
+                      src={displayedSlide.desktopImage || displayedSlide.mobileImage}
+                      alt={displayedSlide.title}
                       loading="eager"
                       fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
                       decoding="async"
@@ -130,6 +137,16 @@ export const HomePage: React.FC = () => {
                   </picture>
                 </Link>
               </div>
+            )}
+
+            {currentSlide && currentSlide.id !== displayedSlide?.id && (
+              <img
+                src={currentSlide.desktopImage || currentSlide.mobileImage}
+                alt=""
+                aria-hidden="true"
+                onLoad={() => setDisplayedSlide(currentSlide)}
+                className="pointer-events-none absolute h-px w-px opacity-0"
+              />
             )}
 
             {activeBanners.length > 1 && (
