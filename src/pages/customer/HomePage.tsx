@@ -37,6 +37,15 @@ export const HomePage: React.FC = () => {
   const currentSlideIndex = activeBanners.length > 0 ? heroSlide % activeBanners.length : 0;
   const currentSlide = activeBanners[currentSlideIndex];
 
+  useEffect(() => {
+    activeBanners.forEach((banner) => {
+      [banner.desktopImage, banner.mobileImage].filter(Boolean).forEach((imageUrl) => {
+        const image = new Image();
+        image.src = imageUrl;
+      });
+    });
+  }, [banners]);
+
   // Auto rotate hero slides
   useEffect(() => {
     if (isHovered || activeBanners.length <= 1) return;
@@ -107,9 +116,10 @@ export const HomePage: React.FC = () => {
                       <source media="(max-width: 640px)" srcSet={currentSlide.mobileImage} />
                     )}
                     <img
+                      key={currentSlide.id}
                       src={currentSlide.desktopImage || currentSlide.mobileImage}
                       alt={currentSlide.title}
-                      loading={currentSlideIndex === 0 ? 'eager' : 'lazy'}
+                      loading="eager"
                       fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
                       decoding="async"
                       width={1600}
