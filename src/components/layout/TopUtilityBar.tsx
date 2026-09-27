@@ -14,7 +14,8 @@ import {
   ChevronDown,
   UserCheck,
   Sparkles,
-  Store
+  Store,
+  Truck
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -82,22 +83,26 @@ export const TopUtilityBar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-8 sm:h-9 flex items-center justify-between">
         {/* Left info */}
         <div className="flex items-center gap-4 sm:gap-6">
-          <div className="flex items-center gap-1.5 font-medium text-slate-200">
+          <div className="flex items-center gap-1.5 rounded-full border border-[#edd6f3] bg-[#fbf5fc] px-2.5 py-1 font-medium text-[#561269]">
             <Phone className="w-3.5 h-3.5 text-[#FF6B00]" />
-            <span className="hidden sm:inline text-slate-400">Customer Support:</span>
-            <a href="tel:+917666601086" className="hover:text-white font-semibold transition-colors">
+            <span className="hidden sm:inline text-[#762f8e]">Customer Support:</span>
+            <a href="tel:+917666601086" className="font-semibold text-[#561269] transition-colors hover:text-[#FF6B00]">
               +91 7666601086
             </a>
           </div>
-          <div className="hidden md:flex items-center gap-1.5 text-slate-300">
+          <div className="hidden md:flex items-center gap-1.5 rounded-full border border-[#edd6f3] bg-[#fbf5fc] px-2.5 py-1 text-[#561269]">
             <Mail className="w-3.5 h-3.5 text-[#FF6B00]" />
-            <a href="mailto:office@semixlabs.com" className="hover:text-white transition-colors">
+            <a href="mailto:office@semixlabs.com" className="font-medium text-[#561269] transition-colors hover:text-[#FF6B00]">
               office@semixlabs.com
             </a>
           </div>
-          <div className="hidden lg:flex items-center gap-1.5 text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full text-[11px] font-medium border border-emerald-800/40">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            Same Day Dispatch before 4 PM
+          <div className="hidden lg:flex items-center gap-2 rounded-full border border-emerald-800 bg-emerald-800 px-2.5 py-1 text-[10px] shadow-sm">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-700 text-white">
+              <Truck className="h-3 w-3" />
+            </span>
+            <span className="font-semibold text-white">Same-day dispatch</span>
+            <span className="h-3 w-px bg-white/40" aria-hidden="true"></span>
+            <span className="rounded-full bg-white px-2 py-0.5 font-extrabold text-emerald-900">Before 4 PM</span>
           </div>
         </div>
 

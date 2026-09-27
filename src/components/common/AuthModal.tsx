@@ -281,10 +281,10 @@ export const AuthModal: React.FC = () => {
         <div className="bg-gradient-to-r from-[#561269] via-[#561269] to-[#380847] text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <SemixLabsLogo
-  variant="icon"
-  size="sm"
-  className="h-9 w-9 bg-white p-1 rounded-xl border border-white grayscale"
-/>
+              variant="icon"
+              size="sm"
+              className="h-9 w-9 bg-white p-1 rounded-xl border border-white"
+            />
             <div>
               <h3 id="auth-modal-title" className="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
                 SEMIX LABS Portal Access
