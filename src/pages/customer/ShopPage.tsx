@@ -34,7 +34,7 @@ export const ShopPage: React.FC = () => {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedVoltages, setSelectedVoltages] = useState<string[]>([]);
-  const [maxPrice, setMaxPrice] = useState<number>(10000);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<string>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [visibleProductState, setVisibleProductState] = useState({ key: '', count: PRODUCT_BATCH_SIZE });
@@ -67,6 +67,11 @@ export const ShopPage: React.FC = () => {
     return Array.from(new Set(products.map((p) => p.voltage))).filter(Boolean) as string[];
   }, [products]);
 
+  const maxPriceLimit = useMemo(() => {
+    const highestPrice = products.reduce((highest, product) => Math.max(highest, product.price), 0);
+    return Math.max(10000, Math.ceil(highestPrice / 1000) * 1000);
+  }, [products]);
+
   // Handle brand toggle
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) =>
@@ -86,7 +91,7 @@ export const ShopPage: React.FC = () => {
     setInStockOnly(false);
     setSelectedBrands([]);
     setSelectedVoltages([]);
-    setMaxPrice(10000);
+    setMaxPrice(null);
     setSearchQuery('');
     setSortBy('featured');
     setSearchParams({});
@@ -136,7 +141,7 @@ export const ShopPage: React.FC = () => {
         return false;
       }
       // Price filter
-      if (product.price > maxPrice) {
+      if (maxPrice !== null && product.price > maxPrice) {
         return false;
       }
       return true;
@@ -192,7 +197,7 @@ export const ShopPage: React.FC = () => {
     selectedBrands.length +
     selectedVoltages.length +
     (searchQuery ? 1 : 0) +
-    (maxPrice < 10000 ? 1 : 0);
+    (maxPrice !== null && maxPrice < maxPriceLimit ? 1 : 0);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -345,20 +350,20 @@ export const ShopPage: React.FC = () => {
           <div className="pt-4 border-t border-slate-100">
             <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-2">
               <span>Max Price</span>
-              <span className="font-mono text-[#561269]">₹{maxPrice.toLocaleString('en-IN')}</span>
+              <span className="font-mono text-[#561269]">₹{(maxPrice ?? maxPriceLimit).toLocaleString('en-IN')}</span>
             </div>
             <input
               type="range"
               min="50"
-              max="10000"
+              max={maxPriceLimit}
               step="50"
-              value={maxPrice}
+              value={maxPrice ?? maxPriceLimit}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
               className="w-full accent-[#FF6B00] cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-1">
               <span>₹50</span>
-              <span>₹10,000</span>
+              <span>₹{maxPriceLimit.toLocaleString('en-IN')}</span>
             </div>
           </div>
 
@@ -608,14 +613,14 @@ export const ShopPage: React.FC = () => {
 
               <div>
                 <span className="text-xs font-bold text-slate-700 block mb-1">
-                  Max Price: ₹{maxPrice}
+                  Max Price: ₹{(maxPrice ?? maxPriceLimit).toLocaleString('en-IN')}
                 </span>
                 <input
                   type="range"
                   min="50"
-                  max="10000"
+                  max={maxPriceLimit}
                   step="50"
-                  value={maxPrice}
+                  value={maxPrice ?? maxPriceLimit}
                   onChange={(e) => setMaxPrice(Number(e.target.value))}
                   className="w-full"
                 />
