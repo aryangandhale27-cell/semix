@@ -3,8 +3,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { Product } from '../../types';
 import { ProductCard } from '../../components/common/ProductCard';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
+import { ProductFormModal } from '../../components/team/ProductFormModal';
 import { 
   ShoppingCart, 
   Heart, 
@@ -36,7 +38,7 @@ import {
 
 export const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
-  const { products, addToCart, toggleWishlist, isInWishlist, addToCompare, isComparing, calculateAppliedPrice, deleteProduct } = useApp();
+  const { products, addToCart, toggleWishlist, isInWishlist, addToCompare, isComparing, calculateAppliedPrice, updateProduct, deleteProduct } = useApp();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -48,6 +50,7 @@ export const ProductDetailPage: React.FC = () => {
   const [selectedQty, setSelectedQty] = useState(1);
   const [selectedImgIdx, setSelectedImgIdx] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'specs' | 'datasheet' | 'tiers' | 'reviews'>('specs');
   const [added, setAdded] = useState(false);
@@ -291,6 +294,15 @@ export const ProductDetailPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-[#FF6B00]" />
+              <span>Edit Product</span>
+            </button>
+
             <Link
               to={user.role === 'admin' ? '/admin' : '/team'}
               className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-1.5"
@@ -1010,6 +1022,13 @@ export const ProductDetailPage: React.FC = () => {
       </AnimatePresence>
 
       {/* Delete Confirmation Modal for Staff */}
+      <ProductFormModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        initialProduct={product}
+        onSave={(updatedProduct) => updateProduct(updatedProduct as Product)}
+      />
+
       <DeleteConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
