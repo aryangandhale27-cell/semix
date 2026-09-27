@@ -83,6 +83,9 @@ export const TeamPortalPage: React.FC = () => {
   const [stockSearch, setStockSearch] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+  const [stockPriceSort, setStockPriceSort] = useState<'default' | 'high_to_low' | 'low_to_high'>('default');
+  const [minimumPrice, setMinimumPrice] = useState('');
+  const [maximumPrice, setMaximumPrice] = useState('');
   const [visibleInventoryCount, setVisibleInventoryCount] = useState(INVENTORY_BATCH_SIZE);
   
   // Product Modal (Add / Edit)
@@ -167,11 +170,15 @@ export const TeamPortalPage: React.FC = () => {
 
   // Filtered Products for Inventory Table
   const filteredProducts = useMemo(() => {
-    return products.filter((prod) => {
+    const minPrice = minimumPrice === '' ? null : Number(minimumPrice);
+    const maxPrice = maximumPrice === '' ? null : Number(maximumPrice);
+    const matchingProducts = products.filter((prod) => {
       // Category filter
       if (selectedCategoryFilter !== 'All' && prod.category !== selectedCategoryFilter) {
         return false;
       }
+      if (minPrice !== null && prod.price < minPrice) return false;
+      if (maxPrice !== null && prod.price > maxPrice) return false;
       // Stock status filter
       if (stockStatusFilter === 'in_stock' && prod.stockCount <= 20) return false;
       if (stockStatusFilter === 'low_stock' && (prod.stockCount === 0 || prod.stockCount > 20)) return false;
@@ -187,7 +194,15 @@ export const TeamPortalPage: React.FC = () => {
       }
       return true;
     });
-  }, [products, selectedCategoryFilter, stockStatusFilter, stockSearch]);
+
+    if (stockPriceSort === 'high_to_low') {
+      return matchingProducts.sort((a, b) => b.price - a.price);
+    }
+    if (stockPriceSort === 'low_to_high') {
+      return matchingProducts.sort((a, b) => a.price - b.price);
+    }
+    return matchingProducts;
+  }, [products, selectedCategoryFilter, stockStatusFilter, stockSearch, stockPriceSort, minimumPrice, maximumPrice]);
 
   useEffect(() => {
     setVisibleInventoryCount(INVENTORY_BATCH_SIZE);
@@ -577,9 +592,9 @@ export const TeamPortalPage: React.FC = () => {
         >
           {/* Controls Bar: Search, Category Filter, Stock Status Filter, + Add Product */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 flex-1 min-w-0">
               {/* Search */}
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-[220px]">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -623,6 +638,38 @@ export const TeamPortalPage: React.FC = () => {
                 <option value="low_stock">Low Stock (1-20 pcs)</option>
                 <option value="out_of_stock">Out of Stock (0 pcs)</option>
               </select>
+
+              {/* Price Filters */}
+              <select
+                value={stockPriceSort}
+                onChange={(e) => setStockPriceSort(e.target.value as typeof stockPriceSort)}
+                aria-label="Sort products by price"
+                className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white"
+              >
+                <option value="default">Sort by Price</option>
+                <option value="high_to_low">Price: Highest to Lowest</option>
+                <option value="low_to_high">Price: Lowest to Highest</option>
+              </select>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={minimumPrice}
+                onChange={(e) => setMinimumPrice(e.target.value)}
+                aria-label="Minimum price in rupees"
+                placeholder="Min price (₹)"
+                className="w-28 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white"
+              />
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={maximumPrice}
+                onChange={(e) => setMaximumPrice(e.target.value)}
+                aria-label="Maximum price in rupees"
+                placeholder="Max price (₹)"
+                className="w-28 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white"
+              />
             </div>
 
             <div className="flex items-center gap-2">
