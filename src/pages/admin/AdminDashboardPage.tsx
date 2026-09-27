@@ -39,6 +39,7 @@ import { AdminAuditLogsTab } from '../../components/admin/AdminAuditLogsTab';
 import { useFirestoreAdminKPIs } from '../../hooks/useFirestoreAdminKPIs';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
+import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { getLocalSentEmails } from '../../services/emailService';
 import { Tag, Mail, SlidersHorizontal, FolderTree, Image as ImageIcon, Award, ShieldAlert } from 'lucide-react';
 import { CATEGORIES } from '../../mockData/products';
@@ -68,6 +69,7 @@ export const AdminDashboardPage: React.FC = () => {
   } = useApp();
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
   const pendingOrdersCount = orders.filter(
     (o) => !o.assignedSellerId || o.status === 'pending_assignment'
@@ -869,13 +871,26 @@ export const AdminDashboardPage: React.FC = () => {
                   <tr key={p.id} className="hover:bg-slate-50/70">
                     <td className="p-3">
                       <div className="flex items-center gap-2.5">
-                        <img
-                          src={p.image}
-                          alt={p.name}
-                          className="w-8 h-8 object-contain mix-blend-multiply bg-slate-50 rounded p-1 border border-slate-200"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setQuickViewProduct(p)}
+                          className="shrink-0 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#561269]"
+                          aria-label={`View ${p.name}`}
+                        >
+                          <img
+                            src={p.image}
+                            alt=""
+                            className="w-8 h-8 object-contain mix-blend-multiply bg-slate-50 rounded p-1 border border-slate-200"
+                          />
+                        </button>
                         <div>
-                          <p className="font-bold text-slate-900 line-clamp-1">{p.name}</p>
+                          <button
+                            type="button"
+                            onClick={() => setQuickViewProduct(p)}
+                            className="text-left font-bold text-slate-900 line-clamp-1 hover:text-[#561269] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#561269] cursor-pointer"
+                          >
+                            {p.name}
+                          </button>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[10px] text-slate-400 font-mono">Bin: {p.locationBin}</span>
                             <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
@@ -1332,6 +1347,11 @@ export const AdminDashboardPage: React.FC = () => {
         sku={productToDelete?.sku}
         description="Are you sure you want to permanently delete this product? It will be removed from the catalog and active shopping carts."
         confirmLabel="Delete Product"
+      />
+
+      <QuickViewModal
+        product={quickViewProduct}
+        onClose={() => setQuickViewProduct(null)}
       />
 
       {/* Email Preview and Verification Center */}

@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { Order, Product, EscalationIssue, OrderStatus, EscalationType, EscalationPriority } from '../../types';
 import { ProductFormModal } from '../../components/team/ProductFormModal';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
+import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { auth } from '../../lib/firebase';
 import { 
   PackageCheck, 
@@ -91,6 +92,7 @@ export const TeamPortalPage: React.FC = () => {
   // Product Modal (Add / Edit)
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<{ id: string; name: string; sku?: string } | null>(null);
 
   // Inline Stock Editing state: { [productId]: number | null }
@@ -748,17 +750,26 @@ export const TeamPortalPage: React.FC = () => {
                           {/* Image & Name */}
                           <td className="p-3.5">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setQuickViewProduct(prod)}
+                                className="w-10 h-10 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#561269]"
+                                aria-label={`View ${prod.name}`}
+                              >
                                 <img
                                   src={prod.image}
-                                  alt={prod.name}
+                                  alt=""
                                   className="w-full h-full object-contain mix-blend-multiply"
                                 />
-                              </div>
+                              </button>
                               <div className="max-w-xs">
-                                <p className="font-bold text-slate-900 leading-snug line-clamp-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setQuickViewProduct(prod)}
+                                  className="text-left font-bold text-slate-900 leading-snug line-clamp-2 hover:text-[#561269] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#561269]"
+                                >
                                   {prod.name}
-                                </p>
+                                </button>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <span className="text-[10px] text-[#561269] font-bold uppercase">
                                     {prod.brand}
@@ -1675,6 +1686,10 @@ export const TeamPortalPage: React.FC = () => {
         sku={productToDelete?.sku}
         description="Are you sure you want to delete this component from inventory? This removes it permanently from the public catalog."
         confirmLabel="Remove Product"
+      />
+      <QuickViewModal
+        product={quickViewProduct}
+        onClose={() => setQuickViewProduct(null)}
       />
     </div>
   );
