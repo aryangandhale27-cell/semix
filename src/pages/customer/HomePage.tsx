@@ -45,13 +45,15 @@ export const HomePage: React.FC = () => {
   }, [currentSlide, displayedSlide]);
 
   useEffect(() => {
-    activeBanners.forEach((banner) => {
-      [banner.desktopImage, banner.mobileImage].filter(Boolean).forEach((imageUrl) => {
-        const image = new Image();
-        image.src = imageUrl;
-      });
-    });
-  }, [banners]);
+    if (!currentSlide) return;
+
+    const currentImageUrl = currentSlide.desktopImage || currentSlide.mobileImage;
+    if (!currentImageUrl) return;
+
+    const image = new Image();
+    image.decoding = 'async';
+    image.src = currentImageUrl;
+  }, [currentSlide]);
 
   // Auto rotate hero slides
   useEffect(() => {

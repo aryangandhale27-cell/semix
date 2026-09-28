@@ -18,12 +18,14 @@ interface ProductCardProps {
   product: Product;
   onQuickView?: (product: Product) => void;
   compact?: boolean;
+  priority?: boolean;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ 
   product, 
   onQuickView, 
-  compact = false 
+  compact = false,
+  priority = false 
 }) => {
   const { 
     addToCart, 
@@ -177,7 +179,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <img
           src={(product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80')}
           alt={product.name}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
           width={480}
           height={360}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
