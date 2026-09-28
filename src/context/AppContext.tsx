@@ -418,63 +418,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Firestore is authoritative for the shared product catalog.
   useEffect(() => {
     let isMounted = true;
-    let unsubscribe: (() => void) | undefined;
+    const unsubscribe = subscribeToProducts((remoteProducts) => {
+      if (!isMounted) return;
+      const normalizedProducts = remoteProducts.map(normalizeProduct);
+      const queuedProducts = readQueuedProductWrites();
+      const mergedProducts = [...queuedProducts, ...normalizedProducts];
+      const deduped = new Map<string, Product>();
+      mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
+      const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
-    const startSubscription = () => {
-      unsubscribe = subscribeToProducts((remoteProducts) => {
-        if (!isMounted) return;
-        const normalizedProducts = remoteProducts.map(normalizeProduct);
-        const queuedProducts = readQueuedProductWrites();
-        const mergedProducts = [...queuedProducts, ...normalizedProducts];
-        const deduped = new Map<string, Product>();
-        mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
-        const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      setProducts(nextProducts);
+      writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+      const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
+      writeQueuedProductWrites(remainingQueuedProducts);
+    }, (err) => {
+      console.warn('[Firestore] Product live listener notice:', err?.message || err);
+      const queuedProducts = readQueuedProductWrites();
+      if (queuedProducts.length > 0) {
+        setProducts(queuedProducts.map(normalizeProduct));
+        writeCachedData(APP_DATA_CACHE_KEYS.products, queuedProducts.map(normalizeProduct));
+      }
+    }, (changes: ProductSnapshotChange[]) => {
+      if (!isMounted || changes.length === 0) return;
 
-        setProducts(nextProducts);
-        writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
-        const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
-        writeQueuedProductWrites(remainingQueuedProducts);
-      }, (err) => {
-        console.warn('[Firestore] Product live listener notice:', err?.message || err);
-        const queuedProducts = readQueuedProductWrites();
-        if (queuedProducts.length > 0) {
-          setProducts(queuedProducts.map(normalizeProduct));
-          writeCachedData(APP_DATA_CACHE_KEYS.products, queuedProducts.map(normalizeProduct));
+      const changedIds = new Set(changes.map((change) => change.product.id));
+      const productsById = new Map<string, Product>(
+        productsRef.current.map((product) => [product.id, product])
+      );
+
+      changes.forEach((change) => {
+        const normalized = normalizeProduct(change.product);
+        if (change.type === 'removed') {
+          productsById.delete(normalized.id);
+          return;
         }
-      }, (changes: ProductSnapshotChange[]) => {
-        if (!isMounted || changes.length === 0) return;
-
-        const changedIds = new Set(changes.map((change) => change.product.id));
-        const productsById = new Map<string, Product>(
-          productsRef.current.map((product) => [product.id, product])
-        );
-
-        changes.forEach((change) => {
-          const normalized = normalizeProduct(change.product);
-          if (change.type === 'removed') {
-            productsById.delete(normalized.id);
-            return;
-          }
-          productsById.set(normalized.id, normalized);
-        });
-
-        const nextProducts = Array.from(productsById.values());
-        nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-        productsRef.current = nextProducts;
-        setProducts(nextProducts);
-        writeProductCacheWhenIdle(nextProducts);
-        writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
+        productsById.set(normalized.id, normalized);
       });
-    };
 
-    const scheduler = 'requestIdleCallback' in window ? window.requestIdleCallback(startSubscription) : window.setTimeout(startSubscription, 250);
+      const nextProducts = Array.from(productsById.values());
+      nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      productsRef.current = nextProducts;
+      setProducts(nextProducts);
+      writeProductCacheWhenIdle(nextProducts);
+      writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
+    });
 
     return () => {
       isMounted = false;
-      if ('cancelIdleCallback' in window && typeof scheduler === 'number') {
-        window.cancelIdleCallback(scheduler as number);
-      }
-      unsubscribe?.();
+      unsubscribe();
     };
   }, []);
 
@@ -524,26 +515,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     let isMounted = true;
-    let unsub: (() => void) | undefined;
-
-    const startSubscription = () => {
-      unsub = subscribeToCategories((data) => {
-        if (isMounted) {
-          const mergedCategories = data.length > 0 ? mergeCategoriesWithDefaults(data) : [];
-          setCategories(mergedCategories);
-          writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
-        }
-      }, (err) => console.warn('[CategoryService] Listener error:', err));
-    };
-
-    const scheduler = 'requestIdleCallback' in window ? window.requestIdleCallback(startSubscription) : window.setTimeout(startSubscription, 350);
+    const unsub = subscribeToCategories((data) => {
+      if (isMounted) {
+        const mergedCategories = data.length > 0 ? mergeCategoriesWithDefaults(data) : [];
+        setCategories(mergedCategories);
+        writeCachedData(APP_DATA_CACHE_KEYS.categories, mergedCategories);
+      }
+    }, (err) => console.warn('[CategoryService] Listener error:', err));
 
     return () => {
       isMounted = false;
-      if ('cancelIdleCallback' in window && typeof scheduler === 'number') {
-        window.cancelIdleCallback(scheduler as number);
-      }
-      unsub?.();
+      unsub();
     };
   }, []);
 
@@ -568,26 +550,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     let isMounted = true;
-    let unsub: (() => void) | undefined;
-
-    const startSubscription = () => {
-      unsub = subscribeToBanners((data) => {
-        if (isMounted) {
-          const nextBanners = data || [];
-          setBanners(nextBanners);
-          writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
-        }
-      }, (err) => console.warn('[BannerService] Listener error:', err));
-    };
-
-    const scheduler = 'requestIdleCallback' in window ? window.requestIdleCallback(startSubscription) : window.setTimeout(startSubscription, 400);
+    const unsub = subscribeToBanners((data) => {
+      if (isMounted) {
+        const nextBanners = data || [];
+        setBanners(nextBanners);
+        writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
+      }
+    }, (err) => console.warn('[BannerService] Listener error:', err));
 
     return () => {
       isMounted = false;
-      if ('cancelIdleCallback' in window && typeof scheduler === 'number') {
-        window.cancelIdleCallback(scheduler as number);
-      }
-      unsub?.();
+      unsub();
     };
   }, []);
 

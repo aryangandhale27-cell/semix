@@ -47,7 +47,10 @@ export const HomePage: React.FC = () => {
   useEffect(() => {
     if (!currentSlide) return;
 
-    const currentImageUrl = currentSlide.desktopImage || currentSlide.mobileImage;
+    const isMobile = window.matchMedia('(max-width: 640px)').matches;
+    const currentImageUrl = isMobile
+      ? currentSlide.mobileImage || currentSlide.desktopImage
+      : currentSlide.desktopImage || currentSlide.mobileImage;
     if (!currentImageUrl) return;
 
     const image = new Image();

@@ -500,22 +500,20 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
-              {visibleProducts.map((product, index) => (
+              {visibleProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
-                  priority={index < 6}
                   onQuickView={(p) => setQuickViewProduct(p)}
                 />
               ))}
             </div>
           ) : (
             <div className="space-y-4">
-              {visibleProducts.map((product, index) => (
+              {visibleProducts.map((product) => (
                 <div
                   key={product.id}
                   className="bg-white rounded-xl border border-slate-200 p-4 hover:border-[#561269]/40 hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4"
-                  style={index < 4 ? { contain: 'layout paint' } : undefined}
                 >
                   <img
                     src={(product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80')}
