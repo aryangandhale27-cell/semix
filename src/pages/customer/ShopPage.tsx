@@ -21,6 +21,12 @@ import {
 
 const PRODUCT_BATCH_SIZE = 24;
 
+const parsePriceParam = (value: string | null): number | null => {
+  if (value === null) return null;
+  const price = Number(value);
+  return Number.isFinite(price) ? price : null;
+};
+
 export const ShopPage: React.FC = () => {
   const { products, categories, searchQuery, setSearchQuery } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,10 +37,13 @@ export const ShopPage: React.FC = () => {
     return searchParams.get('category') || 'All';
   });
 
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedVoltages, setSelectedVoltages] = useState<string[]>([]);
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [inStockOnly, setInStockOnly] = useState(() => searchParams.get('inStock') === 'true');
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(() => searchParams.getAll('brand'));
+  const [selectedVoltages, setSelectedVoltages] = useState<string[]>(() => searchParams.getAll('voltage'));
+  const [minPrice, setMinPrice] = useState<number | null>(() => parsePriceParam(searchParams.get('minPrice')));
+  const [maxPrice, setMaxPrice] = useState<number | null>(() => parsePriceParam(searchParams.get('maxPrice')));
+  const [minPriceDraft, setMinPriceDraft] = useState('');
+  const [maxPriceDraft, setMaxPriceDraft] = useState('');
   const [sortBy, setSortBy] = useState<string>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [visibleProductState, setVisibleProductState] = useState({ key: '', count: PRODUCT_BATCH_SIZE });
@@ -57,6 +66,37 @@ export const ShopPage: React.FC = () => {
     }
   }, [searchParams, setSearchQuery]);
 
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (inStockOnly) nextParams.set('inStock', 'true');
+    else nextParams.delete('inStock');
+
+    nextParams.delete('brand');
+    selectedBrands.forEach((brand) => nextParams.append('brand', brand));
+
+    nextParams.delete('voltage');
+    selectedVoltages.forEach((voltage) => nextParams.append('voltage', voltage));
+
+    if (minPrice !== null) nextParams.set('minPrice', String(minPrice));
+    else nextParams.delete('minPrice');
+
+    if (maxPrice !== null) nextParams.set('maxPrice', String(maxPrice));
+    else nextParams.delete('maxPrice');
+
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [
+    inStockOnly,
+    selectedBrands,
+    selectedVoltages,
+    minPrice,
+    maxPrice,
+    searchParams,
+    setSearchParams,
+  ]);
+
   // Extract all unique brands
   const allBrands = useMemo(() => {
     return Array.from(new Set(products.map((p) => p.brand))).filter(Boolean);
@@ -71,6 +111,44 @@ export const ShopPage: React.FC = () => {
     const highestPrice = products.reduce((highest, product) => Math.max(highest, product.price), 0);
     return Math.max(10000, Math.ceil(highestPrice / 1000) * 1000);
   }, [products]);
+
+  const applyMinPrice = () => {
+    if (!minPriceDraft.trim()) {
+      setMinPrice(null);
+      return;
+    }
+
+    const parsedValue = Number(minPriceDraft);
+    if (!Number.isFinite(parsedValue)) {
+      setMinPriceDraft(String(minPrice ?? 0));
+      return;
+    }
+
+    const value = Math.min(maxPriceLimit, Math.max(0, parsedValue));
+    setMinPrice(value);
+    setMinPriceDraft(String(value));
+    if (maxPrice !== null && value > maxPrice) {
+      setMaxPrice(value);
+      setMaxPriceDraft(String(value));
+    }
+  };
+
+  const applyMaxPrice = () => {
+    if (!maxPriceDraft.trim()) {
+      setMaxPrice(null);
+      return;
+    }
+
+    const parsedValue = Number(maxPriceDraft);
+    if (!Number.isFinite(parsedValue)) {
+      setMaxPriceDraft(String(maxPrice ?? maxPriceLimit));
+      return;
+    }
+
+    const value = Math.min(maxPriceLimit, Math.max(minPrice ?? 0, parsedValue));
+    setMaxPrice(value);
+    setMaxPriceDraft(String(value));
+  };
 
   // Handle brand toggle
   const toggleBrand = (brand: string) => {
@@ -91,7 +169,10 @@ export const ShopPage: React.FC = () => {
     setInStockOnly(false);
     setSelectedBrands([]);
     setSelectedVoltages([]);
+    setMinPrice(null);
     setMaxPrice(null);
+    setMinPriceDraft('');
+    setMaxPriceDraft('');
     setSearchQuery('');
     setSortBy('featured');
     setSearchParams({});
@@ -141,6 +222,9 @@ export const ShopPage: React.FC = () => {
         return false;
       }
       // Price filter
+      if (minPrice !== null && product.price < minPrice) {
+        return false;
+      }
       if (maxPrice !== null && product.price > maxPrice) {
         return false;
       }
@@ -169,6 +253,7 @@ export const ShopPage: React.FC = () => {
     inStockOnly,
     selectedBrands,
     selectedVoltages,
+    minPrice,
     maxPrice,
     sortBy,
   ]);
@@ -197,7 +282,7 @@ export const ShopPage: React.FC = () => {
     selectedBrands.length +
     selectedVoltages.length +
     (searchQuery ? 1 : 0) +
-    (maxPrice !== null && maxPrice < maxPriceLimit ? 1 : 0);
+    ((minPrice !== null && minPrice > 0) || (maxPrice !== null && maxPrice < maxPriceLimit) ? 1 : 0);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -346,23 +431,75 @@ export const ShopPage: React.FC = () => {
             </label>
           </div>
 
-          {/* Price Range Slider */}
+          {/* Price Range Sliders */}
           <div className="pt-4 border-t border-slate-100">
             <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-2">
-              <span>Max Price</span>
-              <span className="font-mono text-[#561269]">₹{(maxPrice ?? maxPriceLimit).toLocaleString('en-IN')}</span>
+              <span>Min Price</span>
+              <label htmlFor="desktop-min-price" className="flex items-center gap-1 font-mono text-[#561269]">
+                ₹
+                <input
+                  id="desktop-min-price"
+                  type="number"
+                  min="0"
+                  max={maxPrice ?? maxPriceLimit}
+                  step="50"
+                  value={minPriceDraft || (minPrice ?? 0)}
+                  onChange={(e) => setMinPriceDraft(e.target.value)}
+                  onBlur={applyMinPrice}
+                  className="w-24 bg-transparent text-right outline-none focus:ring-1 focus:ring-[#FF6B00] rounded"
+                />
+              </label>
             </div>
             <input
               type="range"
-              min="50"
+              min="0"
+              max={maxPrice ?? maxPriceLimit}
+              step="50"
+              value={minPrice ?? 0}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                setMinPrice(value);
+                setMinPriceDraft(String(value));
+                if (maxPrice !== null && value > maxPrice) {
+                  setMaxPrice(value);
+                  setMaxPriceDraft(String(value));
+                }
+              }}
+              className="w-full accent-[#FF6B00] cursor-pointer"
+            />
+            <div className="flex items-center justify-between text-xs font-bold text-slate-800 mt-3 mb-2">
+              <span>Max Price</span>
+              <label htmlFor="desktop-max-price" className="flex items-center gap-1 font-mono text-[#561269]">
+                ₹
+                <input
+                  id="desktop-max-price"
+                  type="number"
+                  min={minPrice ?? 0}
+                  max={maxPriceLimit}
+                  step="50"
+                  value={maxPriceDraft || (maxPrice ?? maxPriceLimit)}
+                  onChange={(e) => setMaxPriceDraft(e.target.value)}
+                  onBlur={applyMaxPrice}
+                  className="w-24 bg-transparent text-right outline-none focus:ring-1 focus:ring-[#FF6B00] rounded"
+                />
+              </label>
+            </div>
+            <input
+              type="range"
+              min={minPrice ?? 0}
               max={maxPriceLimit}
               step="50"
               value={maxPrice ?? maxPriceLimit}
-              onChange={(e) => setMaxPrice(Number(e.target.value))}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                setMaxPrice(value);
+                setMaxPriceDraft(String(value));
+                if (minPrice !== null && value < minPrice) setMinPrice(value);
+              }}
               className="w-full accent-[#FF6B00] cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-1">
-              <span>₹50</span>
+              <span>₹0</span>
               <span>₹{maxPriceLimit.toLocaleString('en-IN')}</span>
             </div>
           </div>
@@ -612,16 +749,69 @@ export const ShopPage: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-xs font-bold text-slate-700 block mb-1">
-                  Max Price: ₹{(maxPrice ?? maxPriceLimit).toLocaleString('en-IN')}
-                </span>
+                <label htmlFor="mobile-min-price" className="text-xs font-bold text-slate-700 flex items-center justify-between mb-1">
+                  Min Price
+                  <span className="font-mono text-[#561269] flex items-center gap-1">
+                    ₹
+                    <input
+                      id="mobile-min-price"
+                      type="number"
+                      min="0"
+                      max={maxPrice ?? maxPriceLimit}
+                      step="50"
+                      value={minPriceDraft || (minPrice ?? 0)}
+                      onChange={(e) => setMinPriceDraft(e.target.value)}
+                      onBlur={applyMinPrice}
+                      className="w-24 bg-transparent text-right outline-none focus:ring-1 focus:ring-[#FF6B00] rounded"
+                    />
+                  </span>
+                </label>
                 <input
                   type="range"
-                  min="50"
+                  min="0"
+                  max={maxPrice ?? maxPriceLimit}
+                  step="50"
+                  value={minPrice ?? 0}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setMinPrice(value);
+                    setMinPriceDraft(String(value));
+                    if (maxPrice !== null && value > maxPrice) {
+                      setMaxPrice(value);
+                      setMaxPriceDraft(String(value));
+                    }
+                  }}
+                  className="w-full"
+                />
+                <label htmlFor="mobile-max-price" className="text-xs font-bold text-slate-700 flex items-center justify-between mb-1 mt-3">
+                  Max Price
+                  <span className="font-mono text-[#561269] flex items-center gap-1">
+                    ₹
+                    <input
+                      id="mobile-max-price"
+                      type="number"
+                      min={minPrice ?? 0}
+                      max={maxPriceLimit}
+                      step="50"
+                      value={maxPriceDraft || (maxPrice ?? maxPriceLimit)}
+                      onChange={(e) => setMaxPriceDraft(e.target.value)}
+                      onBlur={applyMaxPrice}
+                      className="w-24 bg-transparent text-right outline-none focus:ring-1 focus:ring-[#FF6B00] rounded"
+                    />
+                  </span>
+                </label>
+                <input
+                  type="range"
+                  min={minPrice ?? 0}
                   max={maxPriceLimit}
                   step="50"
                   value={maxPrice ?? maxPriceLimit}
-                  onChange={(e) => setMaxPrice(Number(e.target.value))}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setMaxPrice(value);
+                    setMaxPriceDraft(String(value));
+                    if (minPrice !== null && value < minPrice) setMinPrice(value);
+                  }}
                   className="w-full"
                 />
               </div>
