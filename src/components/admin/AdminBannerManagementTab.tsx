@@ -382,7 +382,7 @@ export const AdminBannerManagementTab: React.FC = () => {
                     <img
                       src={banner.desktopImage}
                       alt={`${banner.title} desktop`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain bg-slate-950"
                     />
                   </div>
                   <button
@@ -406,7 +406,7 @@ export const AdminBannerManagementTab: React.FC = () => {
                     <img
                       src={banner.mobileImage || banner.desktopImage}
                       alt={`${banner.title} mobile`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain bg-slate-950"
                     />
                   </div>
                   <button
