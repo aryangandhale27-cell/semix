@@ -37,7 +37,7 @@ export interface TeamMember {
 export const leadershipTeam: TeamMember[] = [
   {
     id: 'ritesh-shinde',
-    name: 'Ritesh Shinde',
+    name: 'RS',
     position: 'CEO',
     department: 'Executive Leadership',
     description: "Founder and Chief Executive Officer, responsible for the company's overall vision, strategy, leadership, and growth.",

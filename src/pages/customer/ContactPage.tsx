@@ -224,7 +224,7 @@ export const ContactPage: React.FC = () => {
                   <Package className="w-5 h-5" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
-                  5,000+
+                  10,000+
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-slate-800 mt-1">
                   Components & Boards in Stock
