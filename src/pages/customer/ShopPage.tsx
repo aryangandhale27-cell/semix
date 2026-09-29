@@ -22,9 +22,18 @@ import {
 const PRODUCT_BATCH_SIZE = 24;
 
 const parsePriceParam = (value: string | null): number | null => {
-  if (value === null || value === '') return null;
+  if (value === null) return null;
   const price = Number(value);
   return Number.isFinite(price) ? price : null;
+};
+
+const parsePriceParam = (value: string | null): number | null => {
+  if (value === null || value === '') {
+    return null;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
 };
 
 export const ShopPage: React.FC = () => {
