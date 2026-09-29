@@ -48,7 +48,7 @@ function PageRouteFallback() {
 
 // Helper component to scroll to top on route change, or to hash if present
 function ScrollToTop() {
-  const { pathname, search, hash } = useLocation();
+  const { pathname, hash } = useLocation();
 
   useEffect(() => {
     if (hash) {
@@ -63,7 +63,7 @@ function ScrollToTop() {
     } else {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
     }
-  }, [pathname, search, hash]);
+  }, [pathname, hash]);
 
   return null;
 }
