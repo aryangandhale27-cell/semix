@@ -22,15 +22,13 @@ const parsePriceParam = (value: string | null): number | null => {
   if (value === null || value === '') {
     return null;
   }
-
   const parsedValue = Number(value);
   return Number.isFinite(parsedValue) ? parsedValue : null;
 };
 
 export const ShopPage: React.FC = () => {
-  const { products, categories, searchQuery, setSearchQuery } = useApp();
+  const { products, categories, searchQuery, setSearchQuery, isProductsLoading } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
 
   // Filters state
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
@@ -103,12 +101,10 @@ export const ShopPage: React.FC = () => {
     setSearchParams,
   ]);
 
-  // Extract all unique brands
   const allBrands = useMemo(() => {
     return Array.from(new Set(products.map((p) => p.brand))).filter(Boolean);
   }, [products]);
 
-  // Extract all unique voltages
   const allVoltages = useMemo(() => {
     return Array.from(new Set(products.map((p) => p.voltage))).filter(Boolean) as string[];
   }, [products]);
@@ -123,13 +119,11 @@ export const ShopPage: React.FC = () => {
       setMinPrice(null);
       return;
     }
-
     const parsedValue = Number(minPriceDraft);
     if (!Number.isFinite(parsedValue)) {
       setMinPriceDraft(String(minPrice ?? 0));
       return;
     }
-
     const value = Math.min(maxPriceLimit, Math.max(0, parsedValue));
     setMinPrice(value);
     setMinPriceDraft(String(value));
@@ -144,26 +138,22 @@ export const ShopPage: React.FC = () => {
       setMaxPrice(null);
       return;
     }
-
     const parsedValue = Number(maxPriceDraft);
     if (!Number.isFinite(parsedValue)) {
       setMaxPriceDraft(String(maxPrice ?? maxPriceLimit));
       return;
     }
-
     const value = Math.min(maxPriceLimit, Math.max(minPrice ?? 0, parsedValue));
     setMaxPrice(value);
     setMaxPriceDraft(String(value));
   };
 
-  // Handle brand toggle
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) =>
       prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]
     );
   };
 
-  // Handle voltage toggle
   const toggleVoltage = (v: string) => {
     setSelectedVoltages((prev) =>
       prev.includes(v) ? prev.filter((item) => item !== v) : [...prev, v]
@@ -184,7 +174,6 @@ export const ShopPage: React.FC = () => {
     setSearchParams({});
   };
 
-  // Intelligent search execution using the catalog search engine
   const searchEngineResult = useMemo(() => {
     if (!searchQuery.trim()) return null;
     return searchProducts(products, searchQuery, {
@@ -193,7 +182,6 @@ export const ShopPage: React.FC = () => {
     });
   }, [products, searchQuery, selectedCategory]);
 
-  // Filtered and Sorted products
   const filteredProducts = useMemo(() => {
     let candidateList: { product: Product; searchScore: number }[] = [];
 
@@ -213,7 +201,6 @@ export const ShopPage: React.FC = () => {
         .map((p) => ({ product: p, searchScore: 0 }));
     }
 
-    // Apply secondary faceted filters
     const filtered = candidateList.filter(({ product }) => {
       if (inStockOnly && (!product.inStock || product.stockCount <= 0)) {
         return false;
@@ -233,7 +220,6 @@ export const ShopPage: React.FC = () => {
       return true;
     });
 
-    // Sort products
     filtered.sort((a, b) => {
       if (sortBy === 'price-low') return a.product.price - b.product.price;
       if (sortBy === 'price-high') return b.product.price - a.product.price;
@@ -586,7 +572,24 @@ export const ShopPage: React.FC = () => {
             </div>
           )}
 
-          {filteredProducts.length === 0 ? (
+          {/* SKELETON LOADER WHEN FETCHING FROM FIREBASE */}
+          {isProductsLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-4">
+                  <div className="bg-slate-100 h-48 rounded-xl w-full" />
+                  <div className="space-y-2">
+                    <div className="bg-slate-100 h-4 rounded w-3/4" />
+                    <div className="bg-slate-100 h-3 rounded w-1/2" />
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <div className="bg-slate-100 h-6 rounded w-1/3" />
+                    <div className="bg-slate-100 h-8 rounded-xl w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="bg-slate-50 rounded-2xl border border-slate-200 p-12 text-center max-w-md mx-auto my-8">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3">
                 <Search className="w-6 h-6" />
@@ -604,11 +607,10 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
-              {filteredProducts.map((product, index) => (
+              {filteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
-                  priority={index < 4}
                   onQuickView={(p) => setQuickViewProduct(p)}
                 />
               ))}
@@ -624,7 +626,6 @@ export const ShopPage: React.FC = () => {
                     src={(product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80')}
                     alt={product.name}
                     loading={index < 4 ? 'eager' : 'lazy'}
-                    fetchPriority={index < 4 ? 'high' : 'auto'}
                     decoding="async"
                     className="w-24 h-24 object-contain mix-blend-multiply bg-slate-50 p-2 rounded-lg shrink-0"
                   />

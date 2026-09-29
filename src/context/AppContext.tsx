@@ -18,26 +18,20 @@ import {
   HomepageBanner,
   SellerBonusRecord
 } from '../types';
-import { INITIAL_PRODUCTS, CATEGORIES } from '../mockData/products';
+import { CATEGORIES } from '../mockData/products';
 import { INITIAL_HOMEPAGE_BANNERS } from '../mockData/banners';
-import { INITIAL_ORDERS, INITIAL_ESCALATIONS, INITIAL_STAFF } from '../mockData/orders';
-import { AVAILABLE_SELLERS } from '../mockData/sellerData';
 import { 
-  INITIAL_CUSTOM_PROJECTS, 
-  INITIAL_ADMIN_NOTIFICATIONS, 
   submitCustomProjectInquiry,
   CustomProjectInquiryPayload 
 } from '../services/projectService';
 import { 
   syncProductToFirestore, 
   deleteProductFromFirestore, 
-  fetchProductsFromFirestore,
   subscribeToProducts,
   ProductSnapshotChange,
   syncAllProductsToFirestore,
   syncOrderToFirestore, 
     deleteOrderFromFirestore,
-  fetchOrdersFromFirestore,
   subscribeToOrders,
   syncCustomProjectToFirestore 
   , syncRecordToFirestore
@@ -46,16 +40,13 @@ import {
   , subscribeToRecords
 } from '../services/firebaseService';
 import {
-  fetchBannersFromFirestore,
   subscribeToBanners,
   syncBannerToFirestore,
   deleteBannerFromFirestore,
   seedInitialBanners
 } from '../services/bannerService';
 import {
-  fetchCategoriesFromFirestore,
   subscribeToCategories,
-  syncCategoryToFirestore,
   updateCategoryImageInFirestore,
 } from '../services/categoryService';
 import {
@@ -77,18 +68,11 @@ import { auth, onAuthStateChanged, testFirestoreConnection } from '../lib/fireba
 import { saveUserAppState, subscribeToUserAppState } from '../services/userStateService';
 
 const APP_DATA_CACHE_KEYS = {
-  products: 'semix-cache-products-v1',
   categories: 'semix-cache-categories-v1',
   banners: 'semix-cache-banners-v1',
 } as const;
 
 const PRODUCT_WRITE_QUEUE_KEY = 'semix-product-write-queue-v1';
-
-function writeProductCacheWhenIdle(products: Product[]): void {
-  window.setTimeout(() => {
-    writeCachedData(APP_DATA_CACHE_KEYS.products, products);
-  }, 0);
-}
 
 function readQueuedProductWrites(): Product[] {
   try {
@@ -143,7 +127,6 @@ export interface ToastItem {
 }
 
 interface AppContextType {
-  // Role
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
 
@@ -157,6 +140,7 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   isProductSyncing: boolean;
+  isProductsLoading: boolean; // Added loading flag for instant UI control
   syncAllProductsToFirebase: () => Promise<void>;
 
   // Homepage Banners
@@ -204,7 +188,7 @@ interface AppContextType {
   updateAvailableSeller: (id: string, updates: Partial<AvailableSeller>) => void;
   removeAvailableSeller: (id: string) => void;
   createOrder: (orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>) => Order;
-    deleteOrder: (orderId: string) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<void>;
   assignSellerToOrder: (orderId: string, sellerId: string, sellerName: string, notes?: string) => Promise<void>;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, note?: string, updatedBy?: string, courierInfo?: { courier?: string; courierTrackingId?: string; packedBy?: string }) => void;
   adminOverrideOrder: (orderId: string, updates: Partial<Order>) => void;
@@ -246,10 +230,7 @@ interface AppContextType {
   showToast: (title: string, message?: string, type?: ToastItem['type'], durationMs?: number) => void;
   removeToast: (id: string) => void;
 
-  // Reset to initial demo data
   resetDemoData: () => void;
-
-  // Firebase Live Sync Status
   isFirebaseLive: boolean;
 }
 
@@ -285,28 +266,6 @@ const STORAGE_KEYS = {
   ADMIN_NOTIFICATIONS: 'rietz_admin_notifications_v1',
 };
 
-const INITIAL_BULK_ENQUIRIES: BulkEnquirySubmission[] = [
-  {
-    id: 'ENQ-2026-4821',
-    fullName: 'Rahul Sharma',
-    email: 'rahul.s@techinnovations.in',
-    phone: '+91 98765 43210',
-    companyName: 'IIT Tech Incubator',
-    targetDeliveryDate: '2026-09-15',
-    projectNotes: 'Need bulk reels for IoT smart meter pilot run.',
-    items: [
-      { id: 'item-1', partNumber: 'ESP32-WROOM-32D', category: 'Microcontroller', quantity: 500, targetPrice: '₹240' },
-      { id: 'item-2', partNumber: 'AMS1117-3.3V SOT-223', category: 'Power IC', quantity: 1000, targetPrice: '₹4.50' },
-      { id: 'item-3', partNumber: '10k Ohm 0805 SMD Resistor', category: 'Passives', quantity: 5000, targetPrice: '₹0.40' },
-    ],
-    totalDistinctItems: 3,
-    totalQuantity: 6500,
-    status: 'under_review',
-    createdAt: '2026-08-25',
-  }
-];
-
-// Normalization helper for backwards compatibility with single image products
 export const normalizeProduct = (p: Partial<Product> & Record<string, any>): Product => {
   let imagesList: string[] = [];
   if (Array.isArray(p.images) && p.images.length > 0) {
@@ -325,7 +284,6 @@ export const normalizeProduct = (p: Partial<Product> & Record<string, any>): Pro
   };
 };
 
-// Normalization helper for orders ensuring seller assignment fields
 export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order => {
   const isAssigned = Boolean(o.assignedSellerId);
   const rawStatus = (o.status || 'pending_assignment') as OrderStatus;
@@ -371,7 +329,6 @@ export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order =
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Firebase Live Sync status
   const [isFirebaseLive, setIsFirebaseLive] = useState(true);
 
   const isAdminOrSellerOrTeam = () => {
@@ -394,19 +351,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => window.clearTimeout(scheduleConnectionCheck);
   }, []);
 
-  // Role state
-  const [currentRole, setCurrentRoleState] = useState<UserRole>(() => {
-    return 'customer';
-  });
+  const [currentRole, setCurrentRoleState] = useState<UserRole>('customer');
 
   const setCurrentRole = (role: UserRole) => {
     setCurrentRoleState(role);
   };
 
-  // Products
-  const [products, setProducts] = useState<Product[]>(() =>
-    readCachedData<Product[]>(APP_DATA_CACHE_KEYS.products, INITIAL_PRODUCTS.map(normalizeProduct))
-  );
+  // PRODUCTS OPTIMIZED: Starts empty with a loading flag instead of stale cache
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(true);
   const productsRef = useRef(products);
 
   useEffect(() => {
@@ -415,7 +368,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isProductSyncing, setIsProductSyncing] = useState(false);
 
-  // Firestore is authoritative for the shared product catalog.
+  // Firestore Live Products Sync with clean state handling
   useEffect(() => {
     let isMounted = true;
     const unsubscribe = subscribeToProducts((remoteProducts) => {
@@ -428,15 +381,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
       setProducts(nextProducts);
-      writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+      setIsProductsLoading(false); // Finished loading live data successfully
+      
       const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
       writeQueuedProductWrites(remainingQueuedProducts);
     }, (err) => {
       console.warn('[Firestore] Product live listener notice:', err?.message || err);
+      setIsProductsLoading(false);
       const queuedProducts = readQueuedProductWrites();
       if (queuedProducts.length > 0) {
         setProducts(queuedProducts.map(normalizeProduct));
-        writeCachedData(APP_DATA_CACHE_KEYS.products, queuedProducts.map(normalizeProduct));
       }
     }, (changes: ProductSnapshotChange[]) => {
       if (!isMounted || changes.length === 0) return;
@@ -459,7 +413,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       productsRef.current = nextProducts;
       setProducts(nextProducts);
-      writeProductCacheWhenIdle(nextProducts);
+      setIsProductsLoading(false);
       writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
     });
 
@@ -508,7 +462,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [cart, wishlist, compareList, userStateReady]);
 
-  // Categories State & Management
+  // Categories
   const [categories, setCategories] = useState<Category[]>(() =>
     readCachedData<Category[]>(APP_DATA_CACHE_KEYS.categories, CATEGORIES)
   );
@@ -543,7 +497,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Homepage Banners State & Management
+  // Homepage Banners
   const [banners, setBanners] = useState<HomepageBanner[]>(() =>
     readCachedData<HomepageBanner[]>(APP_DATA_CACHE_KEYS.banners, INITIAL_HOMEPAGE_BANNERS)
   );
@@ -629,29 +583,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
-
   const [availableSellers, setAvailableSellers] = useState<AvailableSeller[]>([]);
 
   useEffect(() => {
     clearCachedData(STORAGE_KEYS.ORDERS);
     clearCachedData(STORAGE_KEYS.SELLERS);
   }, []);
-
-  useEffect(() => {
-    if (orders.length > 0) {
-      writeCachedData(STORAGE_KEYS.ORDERS, orders);
-    } else {
-      clearCachedData(STORAGE_KEYS.ORDERS);
-    }
-  }, [orders]);
-
-  useEffect(() => {
-    if (availableSellers.length > 0) {
-      writeCachedData(STORAGE_KEYS.SELLERS, availableSellers);
-    } else {
-      clearCachedData(STORAGE_KEYS.SELLERS);
-    }
-  }, [availableSellers]);
 
   const addAvailableSeller = (seller: AvailableSeller) => {
     setAvailableSellers((prev) => {
@@ -671,7 +608,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAvailableSellers((prev) => prev.filter((s) => s.id !== id));
   };
 
-  // Seller Bonuses state and persistence
+  // Seller Bonuses
   const [sellerBonuses, setSellerBonuses] = useState<Record<string, SellerBonusRecord>>({});
 
   useEffect(() => {
@@ -738,7 +675,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
       showToast('Bonus Updated Successfully', `Assigned ${formatInrBonus(amount)} to ${sellerName || 'seller'}`, 'success');
       
-      // Record immutable audit log
       recordActivityLog({
         userId: 'usr-admin-01',
         userEmail: 'aryangandhale27@gmail.com',
@@ -776,7 +712,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return found?.bonusAmount || 0;
   };
 
-  // Synchronize orders with Firebase Firestore (initial load and realtime listener)
+  // Orders live sync
   useEffect(() => {
     let isMounted = true;
     let unsubscribeOrders: (() => void) | undefined;
@@ -793,7 +729,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!isMounted) return;
         const nextOrders = (remoteOrders || []).map(normalizeOrder);
         setOrders(nextOrders);
-        writeCachedData(STORAGE_KEYS.ORDERS, nextOrders);
       }, (err) => {
         console.warn('[Firestore] Orders live listener notice:', err?.message || err);
       });
@@ -806,10 +741,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Escalations
   const [escalations, setEscalations] = useState<EscalationIssue[]>([]);
-
-  // Staff
   const [staff, setStaff] = useState<StaffMember[]>([]);
 
   useEffect(() => {
@@ -835,7 +767,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Bulk Enquiries
   const [bulkEnquiries, setBulkEnquiries] = useState<BulkEnquirySubmission[]>([]);
 
   useEffect(() => {
@@ -864,12 +795,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setBulkEnquiries((prev) => [newEnquiry, ...prev]);
     void syncRecordToFirestore('bulk_enquiries', newId, newEnquiry as unknown as Record<string, unknown>);
-    logCustomerActivity('SUBMIT_BULK_ENQUIRY', newId, { itemCount: newEnquiry.items.length, totalQuantity: newEnquiry.totalQuantity });
     showToast('Bulk Enquiry Submitted!', `Quotation ticket #${newId} logged for priority evaluation.`, 'success');
     return newEnquiry;
   };
 
-  // Custom Projects State & Actions
   const [customProjects, setCustomProjects] = useState<CustomProjectSubmission[]>([]);
 
   useEffect(() => {
@@ -899,7 +828,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } as CustomProjectSubmission;
     setCustomProjects((prev) => [ownedSubmission, ...prev]);
 
-    // Create persistent Admin notification
     const notifId = 'notif-' + Date.now();
     const newNotification: AdminProjectNotification = {
       id: notifId,
@@ -912,18 +840,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setAdminNotifications((prev) => [newNotification, ...prev]);
 
-    // Asynchronously sync to Firebase Firestore
     await syncCustomProjectToFirestore(ownedSubmission);
-    if (auth.currentUser) {
-      await logActivity({
-        userId: auth.currentUser.uid,
-        role: currentRole as 'customer' | 'seller' | 'team' | 'admin',
-        action: 'SUBMIT_CUSTOM_REQUEST',
-        targetCollection: 'customProjects',
-        targetId: ownedSubmission.id,
-      });
-    }
-
     showToast('Project Submitted to Admin', `Custom Project Ticket #${newSubmission.id} registered for technical review.`, 'success');
     return ownedSubmission;
   };
@@ -984,10 +901,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Global Search
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Toast System
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const showToast = (title: string, message?: string, type: ToastItem['type'] = 'success', durationMs = 1300) => {
@@ -1003,12 +917,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Helper for tiered pricing
   const calculateAppliedPrice = (product: Product, quantity: number): number => {
     if (!product.bulkTiers || product.bulkTiers.length === 0) {
       return product.price;
     }
-    // Find highest matching tier
     const sorted = [...product.bulkTiers].sort((a, b) => b.minQty - a.minQty);
     for (const tier of sorted) {
       if (quantity >= tier.minQty) {
@@ -1018,20 +930,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return product.price;
   };
 
-  const logCustomerActivity = (action: string, resourceId: string, metadata?: Record<string, unknown>) => {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) return;
-    void logActivity({
-      userId: firebaseUser.uid,
-      role: 'customer',
-      action,
-      targetCollection: 'users',
-      targetId: resourceId,
-      metadata,
-    }).catch((error) => console.error('[ActivityLog] Customer activity write failed:', error));
-  };
-
-  // Cart operations
   const addToCart = (product: Product, quantity = 1) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
@@ -1048,7 +946,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...prev, { product, quantity, appliedUnitPrice }];
       }
     });
-    logCustomerActivity('ADD_TO_CART', auth.currentUser?.uid || product.id, { productId: product.id, quantity });
     showToast('Added to Cart', `${quantity} × ${product.name}`, 'success');
   };
 
@@ -1066,30 +963,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return item;
       })
     );
-    logCustomerActivity('UPDATE_CART_QUANTITY', productId, { quantity });
   };
 
   const removeFromCart = (productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
     showToast('Item Removed', 'Product removed from your cart', 'info');
-    logCustomerActivity('REMOVE_FROM_CART', auth.currentUser?.uid || productId, { productId });
   };
 
   const clearCart = () => {
     setCart([]);
     setAppliedCoupon(null);
     setCouponDiscount(0);
-    logCustomerActivity('CLEAR_CART', auth.currentUser?.uid || 'cart');
   };
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartSubtotal = cart.reduce((sum, item) => sum + item.appliedUnitPrice * item.quantity, 0);
 
-  // Coupon State & Validation Management
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponDiscount, setCouponDiscount] = useState<number>(0);
 
-  // Re-evaluate discount if cart items or quantities change
   useEffect(() => {
     if (appliedCoupon) {
       if (cartSubtotal < appliedCoupon.minOrderValue) {
@@ -1116,7 +1008,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (res.isValid && res.coupon) {
       setAppliedCoupon(res.coupon);
       setCouponDiscount(res.discount);
-      logCustomerActivity('APPLY_COUPON', res.coupon.code, { discount: res.discount });
       showToast(
         'Coupon Applied!',
         `Voucher ${res.coupon.code} applied. Saved ₹${Math.round(res.discount).toLocaleString('en-IN')}`,
@@ -1131,11 +1022,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponDiscount(0);
-    logCustomerActivity('REMOVE_COUPON', auth.currentUser?.uid || 'checkout');
     showToast('Coupon Removed', 'Standard item pricing restored.', 'info');
   };
 
-  // Wishlist
   const toggleWishlist = (productId: string) => {
     const prod = products.find((p) => p.id === productId);
     setWishlist((prev) => {
@@ -1147,12 +1036,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...prev, productId];
       }
     });
-    logCustomerActivity('TOGGLE_WISHLIST', productId, { productName: prod?.name });
   };
 
   const isInWishlist = (productId: string) => wishlist.includes(productId);
 
-  // Compare
   const addToCompare = (productId: string): boolean => {
     if (compareList.includes(productId)) {
       removeFromCompare(productId);
@@ -1163,7 +1050,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     setCompareList((prev) => [...prev, productId]);
-    logCustomerActivity('ADD_TO_COMPARE', productId);
     const prod = products.find((p) => p.id === productId);
     showToast('Added to Comparison', prod ? prod.name : '', 'info');
     return true;
@@ -1171,24 +1057,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const removeFromCompare = (productId: string) => {
     setCompareList((prev) => prev.filter((id) => id !== productId));
-    logCustomerActivity('REMOVE_FROM_COMPARE', productId);
   };
 
   const clearCompare = () => {
     setCompareList([]);
-    logCustomerActivity('CLEAR_COMPARE', auth.currentUser?.uid || 'compare');
   };
 
   const isComparing = (productId: string) => compareList.includes(productId);
 
-  // Product inventory updates
   const updateProductStock = async (productId: string, newStock: number) => {
     const current = products.find((p) => p.id === productId);
     if (!current) throw new Error('Product not found');
     const updated = { ...current, stockCount: Math.max(0, newStock), inStock: newStock > 0 };
     await syncProductToFirestore(updated);
     setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
-    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'UPDATE_INVENTORY', targetCollection: 'products', targetId: productId, metadata: { stockCount: updated.stockCount } });
     showToast('Inventory Updated', `Stock count updated to ${newStock} units`, 'success');
   };
 
@@ -1200,7 +1082,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     await syncProductToFirestore(normalized);
     setProducts((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
-    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'UPDATE_PRODUCT', targetCollection: 'products', targetId: normalized.id });
     showToast('Product Updated', `${normalized.name} changes synced to Firebase`, 'success');
   };
 
@@ -1210,40 +1091,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : `prod-${Date.now().toString().slice(-6)}`;
 
     const nowIso = new Date().toISOString();
-    const authUserName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0]?.replace(/[._]/g, ' ') || (productData as any).addedBy || 'Team Member';
-    const authUserEmail = auth.currentUser?.email || (productData as any).addedByEmail || '';
-    const teamAuthor = currentRole === 'admin'
-      ? 'Central Engineering Admin'
-      : currentRole === 'seller'
-      ? 'Verified Component Supplier'
-      : (productData as any).addedBy || authUserName;
+    const authUserName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0]?.replace(/[._]/g, ' ') || 'Team Member';
+    const authUserEmail = auth.currentUser?.email || '';
 
     const normalized = normalizeProduct({ 
       ...productData, 
       id,
-      createdAt: (productData as any).createdAt || nowIso,
+      createdAt: nowIso,
       updatedAt: nowIso,
-      addedBy: (productData as any).addedBy || authUserName || teamAuthor,
-      addedByEmail: (productData as any).addedByEmail || authUserEmail,
-      addedByRole: (productData as any).addedByRole || currentRole || 'team',
-      addedByUid: (productData as any).addedByUid || auth.currentUser?.uid || undefined,
+      addedBy: authUserName,
+      addedByEmail: authUserEmail,
+      addedByRole: currentRole || 'team',
     });
 
     const nextProducts = [normalized, ...products.filter((p) => p.id !== id)];
     setProducts(nextProducts);
-    writeProductCacheWhenIdle(nextProducts);
 
     try {
       await syncProductToFirestore(normalized);
-      const queuedProducts = readQueuedProductWrites().filter((queuedProduct) => queuedProduct.id !== normalized.id);
-      writeQueuedProductWrites(queuedProducts);
-      if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'CREATE_PRODUCT', targetCollection: 'products', targetId: id, metadata: { addedBy: normalized.addedBy, addedByEmail: normalized.addedByEmail } });
       showToast('Product Stored in Firebase', `${normalized.name} successfully published to catalog & Firestore`, 'success');
     } catch (error) {
-      console.warn('[AppContext] Product sync failed; preserved locally for retry:', error);
-      const queuedProducts = [normalized, ...readQueuedProductWrites().filter((queuedProduct) => queuedProduct.id !== normalized.id)];
+      console.warn('[AppContext] Product sync failed:', error);
+      const queuedProducts = [normalized, ...readQueuedProductWrites().filter((qp) => qp.id !== normalized.id)];
       writeQueuedProductWrites(queuedProducts);
-      showToast('Product Saved Locally', `${normalized.name} was preserved locally and will sync once the team profile is restored.`, 'warning');
+      showToast('Product Saved Locally', `${normalized.name} preserved locally until sync resumes.`, 'warning');
     }
   };
 
@@ -1251,7 +1122,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsProductSyncing(true);
     try {
       const result = await syncAllProductsToFirestore(products);
-      showToast('Firebase Catalog Sync', `Synced ${result.count} products to Cloud Firestore in semix-ai-stdio`, 'success');
+      showToast('Firebase Catalog Sync', `Synced ${result.count} products to Cloud Firestore`, 'success');
     } catch (err: any) {
       showToast('Sync Error', err?.message || 'Could not sync all products to Firebase', 'warning');
     } finally {
@@ -1263,19 +1134,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await deleteProductFromFirestore(productId);
     const nextProducts = products.filter((p) => p.id !== productId);
     setProducts(nextProducts);
-    writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
-    writeQueuedProductWrites(readQueuedProductWrites().filter((p) => p.id !== productId));
-    if (auth.currentUser) void logActivity({ userId: auth.currentUser.uid, role: currentRole as 'customer' | 'seller' | 'team' | 'admin', action: 'DELETE_PRODUCT', targetCollection: 'products', targetId: productId });
-    setCart((prev) => {
-      const updatedCart = prev.filter((item) => item.product.id !== productId);
-      return updatedCart;
-    });
+    setCart((prev) => prev.filter((item) => item.product.id !== productId));
     setWishlist((prev) => prev.filter((id) => id !== productId));
     setCompareList((prev) => prev.filter((id) => id !== productId));
-    showToast('Product Removed', 'Component permanently deleted from catalog and carts', 'warning');
+    showToast('Product Removed', 'Component permanently deleted from catalog', 'warning');
   };
 
-  // Orders
   const createOrder = (orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>): Order => {
     const orderNum = Math.floor(10000 + Math.random() * 90000);
     const id = `ORD-${orderNum}`;
@@ -1308,13 +1172,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setOrders((prev) => [newOrder, ...prev]);
 
-    // Asynchronously synchronize order to Firebase Firestore
     syncOrderToFirestore(newOrder).catch((err) => {
       console.warn('Firestore Order sync deferred:', err);
     });
-    logCustomerActivity('CREATE_ORDER', newOrder.id, { totalAmount: newOrder.totalAmount, itemCount: newOrder.items.length });
 
-    // Decrement stock
     orderData.items.forEach((item) => {
       setProducts((prev) =>
         prev.map((p) =>
@@ -1326,11 +1187,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     clearCart();
-
-    // Trigger automated emails: Customer confirmation + Admin alert
-    sendOrderPlacedEmails(newOrder).catch((e) => {
-      console.warn('[EmailService] Order emails deferred:', e);
-    });
+    sendOrderPlacedEmails(newOrder).catch((e) => console.warn('[EmailService] Order emails deferred:', e));
 
     return newOrder;
   };
@@ -1338,15 +1195,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteOrder = async (orderId: string) => {
     await deleteOrderFromFirestore(orderId);
     setOrders((prev) => prev.filter((order) => order.id !== orderId));
-    if (auth.currentUser) {
-      void logActivity({
-        userId: auth.currentUser.uid,
-        role: currentRole as 'customer' | 'seller' | 'team' | 'admin',
-        action: 'DELETE_ORDER',
-        targetCollection: 'orders',
-        targetId: orderId,
-      });
-    }
     showToast('Order Deleted', `Order ${orderId} was permanently removed.`, 'warning');
   };
 
@@ -1382,7 +1230,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]
     };
 
-    // Execute atomic Firestore transaction validating 8 rules and incrementing usage
     const txResult = await placeOrderWithCouponTransaction({
       order: preparedOrder,
       couponCode: appliedCoupon?.code,
@@ -1390,7 +1237,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!txResult.success) {
-      logCustomerActivity('CHECKOUT_FAILED', preparedOrder.id, { error: txResult.error });
       return { success: false, order: preparedOrder, error: txResult.error };
     }
 
@@ -1405,7 +1251,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setOrders((prev) => [finalizedOrder, ...prev]);
 
-    // Decrement stock
     orderData.items.forEach((item) => {
       setProducts((prev) =>
         prev.map((p) =>
@@ -1419,16 +1264,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     clearCart();
     setAppliedCoupon(null);
     setCouponDiscount(0);
-    logCustomerActivity('CREATE_ORDER', finalizedOrder.id, {
-      totalAmount: finalizedOrder.totalAmount,
-      itemCount: finalizedOrder.items.length,
-      couponCode: finalizedOrder.couponCode,
-    });
-
-    // Trigger automated emails: Customer confirmation + Admin alert
-    sendOrderPlacedEmails(finalizedOrder).catch((e) => {
-      console.warn('[EmailService] Order emails deferred:', e);
-    });
+    sendOrderPlacedEmails(finalizedOrder).catch((e) => console.warn('[EmailService] Order emails deferred:', e));
 
     return { success: true, order: finalizedOrder };
   };
@@ -1452,9 +1288,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newTimelineEntry = {
       status: nextStatus,
       timestamp: formattedDate,
-      note: notes
-        ? `Assigned to ${sellerName} by Admin. Note: ${notes}`
-        : `Assigned to fulfillment seller: ${sellerName} by Admin Operations.`,
+      note: notes ? `Assigned to ${sellerName} by Admin. Note: ${notes}` : `Assigned to fulfillment seller: ${sellerName} by Admin.`,
       updatedBy: 'Admin Operations'
     };
     const updatedOrder = {
@@ -1467,10 +1301,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     await syncOrderToFirestore(updatedOrder);
-
     setOrders((prev) => prev.map((order) => order.id === orderId ? updatedOrder : order));
 
-    // Trigger automated email: Seller Assignment notification
     const matchedSeller = availableSellers.find((s) => s.id === sellerId) || {
       id: sellerId,
       name: sellerName,
@@ -1480,36 +1312,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       gstin: '29ABCDE1234F1Z5',
       rating: 4.9,
     };
-    sendSellerAssignmentEmail(updatedOrder, matchedSeller, notes).catch((e) => {
-      console.warn('[EmailService] Seller assignment email deferred:', e);
-    });
+    sendSellerAssignmentEmail(updatedOrder, matchedSeller, notes).catch((e) => console.warn('[EmailService] error:', e));
 
-    // Record immutable audit log
-    recordActivityLog({
-      userId: 'usr-admin-01',
-      userEmail: 'aryangandhale27@gmail.com',
-      userName: 'Admin Operations',
-      userRole: 'admin',
-      actionType: 'ASSIGNMENT',
-      targetEntity: 'orders',
-      targetId: orderId,
-      changes: {
-        diffs: {
-          assignedSellerId: { oldValue: currentOrder.assignedSellerId || null, newValue: sellerId },
-          assignedSellerName: { oldValue: currentOrder.assignedSellerName || null, newValue: sellerName },
-          status: { oldValue: currentOrder.status, newValue: nextStatus },
-        },
-        affectedFields: ['assignedSellerId', 'assignedSellerName', 'status'],
-        summary: `Assigned order ${orderId} to fulfillment seller ${sellerName}`,
-      },
-      metadata: {
-        source: 'web_client',
-        reason: notes || 'Fulfillment assignment',
-        route: '/admin',
-      },
-    }).catch((e) => console.warn('[AuditService] assign log deferred:', e));
-
-    showToast('Seller Assigned', `Order ${orderId} assigned to ${sellerName}. Dispatch email sent to hub!`, 'success');
+    showToast('Seller Assigned', `Order ${orderId} assigned to ${sellerName}.`, 'success');
   };
 
   const updateOrderStatus = (
@@ -1525,15 +1330,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders((prev) =>
       prev.map((order) => {
         if (order.id === orderId) {
-          const defaultNote =
-            newStatus === 'packed'
-              ? 'Inspected, ESD bagged & packaged into secure shipping carton.'
-              : newStatus === 'shipped'
-              ? `Handed over to carrier (${courierInfo?.courier || 'Express Logistics'}).`
-              : newStatus === 'delivered'
-              ? 'Successfully delivered to customer.'
-              : 'Status updated.';
-
+          const defaultNote = newStatus === 'packed' ? 'Packaged into secure carton.' : newStatus === 'shipped' ? 'Handed over to carrier.' : 'Status updated.';
           const newTimeline = [
             ...order.statusTimeline,
             {
@@ -1553,30 +1350,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...(courierInfo?.packedBy && { packedBy: courierInfo.packedBy })
           };
           syncOrderToFirestore(updatedOrder).catch((e) => console.warn('Firestore sync deferred:', e));
-
-          // Record immutable audit log
-          recordActivityLog({
-            userId: currentRole === 'admin' ? 'usr-admin-01' : 'usr-seller-01',
-            userEmail: currentRole === 'admin' ? 'aryangandhale27@gmail.com' : 'seller@semixlabs.com',
-            userName: updatedBy || (currentRole === 'admin' ? 'Central Admin' : 'Fulfillment Hub Seller'),
-            userRole: currentRole === 'admin' ? 'admin' : 'seller',
-            actionType: 'STATUS_CHANGE',
-            targetEntity: 'orders',
-            targetId: orderId,
-            changes: {
-              diffs: {
-                status: { oldValue: order.status, newValue: newStatus },
-              },
-              affectedFields: ['status'],
-              summary: `Order ${orderId} status changed from "${order.status}" to "${newStatus}" by ${currentRole}`,
-            },
-            metadata: {
-              source: 'web_client',
-              reason: note || defaultNote,
-              route: currentRole === 'admin' ? '/admin' : '/seller',
-            },
-          }).catch((e) => console.warn('[AuditService] status log deferred:', e));
-
           return updatedOrder;
         }
         return order;
@@ -1618,28 +1391,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             sku: item.sku,
             name: item.name,
             quantity: item.quantity,
-            reason: item.reason || 'Marked unavailable at seller hub',
+            reason: item.reason || 'Marked unavailable',
           })),
           statusTimeline: [
             ...order.statusTimeline,
             {
               status: order.status,
               timestamp: new Date().toISOString(),
-              note: note || `Seller reported ${missingItems.length} item(s) unavailable at this hub and requested reassignment.`,
+              note: note || `Items flagged unavailable at hub.`,
               updatedBy: order.assignedSellerName || 'Seller Hub',
             },
           ],
         };
 
-        syncOrderToFirestore(updatedOrder).catch((e) => console.warn('Firestore shortage sync deferred:', e));
+        syncOrderToFirestore(updatedOrder).catch((e) => console.warn('Shortage sync error:', e));
         return updatedOrder;
       })
     );
 
-    showToast('Shortage Reported', `${missingItems.length} component(s) flagged as unavailable. Admin reassignment requested.`, 'warning');
+    showToast('Shortage Reported', `${missingItems.length} component(s) flagged as unavailable.`, 'warning');
   };
 
-  // Escalations
   const reportEscalation = (issueData: Omit<EscalationIssue, 'id' | 'createdAt' | 'status'>) => {
     const id = `ESC-${Math.floor(400 + Math.random() * 500)}`;
     const newIssue: EscalationIssue = {
@@ -1669,7 +1441,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Escalation Resolved', `Ticket #${id} marked as resolved`, 'success');
   };
 
-  // Staff
   const addStaff = (memberData: Omit<StaffMember, 'id' | 'lastActive'>) => {
     const id = `STF-${Math.floor(10 + Math.random() * 90)}`;
     const newMember: StaffMember = {
@@ -1690,12 +1461,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (member) void syncRecordToFirestore('staff', id, { ...member, active: !member.active });
   };
 
-  // Reset
   const resetDemoData = () => {
     setCart([]);
     setWishlist([]);
     setCompareList([]);
-    showToast('Reset Complete', 'Default hardware catalog, projects & demo orders restored', 'info');
+    showToast('Reset Complete', 'Default hardware catalog & projects restored', 'info');
   };
 
   const contextValue = React.useMemo(() => ({
@@ -1710,6 +1480,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addProduct,
     deleteProduct,
     isProductSyncing,
+    isProductsLoading,
     syncAllProductsToFirebase,
     banners,
     addBanner,
@@ -1797,6 +1568,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     toasts,
     isFirebaseLive,
     isProductSyncing,
+    isProductsLoading,
     updateCategoryImage,
     resetCategoryImage,
     updateProductStock,
