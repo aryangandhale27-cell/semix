@@ -31,13 +31,13 @@ import {
   ProductSnapshotChange,
   syncAllProductsToFirestore,
   syncOrderToFirestore, 
-    deleteOrderFromFirestore,
+  deleteOrderFromFirestore,
   subscribeToOrders,
-  syncCustomProjectToFirestore 
-  , syncRecordToFirestore
-  , fetchStaffFromFirestore
-  , subscribeToStaff
-  , subscribeToRecords
+  syncCustomProjectToFirestore,
+  syncRecordToFirestore,
+  fetchStaffFromFirestore,
+  subscribeToStaff,
+  subscribeToRecords
 } from '../services/firebaseService';
 import {
   subscribeToBanners,
@@ -140,7 +140,7 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   isProductSyncing: boolean;
-  isProductsLoading: boolean; // Added loading flag for instant UI control
+  isProductsLoading: boolean;
   syncAllProductsToFirebase: () => Promise<void>;
 
   // Homepage Banners
@@ -357,9 +357,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentRoleState(role);
   };
 
-  // PRODUCTS OPTIMIZED: Starts empty with a loading flag instead of stale cache
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(true);
+  // PRODUCTS OPTIMIZED: Pre-loaded instantly from server-injected HTML window data if available
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) {
+      return ((window as any).__INITIAL_PRODUCTS__ as Product[]).map(normalizeProduct);
+    }
+    return [];
+  });
+  
+  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) {
+      return false;
+    }
+    return true;
+  });
+
   const productsRef = useRef(products);
 
   useEffect(() => {

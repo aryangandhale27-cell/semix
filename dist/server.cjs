@@ -2689,7 +2689,6 @@ app2.put("/api/admin/bonuses/:sellerId", (req, res) => {
         route: `/api/admin/bonuses/${sellerId}`
       }
     });
-    console.log(`[Bonuses] Admin '${adminUser}' updated bonus for seller ${sellerId} (${updatedRecord.sellerName}) from \u20B9${previousBonus} to \u20B9${numAmount}`);
     return res.json({
       success: true,
       message: "Bonus updated successfully.",
@@ -2776,50 +2775,6 @@ var INITIAL_AUDIT_LOGS = [
       source: "web_client",
       reason: "Q3 High SLA Performance Bonus",
       route: "/admin"
-    }
-  },
-  {
-    logId: "log_seed_002",
-    timestamp: "2026-09-05T09:15:00.000Z",
-    userId: "usr-admin-01",
-    userEmail: "aryangandhale27@gmail.com",
-    userName: "Aryan Gandhale",
-    userRole: "admin",
-    actionType: "UPDATE",
-    targetEntity: "banners",
-    targetId: "banner-01",
-    changes: {
-      diffs: {
-        title: { oldValue: "Electronics Hardware", newValue: "Next-Gen Edge AI Silicon Modules" }
-      },
-      affectedFields: ["title"],
-      summary: "Updated Homepage Front Banner headline and promotional assets"
-    },
-    metadata: {
-      source: "web_client",
-      route: "/admin"
-    }
-  },
-  {
-    logId: "log_seed_003",
-    timestamp: "2026-09-03T14:20:00.000Z",
-    userId: "usr-seller-01",
-    userEmail: "seller@semixlabs.com",
-    userName: "Vikram Patel",
-    userRole: "seller",
-    actionType: "STATUS_CHANGE",
-    targetEntity: "orders",
-    targetId: "ORD-89412",
-    changes: {
-      diffs: {
-        status: { oldValue: "processing", newValue: "packed" }
-      },
-      affectedFields: ["status"],
-      summary: "Seller packed order ORD-89412 with anti-static shielding"
-    },
-    metadata: {
-      source: "web_client",
-      route: "/seller"
     }
   }
 ];
@@ -2917,9 +2872,23 @@ async function startServer() {
     app2.use(vite.middlewares);
   } else {
     const distPath = import_path.default.join(process.cwd(), "dist");
-    app2.use(import_express.default.static(distPath));
+    app2.use(import_express.default.static(distPath, { index: false }));
+    const serverProductCache = INITIAL_PRODUCTS;
     app2.get("*", (req, res) => {
-      res.sendFile(import_path.default.join(distPath, "index.html"));
+      try {
+        const indexPath = import_path.default.join(distPath, "index.html");
+        if (!import_fs.default.existsSync(indexPath)) {
+          return res.status(404).send("Build index.html not found. Please run npm run build.");
+        }
+        let html = import_fs.default.readFileSync(indexPath, "utf8");
+        const initialDataScript = `<script>window.__INITIAL_PRODUCTS__ = ${JSON.stringify(serverProductCache)};</script>`;
+        html = html.replace("</head>", `${initialDataScript}</head>`);
+        res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60, stale-while-revalidate=300");
+        return res.send(html);
+      } catch (err) {
+        console.error("[Server] Error rendering index.html:", err);
+        return res.status(500).send("Internal Server Error");
+      }
     });
   }
   app2.listen(PORT, "0.0.0.0", () => {

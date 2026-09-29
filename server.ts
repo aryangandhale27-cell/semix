@@ -14,7 +14,7 @@ import { searchProducts } from './src/services/searchEngine';
 dotenv.config();
 
 const app = express();
-const PORT =  Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 const buildFallbackProductDescription = (productName: string, category: string) => {
   const cleanName = productName.trim();
@@ -517,14 +517,12 @@ app.post('/api/admin/upload-image', (req, res) => {
       });
     }
 
-    // Validate folder target
     const targetFolder = folder === 'categories' ? 'categories' : 'banners';
     const destinationDir = path.join(uploadsDir, targetFolder);
     if (!fs.existsSync(destinationDir)) {
       fs.mkdirSync(destinationDir, { recursive: true });
     }
 
-    // Parse Data URL scheme: data:image/jpeg;base64,....
     const matches = imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (!matches || matches.length !== 3) {
       return res.status(400).json({
@@ -600,7 +598,6 @@ app.delete('/api/admin/delete-image', (req, res) => {
       });
     }
 
-    // Security check: avoid directory traversal
     const safeRelPath = path.normalize(url.replace('/uploads/', '')).replace(/^(\.\.[\/\\])+/, '');
     const filePath = path.join(uploadsDir, safeRelPath);
 
@@ -743,7 +740,6 @@ function saveBonuses(bonuses: Record<string, any>) {
   }
 }
 
-// 1. Strict Seller Read-Only Enforcement on All Mutation Verbs
 app.all(['/api/seller/bonus', '/api/seller/bonus/*'], (req, res, next) => {
   if (['PUT', 'POST', 'PATCH', 'DELETE'].includes(req.method)) {
     return res.status(403).json({
@@ -754,7 +750,6 @@ app.all(['/api/seller/bonus', '/api/seller/bonus/*'], (req, res, next) => {
   next();
 });
 
-// 2. Admin: Get all seller bonuses
 app.get('/api/admin/bonuses', (req, res) => {
   const userRole = (req.headers['x-user-role'] as string) || '';
   if (userRole !== 'admin') {
@@ -771,7 +766,6 @@ app.get('/api/admin/bonuses', (req, res) => {
   });
 });
 
-// 3. Admin: Add/Update seller bonus amount with strict validation & audit logging
 app.put('/api/admin/bonuses/:sellerId', (req, res) => {
   const userRole = (req.headers['x-user-role'] as string) || '';
   if (userRole !== 'admin') {
@@ -784,7 +778,6 @@ app.put('/api/admin/bonuses/:sellerId', (req, res) => {
   const { sellerId } = req.params;
   const { bonusAmount, sellerName, sellerEmail, updatedBy } = req.body;
 
-  // Proper numeric validation: no negative amounts, no text/letters, must be valid number
   if (bonusAmount === undefined || bonusAmount === null || bonusAmount === '') {
     return res.status(400).json({
       success: false,
@@ -793,7 +786,6 @@ app.put('/api/admin/bonuses/:sellerId', (req, res) => {
   }
 
   const strVal = String(bonusAmount).trim();
-  // Ensure string is strictly a positive integer or decimal number (e.g., 5000, 5000.50)
   if (!/^\d+(\.\d{1,2})?$/.test(strVal)) {
     return res.status(400).json({
       success: false,
@@ -838,7 +830,6 @@ app.put('/api/admin/bonuses/:sellerId', (req, res) => {
     bonuses[sellerId] = updatedRecord;
     saveBonuses(bonuses);
 
-    // Automatically record immutable audit log for this bonus allocation
     saveActivityLog({
       logId: `log_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
       timestamp: now,
@@ -862,8 +853,6 @@ app.put('/api/admin/bonuses/:sellerId', (req, res) => {
       },
     });
 
-    console.log(`[Bonuses] Admin '${adminUser}' updated bonus for seller ${sellerId} (${updatedRecord.sellerName}) from ₹${previousBonus} to ₹${numAmount}`);
-
     return res.json({
       success: true,
       message: 'Bonus updated successfully.',
@@ -878,13 +867,11 @@ app.put('/api/admin/bonuses/:sellerId', (req, res) => {
   }
 });
 
-// 4. Seller: Read-only access to own bonus
 app.get('/api/seller/bonus', (req, res) => {
   const userRole = (req.headers['x-user-role'] as string) || '';
   const userId = (req.headers['x-user-id'] as string) || '';
   const querySellerId = (req.query.sellerId as string) || userId || 'usr-seller-01';
 
-  // Strict isolation: Seller cannot see another seller's bonus
   if (userRole === 'seller' && userId && querySellerId !== userId) {
     return res.status(403).json({
       success: false,
@@ -909,13 +896,11 @@ app.get('/api/seller/bonus', (req, res) => {
   });
 });
 
-// 5. Seller: Read-only access by sellerId with strict role check
 app.get('/api/seller/bonus/:sellerId', (req, res) => {
   const { sellerId } = req.params;
   const userRole = (req.headers['x-user-role'] as string) || '';
   const userId = (req.headers['x-user-id'] as string) || '';
 
-  // Strict isolation: Seller cannot access another seller's bonus
   if (userRole === 'seller' && userId && userId !== sellerId) {
     return res.status(403).json({
       success: false,
@@ -969,50 +954,6 @@ const INITIAL_AUDIT_LOGS = [
       route: '/admin',
     },
   },
-  {
-    logId: 'log_seed_002',
-    timestamp: '2026-09-05T09:15:00.000Z',
-    userId: 'usr-admin-01',
-    userEmail: 'aryangandhale27@gmail.com',
-    userName: 'Aryan Gandhale',
-    userRole: 'admin',
-    actionType: 'UPDATE',
-    targetEntity: 'banners',
-    targetId: 'banner-01',
-    changes: {
-      diffs: {
-        title: { oldValue: 'Electronics Hardware', newValue: 'Next-Gen Edge AI Silicon Modules' },
-      },
-      affectedFields: ['title'],
-      summary: 'Updated Homepage Front Banner headline and promotional assets',
-    },
-    metadata: {
-      source: 'web_client',
-      route: '/admin',
-    },
-  },
-  {
-    logId: 'log_seed_003',
-    timestamp: '2026-09-03T14:20:00.000Z',
-    userId: 'usr-seller-01',
-    userEmail: 'seller@semixlabs.com',
-    userName: 'Vikram Patel',
-    userRole: 'seller',
-    actionType: 'STATUS_CHANGE',
-    targetEntity: 'orders',
-    targetId: 'ORD-89412',
-    changes: {
-      diffs: {
-        status: { oldValue: 'processing', newValue: 'packed' },
-      },
-      affectedFields: ['status'],
-      summary: 'Seller packed order ORD-89412 with anti-static shielding',
-    },
-    metadata: {
-      source: 'web_client',
-      route: '/seller',
-    },
-  },
 ];
 
 function loadActivityLogs(): any[] {
@@ -1033,13 +974,12 @@ function loadActivityLogs(): any[] {
 function saveActivityLog(log: any) {
   try {
     const logs = loadActivityLogs();
-    // Immutability check: if log already exists, reject modification!
     const existingIndex = logs.findIndex((l: any) => l.logId === log.logId);
     if (existingIndex !== -1) {
       console.warn(`[AuditLogs] Immutability violation attempt: Log ${log.logId} already exists. Write rejected.`);
       return false;
     }
-    logs.unshift(log); // Prepend new log
+    logs.unshift(log);
     fs.writeFileSync(activityLogsFilePath, JSON.stringify(logs.slice(0, 1000), null, 2), 'utf-8');
     return true;
   } catch (err) {
@@ -1048,7 +988,6 @@ function saveActivityLog(log: any) {
   }
 }
 
-// GET /api/admin/audit-logs
 app.get('/api/admin/audit-logs', (req, res) => {
   const { targetEntity, userRole, actionType, targetId, limit: queryLimit } = req.query;
   let logs = loadActivityLogs();
@@ -1074,7 +1013,6 @@ app.get('/api/admin/audit-logs', (req, res) => {
   });
 });
 
-// POST /api/admin/audit-logs (Append-Only)
 app.post('/api/admin/audit-logs', (req, res) => {
   const { logId, userId, userRole, actionType, targetEntity, targetId, changes } = req.body;
 
@@ -1114,7 +1052,6 @@ app.post('/api/admin/audit-logs', (req, res) => {
 });
 
 async function startServer() {
-  // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1123,9 +1060,30 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, { index: false }));
+
+    const serverProductCache = INITIAL_PRODUCTS;
+
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      try {
+        const indexPath = path.join(distPath, 'index.html');
+        if (!fs.existsSync(indexPath)) {
+          return res.status(404).send('Build index.html not found. Please run npm run build.');
+        }
+
+        let html = fs.readFileSync(indexPath, 'utf8');
+
+        // Inject initial product data directly into the HTML window object for instant pre-rendering
+        const initialDataScript = `<script>window.__INITIAL_PRODUCTS__ = ${JSON.stringify(serverProductCache)};</script>`;
+        html = html.replace('</head>', `${initialDataScript}</head>`);
+
+        // Set aggressive edge caching headers so GoDaddy CDN delivers this instantly to new users
+        res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+        return res.send(html);
+      } catch (err: any) {
+        console.error('[Server] Error rendering index.html:', err);
+        return res.status(500).send('Internal Server Error');
+      }
     });
   }
 
