@@ -427,19 +427,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
       const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
-      productsRef.current = nextProducts;
       setProducts(nextProducts);
-      writeProductCacheWhenIdle(nextProducts);
+      writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
       const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
       writeQueuedProductWrites(remainingQueuedProducts);
     }, (err) => {
       console.warn('[Firestore] Product live listener notice:', err?.message || err);
       const queuedProducts = readQueuedProductWrites();
       if (queuedProducts.length > 0) {
-        const nextProducts = queuedProducts.map(normalizeProduct);
-        productsRef.current = nextProducts;
-        setProducts(nextProducts);
-        writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+        setProducts(queuedProducts.map(normalizeProduct));
+        writeCachedData(APP_DATA_CACHE_KEYS.products, queuedProducts.map(normalizeProduct));
       }
     }, (changes: ProductSnapshotChange[]) => {
       if (!isMounted || changes.length === 0) return;

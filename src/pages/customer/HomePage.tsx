@@ -36,7 +36,7 @@ export const HomePage: React.FC = () => {
 
   const currentSlideIndex = activeBanners.length > 0 ? heroSlide % activeBanners.length : 0;
   const currentSlide = activeBanners[currentSlideIndex];
-  const [displayedSlide, setDisplayedSlide] = useState<HomepageBanner | null>(() => currentSlide ?? null);
+  const [displayedSlide, setDisplayedSlide] = useState<HomepageBanner | null>(null);
 
   useEffect(() => {
     if (!displayedSlide && currentSlide) {

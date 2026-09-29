@@ -26,10 +26,6 @@ export const CATEGORY_IMAGE_MAP: Record<string, string> = {
   'cat-smd-components': 'https://images.unsplash.com/photo-1608755728617-aefab37d45f1?auto=format&fit=crop&w=600&q=80',
 };
 
-const preloadShopPage = () => {
-  void import('../../pages/customer/ShopPage');
-};
-
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className = '', priority = false }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -45,9 +41,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
       <Link
         to={`/shop?category=${encodeURIComponent(category.name)}`}
         id={`category-card-${category.id}`}
-        onPointerEnter={preloadShopPage}
-        onFocus={preloadShopPage}
-        onTouchStart={preloadShopPage}
         className="group flex h-full min-h-[220px] flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-slate-950 shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-900/15 sm:min-h-[270px] sm:rounded-2xl"
       >
         {/* Full-bleed image treatment keeps the admin-managed image as the visual focus. */}
