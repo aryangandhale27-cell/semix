@@ -12,20 +12,11 @@ import {
   List, 
   X, 
   Check, 
-  ChevronDown, 
   Search, 
   RotateCcw,
   Sparkles,
   Zap
 } from 'lucide-react';
-
-const PRODUCT_BATCH_SIZE = 24;
-
-const parsePriceParam = (value: string | null): number | null => {
-  if (value === null) return null;
-  const price = Number(value);
-  return Number.isFinite(price) ? price : null;
-};
 
 const parsePriceParam = (value: string | null): number | null => {
   if (value === null || value === '') {
@@ -55,7 +46,6 @@ export const ShopPage: React.FC = () => {
   const [maxPriceDraft, setMaxPriceDraft] = useState('');
   const [sortBy, setSortBy] = useState<string>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [visibleProductState, setVisibleProductState] = useState({ key: '', count: PRODUCT_BATCH_SIZE });
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -199,7 +189,7 @@ export const ShopPage: React.FC = () => {
     if (!searchQuery.trim()) return null;
     return searchProducts(products, searchQuery, {
       category: selectedCategory !== 'All' ? selectedCategory : undefined,
-      limit: undefined, // return all matching candidates for the shop catalog view
+      limit: undefined,
     });
   }, [products, searchQuery, selectedCategory]);
 
@@ -225,19 +215,15 @@ export const ShopPage: React.FC = () => {
 
     // Apply secondary faceted filters
     const filtered = candidateList.filter(({ product }) => {
-      // In stock filter
       if (inStockOnly && (!product.inStock || product.stockCount <= 0)) {
         return false;
       }
-      // Brand filter
       if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) {
         return false;
       }
-      // Voltage filter
       if (selectedVoltages.length > 0 && (!product.voltage || !selectedVoltages.includes(product.voltage))) {
         return false;
       }
-      // Price filter
       if (minPrice !== null && product.price < minPrice) {
         return false;
       }
@@ -254,11 +240,10 @@ export const ShopPage: React.FC = () => {
       if (sortBy === 'rating') return b.product.rating - a.product.rating;
       if (sortBy === 'newest') return (b.product.isNew ? 1 : 0) - (a.product.isNew ? 1 : 0);
       
-      // Default: If searching, sort by search relevance score descending
       if (searchEngineResult) {
         return b.searchScore - a.searchScore;
       }
-      return 0; // featured default
+      return 0;
     });
 
     return filtered.map((item) => item.product);
@@ -274,24 +259,6 @@ export const ShopPage: React.FC = () => {
     sortBy,
   ]);
 
-  const filteredProductsKey = useMemo(
-    () => filteredProducts.map((product) => product.id).join('|'),
-    [filteredProducts]
-  );
-
-  useEffect(() => {
-    setVisibleProductState({ key: filteredProductsKey, count: PRODUCT_BATCH_SIZE });
-  }, [filteredProductsKey]);
-
-  const visibleProductCount = visibleProductState.key === filteredProductsKey
-    ? visibleProductState.count
-    : PRODUCT_BATCH_SIZE;
-
-  const visibleProducts = useMemo(
-    () => filteredProducts.slice(0, visibleProductCount),
-    [filteredProducts, visibleProductCount]
-  );
-
   const activeFilterCount =
     (selectedCategory !== 'All' ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
@@ -302,7 +269,6 @@ export const ShopPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* Header Breadcrumb & Title */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
@@ -324,9 +290,7 @@ export const ShopPage: React.FC = () => {
           </p>
         </div>
 
-        {/* View mode & Sorting controls */}
         <div className="flex items-center gap-3 self-end md:self-auto">
-          {/* Mobile Filter Toggle */}
           <button
             id="mobile-filter-btn"
             onClick={() => setMobileFilterOpen(true)}
@@ -336,7 +300,6 @@ export const ShopPage: React.FC = () => {
             <span>Filters ({activeFilterCount})</span>
           </button>
 
-          {/* Sort Dropdown */}
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
             <span className="hidden sm:inline text-slate-500">Sort by:</span>
             <select
@@ -354,7 +317,6 @@ export const ShopPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Grid/List View Toggle */}
           <div className="hidden sm:inline-flex rounded-xl border border-slate-300 bg-slate-50 p-0.5">
             <button
               onClick={() => setViewMode('grid')}
@@ -378,9 +340,7 @@ export const ShopPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Layout: Sidebar Filters + Products Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Desktop Sidebar Filters */}
         <aside className="hidden lg:block lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="font-extrabold text-sm text-[#561269] flex items-center gap-1.5">
@@ -398,7 +358,6 @@ export const ShopPage: React.FC = () => {
             )}
           </div>
 
-          {/* Category Filter */}
           <div>
             <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-2">
               Categories
@@ -434,7 +393,6 @@ export const ShopPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Stock Availability Toggle */}
           <div className="pt-4 border-t border-slate-100">
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input
@@ -447,7 +405,6 @@ export const ShopPage: React.FC = () => {
             </label>
           </div>
 
-          {/* Price Range Sliders */}
           <div className="pt-4 border-t border-slate-100">
             <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-2">
               <span>Min Price</span>
@@ -520,7 +477,6 @@ export const ShopPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Operating Voltage */}
           {allVoltages.length > 0 && (
             <div className="pt-4 border-t border-slate-100">
               <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-2">
@@ -542,7 +498,6 @@ export const ShopPage: React.FC = () => {
             </div>
           )}
 
-          {/* Brands */}
           <div className="pt-4 border-t border-slate-100">
             <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-2">
               Manufacturer / Brand
@@ -563,9 +518,7 @@ export const ShopPage: React.FC = () => {
           </div>
         </aside>
 
-        {/* Products Results Container */}
         <main className="lg:col-span-9">
-          {/* Intelligent Search Did You Mean Banner */}
           {searchEngineResult?.didYouMean && (
             <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-amber-900">
@@ -584,7 +537,6 @@ export const ShopPage: React.FC = () => {
             </div>
           )}
 
-          {/* Active Filter Chips */}
           {activeFilterCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               <span className="text-[11px] font-bold text-slate-500">Active Filters:</span>
@@ -634,7 +586,6 @@ export const ShopPage: React.FC = () => {
             </div>
           )}
 
-          {/* Products Grid / List */}
           {filteredProducts.length === 0 ? (
             <div className="bg-slate-50 rounded-2xl border border-slate-200 p-12 text-center max-w-md mx-auto my-8">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3">
@@ -653,17 +604,18 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
-              {visibleProducts.map((product) => (
+              {filteredProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
+                  priority={index < 4}
                   onQuickView={(p) => setQuickViewProduct(p)}
                 />
               ))}
             </div>
           ) : (
             <div className="space-y-4">
-              {visibleProducts.map((product) => (
+              {filteredProducts.map((product, index) => (
                 <div
                   key={product.id}
                   className="bg-white rounded-xl border border-slate-200 p-4 hover:border-[#561269]/40 hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4"
@@ -671,6 +623,9 @@ export const ShopPage: React.FC = () => {
                   <img
                     src={(product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80')}
                     alt={product.name}
+                    loading={index < 4 ? 'eager' : 'lazy'}
+                    fetchPriority={index < 4 ? 'high' : 'auto'}
+                    decoding="async"
                     className="w-24 h-24 object-contain mix-blend-multiply bg-slate-50 p-2 rounded-lg shrink-0"
                   />
                   <div className="flex-1 min-w-0">
@@ -705,26 +660,9 @@ export const ShopPage: React.FC = () => {
               ))}
             </div>
           )}
-
-          {visibleProducts.length < filteredProducts.length && (
-            <div className="flex justify-center pt-2">
-              <button
-                type="button"
-                onClick={() => setVisibleProductState({
-                  key: filteredProductsKey,
-                  count: Math.min(visibleProductCount + PRODUCT_BATCH_SIZE, filteredProducts.length),
-                })}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#561269]/20 bg-white px-5 py-2.5 text-xs font-bold text-[#561269] shadow-xs transition-colors hover:border-[#561269]/40 hover:bg-[#561269]/5"
-              >
-                Load More Products
-                <ChevronDown className="h-4 w-4" />
-              </button>
-            </div>
-          )}
         </main>
       </div>
 
-      {/* Mobile Filter Drawer */}
       {mobileFilterOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex justify-end">
           <div className="bg-white w-80 max-w-full h-full p-5 overflow-y-auto flex flex-col justify-between">
@@ -843,7 +781,6 @@ export const ShopPage: React.FC = () => {
         </div>
       )}
 
-      {/* Quick View Modal */}
       <QuickViewModal
         product={quickViewProduct}
         onClose={() => setQuickViewProduct(null)}
@@ -851,5 +788,3 @@ export const ShopPage: React.FC = () => {
     </div>
   );
 };
- 
- 
