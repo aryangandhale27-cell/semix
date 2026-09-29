@@ -1,21 +1,20 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 
-// Layout Components
+// Core Layout Components (Instant Paint)
 import { TopUtilityBar } from './components/layout/TopUtilityBar';
 import { Header } from './components/layout/Header';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { ToastContainer } from './components/common/Toast';
-import { CompareDrawer } from './components/common/CompareDrawer';
-import { AuthModal } from './components/common/AuthModal';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
-import { HomePage } from './pages/customer/HomePage';
-import { CategoriesPage } from './pages/customer/CategoriesPage';
 
+// Lazy-loaded Pages (Code-Split for Mobile)
+const HomePage = lazy(() => import('./pages/customer/HomePage').then((module) => ({ default: module.HomePage })));
+const CategoriesPage = lazy(() => import('./pages/customer/CategoriesPage').then((module) => ({ default: module.CategoriesPage })));
 const ShopPage = lazy(() => import('./pages/customer/ShopPage').then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import('./pages/customer/ProductDetailPage').then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import('./pages/customer/CartPage').then((module) => ({ default: module.CartPage })));
@@ -30,23 +29,26 @@ const TeamPortalPage = lazy(() => import('./pages/team/TeamPortalPage').then((mo
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })));
 const SellerDashboardPage = lazy(() => import('./pages/seller/SellerDashboardPage').then((module) => ({ default: module.SellerDashboardPage })));
 
+// Lazy-loaded Global Overlays
+const CompareDrawer = lazy(() => import('./components/common/CompareDrawer').then((m) => ({ default: m.CompareDrawer })));
+const AuthModal = lazy(() => import('./components/common/AuthModal').then((m) => ({ default: m.AuthModal })));
+
 function PageRouteFallback() {
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="animate-pulse space-y-4">
-        <div className="h-8 w-40 rounded bg-slate-200" />
-        <div className="h-64 w-full rounded-2xl bg-slate-200" />
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="h-52 rounded-xl bg-slate-200" />
-          <div className="h-52 rounded-xl bg-slate-200" />
-          <div className="h-52 rounded-xl bg-slate-200" />
+        <div className="h-7 w-36 rounded bg-slate-200" />
+        <div className="h-48 sm:h-64 w-full rounded-2xl bg-slate-200" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4">
+          <div className="h-44 rounded-xl bg-slate-200" />
+          <div className="h-44 rounded-xl bg-slate-200" />
+          <div className="h-44 rounded-xl bg-slate-200 hidden sm:block" />
         </div>
       </div>
     </div>
   );
 }
 
-// Helper component to scroll to top on route change, or to hash if present
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
 
@@ -68,7 +70,6 @@ function ScrollToTop() {
   return null;
 }
 
-// Animated routes container for smooth page transitions
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -199,27 +200,30 @@ function AnimatedRoutes() {
 }
 
 export default function App() {
+  const [loadDeferredOverlays, setLoadDeferredOverlays] = useState(false);
+
+  useEffect(() => {
+    // Defers modal & drawer mounting until after first paint to unblock mobile main thread
+    const timer = setTimeout(() => {
+      setLoadDeferredOverlays(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <AppProvider>
       <AuthProvider>
         <BrowserRouter>
           <ScrollToTop />
           <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans antialiased selection:bg-[#FF6B00] selection:text-white">
-            {/* Top Bar with Auth State & Support Info */}
             <TopUtilityBar />
-
-            {/* Main Brand Header */}
             <Header />
-
-            {/* Categorized Sticky Navbar */}
             <Navbar />
 
-            {/* Page Routing Container */}
             <main className="flex-1 overflow-x-hidden">
               <AnimatedRoutes />
             </main>
 
-            {/* Footer with Service Value Props & Links */}
             <Footer />
             <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 text-center sm:py-5">
               <Link
@@ -230,14 +234,17 @@ export default function App() {
               </Link>
             </div>
 
-            {/* Global Modals & Notifications */}
-            <AuthModal />
             <ToastContainer />
-            <CompareDrawer />
+
+            {loadDeferredOverlays && (
+              <Suspense fallback={null}>
+                <AuthModal />
+                <CompareDrawer />
+              </Suspense>
+            )}
           </div>
         </BrowserRouter>
       </AuthProvider>
     </AppProvider>
   );
 }
-
