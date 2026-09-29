@@ -24,6 +24,15 @@ const parsePriceParam = (value: string | null): number | null => {
   return Number.isFinite(price) ? price : null;
 };
 
+const parsePriceParam = (value: string | null): number | null => {
+  if (value === null || value === '') {
+    return null;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+};
+
 export const ShopPage: React.FC = () => {
   const { products, categories, searchQuery, setSearchQuery } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,10 +61,17 @@ export const ShopPage: React.FC = () => {
     if (cat) {
       setSelectedCategory(cat);
     }
+
     const q = searchParams.get('q');
     if (q !== null && q !== undefined) {
       setSearchQuery(q);
     }
+
+    const maxPriceParam = parsePriceParam(searchParams.get('maxPrice'));
+    if (maxPriceParam !== null) {
+      setMaxPrice(maxPriceParam);
+    }
+
     const filter = searchParams.get('filter');
     if (filter === 'new') {
       setSortBy('newest');
