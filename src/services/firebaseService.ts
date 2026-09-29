@@ -90,13 +90,12 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
 export async function fetchProductsFromFirestore(): Promise<Product[]> {
   const path = 'products';
   try {
-    const q = query(collection(db, path), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(collection(db, path));
     const items: Product[] = [];
     snapshot.forEach((docSnap) => {
-      items.push(docSnap.data() as Product);
+      items.push({ ...docSnap.data(), id: docSnap.id } as Product);
     });
-    return items;
+    return items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
   }
@@ -112,15 +111,21 @@ export function subscribeToProducts(
   onError?: (err: any) => void,
   onChanges?: (changes: ProductSnapshotChange[]) => void
 ): Unsubscribe {
-  const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+  const productsCollection = collection(db, 'products');
   let hasInitialSnapshot = false;
 
   return onSnapshot(
-    q,
+    productsCollection,
+    { includeMetadataChanges: true },
     (snapshot) => {
+      if (snapshot.metadata.fromCache) return;
+
       if (!hasInitialSnapshot) {
         const items: Product[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
+        snapshot.forEach((docSnap) => {
+          items.push({ ...docSnap.data(), id: docSnap.id } as Product);
+        });
+        items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         hasInitialSnapshot = true;
         onData(items);
         return;
@@ -128,7 +133,7 @@ export function subscribeToProducts(
 
       const changes = snapshot.docChanges().map((change) => ({
         type: change.type,
-        product: { id: change.doc.id, ...change.doc.data() } as Product,
+        product: { ...change.doc.data(), id: change.doc.id } as Product,
       }));
       if (changes.length > 0) onChanges?.(changes);
     },

@@ -442,7 +442,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                           src={p.image}
                           alt={p.name}
                           className="w-full h-full object-cover rounded-sm"
-                          loading="lazy"
+                          loading="eager"
+                          fetchPriority={idx < 3 ? 'high' : 'auto'}
+                          decoding="async"
                         />
                       </div>
 
