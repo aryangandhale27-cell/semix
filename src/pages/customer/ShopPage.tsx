@@ -1,10 +1,15 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { ProductCard } from '../../components/common/ProductCard';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { Product } from '../../types';
 import { searchProducts } from '../../services/searchEngine';
+import {
+  fetchNextProductsByCategory,
+  fetchProductsByCategory,
+  readCachedProductsByCategory,
+} from '../../services/firebaseService';
 import { 
   Filter, 
   SlidersHorizontal, 
@@ -34,6 +39,11 @@ export const ShopPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
     return searchParams.get('category') || 'All';
   });
+  const selectedCategoryRef = useRef(selectedCategory);
+  const [categoryProducts, setCategoryProducts] = useState<Product[] | null>(() => {
+    const category = searchParams.get('category');
+    return category ? readCachedProductsByCategory(category) : null;
+  });
 
   const [inStockOnly, setInStockOnly] = useState(() => searchParams.get('inStock') === 'true');
   const [selectedBrands, setSelectedBrands] = useState<string[]>(() => searchParams.getAll('brand'));
@@ -46,13 +56,22 @@ export const ShopPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [visibleProductCount, setVisibleProductCount] = useState(12);
+  const [hasMoreCategoryProducts, setHasMoreCategoryProducts] = useState(false);
+  const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
+
+  const selectCategory = useCallback((category: string) => {
+    selectedCategoryRef.current = category;
+    setSelectedCategory(category);
+    setCategoryProducts(category === 'All' ? null : readCachedProductsByCategory(category));
+    setVisibleProductCount(12);
+    setHasMoreCategoryProducts(false);
+  }, []);
 
   // Sync URL search params
   useEffect(() => {
-    const cat = searchParams.get('category');
-    if (cat) {
-      setSelectedCategory(cat);
-    }
+    const cat = searchParams.get('category') || 'All';
+    if (cat !== selectedCategory) selectCategory(cat);
 
     const q = searchParams.get('q');
     if (q !== null && q !== undefined) {
@@ -68,10 +87,32 @@ export const ShopPage: React.FC = () => {
     if (filter === 'new') {
       setSortBy('newest');
     }
-  }, [searchParams, setSearchQuery]);
+  }, [searchParams, selectedCategory, selectCategory, setSearchQuery]);
+
+  useEffect(() => {
+    if (selectedCategory === 'All') {
+      setCategoryProducts(null);
+      return;
+    }
+
+    let isActive = true;
+    void fetchProductsByCategory(selectedCategory).then((freshProducts) => {
+      if (isActive && freshProducts !== null) {
+        setCategoryProducts(freshProducts.products);
+        setHasMoreCategoryProducts(freshProducts.hasMore);
+      }
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedCategory]);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParams);
+
+    if (selectedCategory !== 'All') nextParams.set('category', selectedCategory);
+    else nextParams.delete('category');
 
     if (inStockOnly) nextParams.set('inStock', 'true');
     else nextParams.delete('inStock');
@@ -95,6 +136,7 @@ export const ShopPage: React.FC = () => {
     inStockOnly,
     selectedBrands,
     selectedVoltages,
+    selectedCategory,
     minPrice,
     maxPrice,
     searchParams,
@@ -108,6 +150,28 @@ export const ShopPage: React.FC = () => {
   const allVoltages = useMemo(() => {
     return Array.from(new Set(products.map((p) => p.voltage))).filter(Boolean) as string[];
   }, [products]);
+
+  const productsByCategory = useMemo(() => {
+    const groupedProducts = new Map<string, Product[]>();
+    products.forEach((product) => {
+      const categoryProducts = groupedProducts.get(product.category) ?? [];
+      categoryProducts.push(product);
+      groupedProducts.set(product.category, categoryProducts);
+    });
+    return groupedProducts;
+  }, [products]);
+
+  const catalogProducts = useMemo(() => {
+    if (selectedCategory === 'All') return products;
+    if (categoryProducts !== null) return categoryProducts;
+    return productsByCategory.get(selectedCategory) ?? [];
+  }, [categoryProducts, products, productsByCategory, selectedCategory]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    productsByCategory.forEach((items, category) => counts.set(category, items.length));
+    return counts;
+  }, [productsByCategory]);
 
   const maxPriceLimit = useMemo(() => {
     const highestPrice = products.reduce((highest, product) => Math.max(highest, product.price), 0);
@@ -161,7 +225,7 @@ export const ShopPage: React.FC = () => {
   };
 
   const resetFilters = () => {
-    setSelectedCategory('All');
+    selectCategory('All');
     setInStockOnly(false);
     setSelectedBrands([]);
     setSelectedVoltages([]);
@@ -176,11 +240,11 @@ export const ShopPage: React.FC = () => {
 
   const searchEngineResult = useMemo(() => {
     if (!searchQuery.trim()) return null;
-    return searchProducts(products, searchQuery, {
+    return searchProducts(catalogProducts, searchQuery, {
       category: selectedCategory !== 'All' ? selectedCategory : undefined,
       limit: undefined,
     });
-  }, [products, searchQuery, selectedCategory]);
+  }, [catalogProducts, searchQuery, selectedCategory]);
 
   const filteredProducts = useMemo(() => {
     let candidateList: { product: Product; searchScore: number }[] = [];
@@ -191,7 +255,7 @@ export const ShopPage: React.FC = () => {
         searchScore: hit.score,
       }));
     } else {
-      candidateList = products
+      candidateList = catalogProducts
         .filter((product) => {
           if (selectedCategory !== 'All' && product.category !== selectedCategory) {
             return false;
@@ -234,7 +298,7 @@ export const ShopPage: React.FC = () => {
 
     return filtered.map((item) => item.product);
   }, [
-    products,
+    catalogProducts,
     searchEngineResult,
     selectedCategory,
     inStockOnly,
@@ -252,6 +316,30 @@ export const ShopPage: React.FC = () => {
     selectedVoltages.length +
     (searchQuery ? 1 : 0) +
     ((minPrice !== null && minPrice > 0) || (maxPrice !== null && maxPrice < maxPriceLimit) ? 1 : 0);
+
+  useEffect(() => {
+    setVisibleProductCount(12);
+  }, [selectedCategory, searchQuery, inStockOnly, selectedBrands, selectedVoltages, minPrice, maxPrice, sortBy]);
+
+  const visibleProducts = filteredProducts.slice(0, visibleProductCount);
+  const handleQuickView = useCallback((product: Product) => setQuickViewProduct(product), []);
+  const loadMoreProducts = async () => {
+    if (visibleProductCount < filteredProducts.length) {
+      setVisibleProductCount((count) => count + 12);
+      return;
+    }
+    if (selectedCategory === 'All' || !hasMoreCategoryProducts || isLoadingMoreProducts) return;
+
+    const category = selectedCategory;
+    setIsLoadingMoreProducts(true);
+    const nextPage = await fetchNextProductsByCategory(category, categoryProducts ?? filteredProducts);
+    if (selectedCategoryRef.current === category && nextPage) {
+      setCategoryProducts(nextPage.products);
+      setHasMoreCategoryProducts(nextPage.hasMore);
+      setVisibleProductCount((count) => count + 12);
+    }
+    setIsLoadingMoreProducts(false);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -350,20 +438,20 @@ export const ShopPage: React.FC = () => {
             </span>
             <div className="space-y-1">
               <button
-                onClick={() => setSelectedCategory('All')}
+                onClick={() => selectCategory('All')}
                 className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
                   selectedCategory === 'All'
                     ? 'bg-[#561269] text-white'
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <span>All Categories</span>
-                <span className="text-[10px] opacity-80">{products.length}</span>
+                  <span>All Categories</span>
+                  <span className="text-[10px] opacity-80">{products.length}</span>
               </button>
               {categories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategory(cat.name)}
+                  onClick={() => selectCategory(cat.name)}
                   className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
                     selectedCategory === cat.name
                       ? 'bg-[#561269] text-white'
@@ -372,7 +460,7 @@ export const ShopPage: React.FC = () => {
                 >
                   <span className="truncate">{cat.name}</span>
                   <span className="text-[10px] opacity-80">
-                    {products.filter((p) => p.category === cat.name).length}
+                    {categoryCounts.get(cat.name) ?? 0}
                   </span>
                 </button>
               ))}
@@ -530,7 +618,7 @@ export const ShopPage: React.FC = () => {
               {selectedCategory !== 'All' && (
                 <span className="inline-flex items-center gap-1 bg-[#561269] text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
                   Category: {selectedCategory}
-                  <button onClick={() => setSelectedCategory('All')} className="hover:text-rose-300">
+                  <button onClick={() => selectCategory('All')} className="hover:text-rose-300">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -607,11 +695,11 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
-              {filteredProducts.map((product) => (
+              {visibleProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onQuickView={(p) => setQuickViewProduct(p)}
+                  onQuickView={handleQuickView}
                 />
               ))}
             </div>
@@ -661,6 +749,20 @@ export const ShopPage: React.FC = () => {
               ))}
             </div>
           )}
+
+          {!isProductsLoading && viewMode === 'grid' && (
+            visibleProductCount < filteredProducts.length ||
+            (selectedCategory !== 'All' && hasMoreCategoryProducts)
+          ) && (
+            <button
+              type="button"
+              onClick={() => void loadMoreProducts()}
+              disabled={isLoadingMoreProducts}
+              className="mx-auto mt-6 block rounded-lg border border-[#561269] px-5 py-2.5 text-xs font-bold text-[#561269] hover:bg-[#561269] hover:text-white"
+            >
+              {isLoadingMoreProducts ? 'Loading products...' : 'Load 12 more products'}
+            </button>
+          )}
         </main>
       </div>
 
@@ -682,7 +784,7 @@ export const ShopPage: React.FC = () => {
                 <span className="text-xs font-bold text-slate-700 block mb-2">Category</span>
                 <select
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={(e) => selectCategory(e.target.value)}
                   className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                 >
                   <option value="All">All Categories</option>

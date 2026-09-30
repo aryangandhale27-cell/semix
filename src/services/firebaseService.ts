@@ -10,6 +10,9 @@ import {
   where,
   orderBy, 
   limit,
+  startAfter,
+  QueryDocumentSnapshot,
+  DocumentData,
   onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
@@ -23,7 +26,18 @@ import {
   StaffMember,
 } from '../types';
 
-const PRODUCTS_CACHE_KEY = 'semix_products_cache_v1';
+const PRODUCTS_CACHE_KEY = 'semix-cache-products-v1';
+const LEGACY_PRODUCTS_CACHE_KEY = 'semix_products_cache_v1';
+const CATEGORY_PRODUCTS_CACHE_PREFIX = 'semix-cache-cat-';
+const CATEGORY_PRODUCTS_FRESH_MS = 30_000;
+const categoryProductRequests = new Map<string, Promise<CategoryProductsPage | null>>();
+const categoryProductCursors = new Map<string, QueryDocumentSnapshot<DocumentData> | null>();
+const categoryProductFetchedAt = new Map<string, number>();
+
+export interface CategoryProductsPage {
+  products: Product[];
+  hasMore: boolean;
+}
 
 /**
  * Helper to remove undefined values so Firestore doesn't throw 'Unsupported field value: undefined'
@@ -99,10 +113,12 @@ export async function fetchInitialProducts(limitCount = 25): Promise<Product[]> 
 
   // 1. Instant local storage retrieval (0ms)
   try {
-    const cached = localStorage.getItem(PRODUCTS_CACHE_KEY);
+    const cached = localStorage.getItem(PRODUCTS_CACHE_KEY)
+      || localStorage.getItem(LEGACY_PRODUCTS_CACHE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(parsed));
         return parsed;
       }
     }
@@ -132,6 +148,142 @@ export async function fetchInitialProducts(limitCount = 25): Promise<Product[]> 
     handleFirestoreError(error, OperationType.GET, path);
     return [];
   }
+}
+
+function getCategoryProductsCacheKey(category: string): string {
+  return `${CATEGORY_PRODUCTS_CACHE_PREFIX}${encodeURIComponent(category)}-v1`;
+}
+
+export function readCachedProductsByCategory(category: string): Product[] | null {
+  try {
+    const cached = localStorage.getItem(getCategoryProductsCacheKey(category));
+    if (cached === null) return null;
+    const parsed: unknown = JSON.parse(cached);
+    return Array.isArray(parsed) ? parsed as Product[] : null;
+  } catch {
+    return null;
+  }
+}
+
+function mergeCategoryProducts(existing: Product[], incoming: Product[]): Product[] {
+  const productsById = new Map(existing.map((product) => [product.id, product]));
+  incoming.forEach((product) => productsById.set(product.id, product));
+  return Array.from(productsById.values()).sort((a, b) =>
+    (b.createdAt || '').localeCompare(a.createdAt || '')
+  );
+}
+
+export function fetchProductsByCategory(category: string, limitCount = 25): Promise<CategoryProductsPage | null> {
+  const requestKey = `${category}:first`;
+  const activeRequest = categoryProductRequests.get(requestKey);
+  if (activeRequest) return activeRequest;
+  const cachedProducts = readCachedProductsByCategory(category);
+  const fetchedAt = categoryProductFetchedAt.get(category);
+  if (cachedProducts && fetchedAt && Date.now() - fetchedAt < CATEGORY_PRODUCTS_FRESH_MS) {
+    return Promise.resolve({
+      products: cachedProducts,
+      hasMore: Boolean(categoryProductCursors.get(category)),
+    });
+  }
+
+  const request = (async () => {
+    try {
+      const productsQuery = query(
+        collection(db, 'products'),
+        where('category', '==', category),
+        limit(limitCount)
+      );
+      const snapshot = await getDocs(productsQuery);
+      const freshProducts = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      } as Product));
+      const products = mergeCategoryProducts(
+        readCachedProductsByCategory(category) ?? [],
+        freshProducts
+      );
+      const hasMore = snapshot.size === limitCount;
+      categoryProductFetchedAt.set(category, Date.now());
+      categoryProductCursors.set(
+        category,
+        hasMore ? snapshot.docs[snapshot.docs.length - 1] : null
+      );
+
+      try {
+        localStorage.setItem(getCategoryProductsCacheKey(category), JSON.stringify(products));
+      } catch {
+        // Keep the network result usable when browser storage is unavailable.
+      }
+      return { products, hasMore };
+    } catch (error) {
+      try {
+        handleFirestoreError(error, OperationType.GET, `products(category=${category})`);
+      } catch {
+        return null;
+      }
+    } finally {
+      categoryProductRequests.delete(requestKey);
+    }
+    return null;
+  })();
+
+  categoryProductRequests.set(requestKey, request);
+  return request;
+}
+
+export function fetchNextProductsByCategory(
+  category: string,
+  existingProducts: Product[],
+  limitCount = 25
+): Promise<CategoryProductsPage | null> {
+  const requestKey = `${category}:next`;
+  const activeRequest = categoryProductRequests.get(requestKey);
+  if (activeRequest) return activeRequest;
+
+  const cursor = categoryProductCursors.get(category);
+  if (!cursor) return Promise.resolve(null);
+
+  const request = (async () => {
+    try {
+      const productsQuery = query(
+        collection(db, 'products'),
+        where('category', '==', category),
+        startAfter(cursor),
+        limit(limitCount)
+      );
+      const snapshot = await getDocs(productsQuery);
+      const nextProducts = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      } as Product));
+      const products = mergeCategoryProducts(existingProducts, nextProducts);
+      const hasMore = snapshot.size === limitCount;
+      categoryProductFetchedAt.set(category, Date.now());
+      categoryProductCursors.set(
+        category,
+        hasMore ? snapshot.docs[snapshot.docs.length - 1] : null
+      );
+
+      try {
+        localStorage.setItem(getCategoryProductsCacheKey(category), JSON.stringify(products));
+      } catch {
+        // Keep the network result usable when browser storage is unavailable.
+      }
+      return { products, hasMore };
+    } catch (error) {
+      try {
+        handleFirestoreError(error, OperationType.GET, `products(category=${category})`);
+      } catch {
+        return null;
+      }
+    } finally {
+      categoryProductRequests.delete(requestKey);
+    }
+    return null;
+  })();
+
+  categoryProductRequests.set(requestKey, request);
+  return request;
 }
 
 export async function fetchProductsFromFirestore(): Promise<Product[]> {

@@ -37,7 +37,7 @@ const optimizeProductImageUrl = (url?: string): string => {
   return url;
 };
 
-export const ProductCard: React.FC<ProductCardProps> = ({ 
+const ProductCardView: React.FC<ProductCardProps> = ({
   product, 
   onQuickView, 
   compact = false
@@ -360,3 +360,5 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     </motion.div>
   );
 };
+
+export const ProductCard = React.memo(ProductCardView);
