@@ -11,11 +11,10 @@ interface SemixLabsLogoProps {
 export const SemixLabsLogo: React.FC<SemixLabsLogoProps> = ({
   variant = 'dark',
   className = '',
-  size = 'lg', // Increased default from 'md' to 'lg'
+  size = 'lg',
 }) => {
   const isIconOnly = variant === 'icon';
 
-  // Scaled up to align cleanly with standard 40px-48px search inputs
   const sizeClasses = {
     sm: isIconOnly ? 'h-8 w-8' : 'h-8',
     md: isIconOnly ? 'h-10 w-10' : 'h-10 md:h-11',
@@ -27,8 +26,13 @@ export const SemixLabsLogo: React.FC<SemixLabsLogoProps> = ({
     <img
       src={logoImage}
       alt="SEMIX LABS"
-      style={{ height: '56px', width: 'auto', minWidth: '180px', objectFit: 'cover', objectPosition: 'center' }}
-      className={`${sizeClasses[size]} shrink-0 ${className}`}
+      width={180}
+      height={56}
+      fetchPriority="high"
+      loading="eager"
+      decoding="async"
+      style={{ height: '56px', width: 'auto', minWidth: '180px' }}
+      className={`shrink-0 object-contain ${sizeClasses[size]} ${className}`}
     />
   );
 };
