@@ -1,5 +1,5 @@
 import React from 'react';
-import logoImage from '../../assets/images/logo semix.png';
+import logoSvg from '../../assets/images/logo-semix.svg';
 
 interface SemixLabsLogoProps {
   variant?: 'dark' | 'light' | 'icon' | 'full';
@@ -24,7 +24,7 @@ export const SemixLabsLogo: React.FC<SemixLabsLogoProps> = ({
 
   return (
     <img
-      src={logoImage}
+      src={logoSvg}
       alt="SEMIX LABS"
       width={180}
       height={56}
