@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Product, 
   CartItem, 
@@ -63,13 +63,14 @@ import {
   subscribeToSellerBonuses,
   formatInrBonus
 } from '../services/bonusService';
-import { logActivity, recordActivityLog } from '../services/auditService';
+import { recordActivityLog } from '../services/auditService';
 import { auth, onAuthStateChanged, testFirestoreConnection } from '../lib/firebase';
 import { saveUserAppState, subscribeToUserAppState } from '../services/userStateService';
 
 const APP_DATA_CACHE_KEYS = {
   categories: 'semix-cache-categories-v1',
   banners: 'semix-cache-banners-v1',
+  products: 'semix-cache-products-v1',
 } as const;
 
 const PRODUCT_WRITE_QUEUE_KEY = 'semix-product-write-queue-v1';
@@ -275,7 +276,7 @@ export const normalizeProduct = (p: Partial<Product> & Record<string, any>): Pro
     imagesList = [p.image.trim()];
   }
   if (imagesList.length === 0) {
-    imagesList = ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80'];
+    imagesList = ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=70'];
   }
   return {
     ...(p as Product),
@@ -331,79 +332,72 @@ export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order =
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isFirebaseLive, setIsFirebaseLive] = useState(true);
 
-  const isAdminOrSellerOrTeam = () => {
-    const email = auth.currentUser?.email?.trim().toLowerCase() || '';
-    return email.includes('admin@') || email.includes('seller@') || email.includes('team@');
-  };
-
-  const isAdminOnly = () => {
-    const email = auth.currentUser?.email?.trim().toLowerCase() || '';
-    return email.includes('admin@');
-  };
-
   useEffect(() => {
     const scheduleConnectionCheck = window.setTimeout(() => {
       testFirestoreConnection()
         .then(() => setIsFirebaseLive(true))
         .catch(() => setIsFirebaseLive(false));
-    }, 2000);
+    }, 2500);
 
     return () => window.clearTimeout(scheduleConnectionCheck);
   }, []);
 
   const [currentRole, setCurrentRoleState] = useState<UserRole>('customer');
 
-  const setCurrentRole = (role: UserRole) => {
+  const setCurrentRole = useCallback((role: UserRole) => {
     setCurrentRoleState(role);
-  };
+  }, []);
 
-  // PRODUCTS OPTIMIZED: Pre-loaded instantly from server-injected HTML window data if available
+  // INSTANT PRODUCTS LOAD: Window data -> LocalStorage Cache -> Empty array
   const [products, setProducts] = useState<Product[]>(() => {
     if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) {
       return ((window as any).__INITIAL_PRODUCTS__ as Product[]).map(normalizeProduct);
     }
-    return [];
+    const cached = readCachedData<Product[]>(APP_DATA_CACHE_KEYS.products, []);
+    return cached.length > 0 ? cached.map(normalizeProduct) : [];
   });
   
   const [isProductsLoading, setIsProductsLoading] = useState<boolean>(() => {
-    if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) {
-      return false;
-    }
-    return true;
+    if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) return false;
+    const cached = readCachedData<Product[]>(APP_DATA_CACHE_KEYS.products, []);
+    return cached.length === 0;
   });
 
   const productsRef = useRef(products);
-
   useEffect(() => {
     productsRef.current = products;
   }, [products]);
 
   const [isProductSyncing, setIsProductSyncing] = useState(false);
 
-  // Firestore Live Products Sync with clean state handling
+  // Firestore Live Products Sync
   useEffect(() => {
     let isMounted = true;
     const unsubscribe = subscribeToProducts((remoteProducts) => {
       if (!isMounted) return;
       const normalizedProducts = remoteProducts.map(normalizeProduct);
       const queuedProducts = readQueuedProductWrites();
-      const mergedProducts = [...queuedProducts, ...normalizedProducts];
       const deduped = new Map<string, Product>();
-      mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
-      const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      
+      [...queuedProducts, ...normalizedProducts].forEach((product) => {
+        deduped.set(product.id, normalizeProduct(product));
+      });
+
+      const nextProducts = Array.from(deduped.values()).sort((a, b) => 
+        (b.createdAt || '').localeCompare(a.createdAt || '')
+      );
 
       setProducts(nextProducts);
-      setIsProductsLoading(false); // Finished loading live data successfully
+      setIsProductsLoading(false);
+      writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
       
-      const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
-      writeQueuedProductWrites(remainingQueuedProducts);
+      const remainingQueued = nextProducts.filter(
+        (p) => !normalizedProducts.some((lp) => lp.id === p.id)
+      );
+      writeQueuedProductWrites(remainingQueued);
     }, (err) => {
       console.warn('[Firestore] Product live listener notice:', err?.message || err);
       setIsProductsLoading(false);
-      const queuedProducts = readQueuedProductWrites();
-      if (queuedProducts.length > 0) {
-        setProducts(queuedProducts.map(normalizeProduct));
-      }
     }, (changes: ProductSnapshotChange[]) => {
       if (!isMounted || changes.length === 0) return;
 
@@ -421,12 +415,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         productsById.set(normalized.id, normalized);
       });
 
-      const nextProducts = Array.from(productsById.values());
-      nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      const nextProducts = Array.from(productsById.values()).sort((a, b) => 
+        (b.createdAt || '').localeCompare(a.createdAt || '')
+      );
       productsRef.current = nextProducts;
       setProducts(nextProducts);
       setIsProductsLoading(false);
-      writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
+      writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+      writeQueuedProductWrites(readQueuedProductWrites().filter((p) => !changedIds.has(p.id)));
     });
 
     return () => {
@@ -435,14 +431,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Cart
+  // Cart, Wishlist, Compare
   const [cart, setCart] = useState<CartItem[]>([]);
   const [userStateReady, setUserStateReady] = useState(false);
-
-  // Wishlist
   const [wishlist, setWishlist] = useState<string[]>([]);
-
-  // Compare List
   const [compareList, setCompareList] = useState<string[]>([]);
 
   useEffect(() => {
@@ -469,9 +461,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     const userId = auth.currentUser?.uid;
-    if (userId && userStateReady) void saveUserAppState(userId, { cart, wishlist, compareList }).catch((error) => {
-      console.error('[UserState] Could not save customer state:', error);
-    });
+    if (userId && userStateReady) {
+      void saveUserAppState(userId, { cart, wishlist, compareList }).catch((error) => {
+        console.error('[UserState] Could not save customer state:', error);
+      });
+    }
   }, [cart, wishlist, compareList, userStateReady]);
 
   // Categories
@@ -495,19 +489,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  const updateCategoryImage = async (categoryId: string, imageUrl: string) => {
+  const updateCategoryImage = useCallback(async (categoryId: string, imageUrl: string) => {
     await updateCategoryImageInFirestore(categoryId, imageUrl);
     setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, image: imageUrl } : c)));
-    showToast('Category Image Updated', 'New category image saved and live across store', 'success');
-  };
+  }, []);
 
-  const resetCategoryImage = async (categoryId: string) => {
+  const resetCategoryImage = useCallback(async (categoryId: string) => {
     const defaultCat = CATEGORIES.find((c) => c.id === categoryId);
     const defaultImg = defaultCat?.image || '';
     if (defaultImg) {
       await updateCategoryImage(categoryId, defaultImg);
     }
-  };
+  }, [updateCategoryImage]);
 
   // Homepage Banners
   const [banners, setBanners] = useState<HomepageBanner[]>(() =>
@@ -530,7 +523,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  const addBanner = async (bannerData: Omit<HomepageBanner, 'id' | 'createdAt' | 'updatedAt'>): Promise<HomepageBanner> => {
+  const addBanner = useCallback(async (bannerData: Omit<HomepageBanner, 'id' | 'createdAt' | 'updatedAt'>): Promise<HomepageBanner> => {
     const newBanner: HomepageBanner = {
       ...bannerData,
       id: `banner-${Date.now()}`,
@@ -543,55 +536,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const nextBanners = [...banners, newBanner].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     setBanners(nextBanners);
     writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
-    showToast('Banner Added', `Added banner "${newBanner.title}" to homepage`, 'success');
-
     return newBanner;
-  };
+  }, [banners]);
 
-  const updateBanner = async (updatedBanner: HomepageBanner) => {
+  const updateBanner = useCallback(async (updatedBanner: HomepageBanner) => {
     const withTimestamp = {
       ...updatedBanner,
       updatedAt: new Date().toISOString(),
     };
-
     await syncBannerToFirestore(withTimestamp);
     const nextBanners = banners.map((b) => (b.id === updatedBanner.id ? withTimestamp : b));
     setBanners(nextBanners);
     writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
-    showToast('Banner Updated', `Updated banner "${updatedBanner.title}"`, 'success');
-  };
+  }, [banners]);
 
-  const deleteBanner = async (bannerId: string) => {
+  const deleteBanner = useCallback(async (bannerId: string) => {
     await deleteBannerFromFirestore(bannerId);
     const nextBanners = banners.filter((b) => b.id !== bannerId);
     setBanners(nextBanners);
     writeCachedData(APP_DATA_CACHE_KEYS.banners, nextBanners);
-    showToast('Banner Deleted', 'Banner removed from homepage slides', 'info');
-  };
+  }, [banners]);
 
-  const reorderBanners = async (orderedBanners: HomepageBanner[]) => {
+  const reorderBanners = useCallback(async (orderedBanners: HomepageBanner[]) => {
     const updatedWithOrder = orderedBanners.map((banner, index) => ({
       ...banner,
       order: index + 1,
       updatedAt: new Date().toISOString(),
     }));
-
     await Promise.all(updatedWithOrder.map((b) => syncBannerToFirestore(b)));
     setBanners(updatedWithOrder);
-    showToast('Banners Reordered', 'New slide sequence saved', 'success');
-  };
+  }, []);
 
-  const toggleBannerActive = async (bannerId: string) => {
+  const toggleBannerActive = useCallback(async (bannerId: string) => {
     const target = banners.find((b) => b.id === bannerId);
     if (!target) return;
     const updated = { ...target, isActive: !target.isActive, updatedAt: new Date().toISOString() };
     await updateBanner(updated);
-  };
+  }, [banners, updateBanner]);
 
-  const resetBannersToDefault = async () => {
+  const resetBannersToDefault = useCallback(async () => {
     await seedInitialBanners();
-    showToast('Banners Reset', 'Restored default homepage hero slides', 'info');
-  };
+  }, []);
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
@@ -602,7 +587,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     clearCachedData(STORAGE_KEYS.SELLERS);
   }, []);
 
-  const addAvailableSeller = (seller: AvailableSeller) => {
+  const addAvailableSeller = useCallback((seller: AvailableSeller) => {
     setAvailableSellers((prev) => {
       const exists = prev.some((s) => s.id === seller.id || s.email.toLowerCase() === seller.email.toLowerCase());
       if (exists) {
@@ -610,17 +595,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [...prev, seller];
     });
-  };
+  }, []);
 
-  const updateAvailableSeller = (id: string, updates: Partial<AvailableSeller>) => {
+  const updateAvailableSeller = useCallback((id: string, updates: Partial<AvailableSeller>) => {
     setAvailableSellers((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
-  };
+  }, []);
 
-  const removeAvailableSeller = (id: string) => {
+  const removeAvailableSeller = useCallback((id: string) => {
     setAvailableSellers((prev) => prev.filter((s) => s.id !== id));
-  };
+  }, []);
 
-  // Seller Bonuses
+  // Seller Bonuses & Auth Guards
   const [sellerBonuses, setSellerBonuses] = useState<Record<string, SellerBonusRecord>>({});
 
   useEffect(() => {
@@ -641,7 +626,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       unsubscribeBonuses?.();
       unsubscribeBonuses = undefined;
-      if (!firebaseUser || !isAdminOrSellerOrTeam()) return;
+      const email = firebaseUser?.email?.trim().toLowerCase() || '';
+      const isStaffOrAdmin = email.includes('admin@') || email.includes('seller@') || email.includes('team@');
+      if (!firebaseUser || !isStaffOrAdmin) return;
 
       fetchAllSellerBonuses()
         .then((remoteBonuses) => {
@@ -668,7 +655,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  const updateSellerBonus = async (
+  const updateSellerBonus = useCallback(async (
     sellerId: string,
     amount: number,
     sellerName?: string,
@@ -685,7 +672,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : s
         )
       );
-      showToast('Bonus Updated Successfully', `Assigned ${formatInrBonus(amount)} to ${sellerName || 'seller'}`, 'success');
       
       recordActivityLog({
         userId: 'usr-admin-01',
@@ -696,35 +682,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetEntity: 'seller_bonuses',
         targetId: sellerId,
         changes: {
-          diffs: {
-            bonusAmount: { oldValue: rec.previousBonus, newValue: amount },
-          },
+          diffs: { bonusAmount: { oldValue: rec.previousBonus, newValue: amount } },
           affectedFields: ['bonusAmount'],
           summary: `Admin set bonus for ${sellerName || sellerId} to ${formatInrBonus(amount)}`,
         },
-        metadata: {
-          source: 'web_client',
-          route: '/admin',
-        },
+        metadata: { source: 'web_client', route: '/admin' },
       }).catch((e) => console.warn('[AuditService] bonus log deferred:', e));
 
       return { success: true };
-    } else {
-      const errorMsg = result.error || 'Please enter a valid bonus amount.';
-      showToast('Bonus Update Failed', errorMsg, 'error');
-      return { success: false, error: errorMsg };
     }
-  };
+    return { success: false, error: result.error || 'Please enter a valid bonus amount.' };
+  }, []);
 
-  const getSellerBonus = (sellerId: string): number => {
+  const getSellerBonus = useCallback((sellerId: string): number => {
     if (sellerBonuses[sellerId] && typeof sellerBonuses[sellerId].bonusAmount === 'number') {
       return sellerBonuses[sellerId].bonusAmount;
     }
     const found = availableSellers.find((s) => s.id === sellerId);
     return found?.bonusAmount || 0;
-  };
+  }, [sellerBonuses, availableSellers]);
 
-  // Orders live sync
+  // Orders live sync (Authenticated users only)
   useEffect(() => {
     let isMounted = true;
     let unsubscribeOrders: (() => void) | undefined;
@@ -758,44 +736,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     let isMounted = true;
-    if (!isAdminOnly()) {
-      setStaff([]);
-      return;
-    }
+    let unsubscribeStaff: (() => void) | undefined;
 
-    fetchStaffFromFirestore()
-      .then((remoteStaff) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      unsubscribeStaff?.();
+      unsubscribeStaff = undefined;
+
+      const email = firebaseUser?.email?.trim().toLowerCase() || '';
+      if (!firebaseUser || !email.includes('admin@')) {
+        setStaff([]);
+        return;
+      }
+
+      fetchStaffFromFirestore()
+        .then((remoteStaff) => {
+          if (isMounted) setStaff(remoteStaff);
+        })
+        .catch((err) => console.warn('[Firestore] Staff load notice:', err?.message || err));
+
+      unsubscribeStaff = subscribeToStaff((remoteStaff) => {
         if (isMounted) setStaff(remoteStaff);
-      })
-      .catch((err) => console.warn('[Firestore] Staff load notice:', err?.message || err));
-
-    const unsubscribe = subscribeToStaff((remoteStaff) => {
-      if (isMounted) setStaff(remoteStaff);
+      });
     });
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      unsubscribeStaff?.();
+      unsubscribeAuth();
     };
   }, []);
 
   const [bulkEnquiries, setBulkEnquiries] = useState<BulkEnquirySubmission[]>([]);
 
   useEffect(() => {
-    if (!isAdminOnly()) {
-      setBulkEnquiries([]);
-      return;
-    }
+    let unsubscribeEnquiries: (() => void) | undefined;
 
-    const unsubscribe = subscribeToRecords(
-      'bulk_enquiries',
-      (records) => setBulkEnquiries(records as BulkEnquirySubmission[]),
-      (err) => console.warn('[Firestore] Bulk enquiry listener notice:', err?.message || err)
-    );
-    return () => unsubscribe();
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      unsubscribeEnquiries?.();
+      unsubscribeEnquiries = undefined;
+
+      const email = firebaseUser?.email?.trim().toLowerCase() || '';
+      if (!firebaseUser || !email.includes('admin@')) {
+        setBulkEnquiries([]);
+        return;
+      }
+
+      unsubscribeEnquiries = subscribeToRecords(
+        'bulk_enquiries',
+        (records) => setBulkEnquiries(records as BulkEnquirySubmission[]),
+        (err) => console.warn('[Firestore] Bulk enquiry listener notice:', err?.message || err)
+      );
+    });
+
+    return () => {
+      unsubscribeEnquiries?.();
+      unsubscribeAuth();
+    };
   }, []);
 
-  const submitBulkEnquiry = (enquiryData: Omit<BulkEnquirySubmission, 'id' | 'createdAt' | 'status'>): BulkEnquirySubmission => {
+  const submitBulkEnquiry = useCallback((enquiryData: Omit<BulkEnquirySubmission, 'id' | 'createdAt' | 'status'>): BulkEnquirySubmission => {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newId = `ENQ-2026-${randomSuffix}`;
     const newEnquiry: BulkEnquirySubmission = {
@@ -807,29 +806,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setBulkEnquiries((prev) => [newEnquiry, ...prev]);
     void syncRecordToFirestore('bulk_enquiries', newId, newEnquiry as unknown as Record<string, unknown>);
-    showToast('Bulk Enquiry Submitted!', `Quotation ticket #${newId} logged for priority evaluation.`, 'success');
     return newEnquiry;
-  };
+  }, []);
 
   const [customProjects, setCustomProjects] = useState<CustomProjectSubmission[]>([]);
 
   useEffect(() => {
-    if (!isAdminOnly()) {
-      setCustomProjects([]);
-      return;
-    }
+    let unsubscribeProjects: (() => void) | undefined;
 
-    const unsubscribe = subscribeToRecords(
-      'customProjects',
-      (records) => setCustomProjects(records as CustomProjectSubmission[]),
-      (err) => console.warn('[Firestore] Custom project listener notice:', err?.message || err)
-    );
-    return () => unsubscribe();
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      unsubscribeProjects?.();
+      unsubscribeProjects = undefined;
+
+      const email = firebaseUser?.email?.trim().toLowerCase() || '';
+      if (!firebaseUser || !email.includes('admin@')) {
+        setCustomProjects([]);
+        return;
+      }
+
+      unsubscribeProjects = subscribeToRecords(
+        'customProjects',
+        (records) => setCustomProjects(records as CustomProjectSubmission[]),
+        (err) => console.warn('[Firestore] Custom project listener notice:', err?.message || err)
+      );
+    });
+
+    return () => {
+      unsubscribeProjects?.();
+      unsubscribeAuth();
+    };
   }, []);
 
   const [adminNotifications, setAdminNotifications] = useState<AdminProjectNotification[]>([]);
 
-  const submitCustomProject = async (payload: CustomProjectInquiryPayload): Promise<CustomProjectSubmission> => {
+  const submitCustomProject = useCallback(async (payload: CustomProjectInquiryPayload): Promise<CustomProjectSubmission> => {
     const newSubmission = await submitCustomProjectInquiry({
       ...payload,
       userId: auth.currentUser?.uid || undefined,
@@ -853,11 +863,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAdminNotifications((prev) => [newNotification, ...prev]);
 
     await syncCustomProjectToFirestore(ownedSubmission);
-    showToast('Project Submitted to Admin', `Custom Project Ticket #${newSubmission.id} registered for technical review.`, 'success');
     return ownedSubmission;
-  };
+  }, []);
 
-  const updateCustomProjectStatus = (id: string, status: CustomProjectStatus, adminNotes?: string) => {
+  const updateCustomProjectStatus = useCallback((id: string, status: CustomProjectStatus, adminNotes?: string) => {
     const now = new Date();
     const dateStr = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const project = customProjects.find((item) => item.id === id);
@@ -874,10 +883,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
     if (project) void syncRecordToFirestore('customProjects', id, { ...project, status, updatedAt: dateStr, ...(adminNotes !== undefined ? { adminNotes } : {}) });
-    showToast('Project Status Updated', `Ticket #${id} status changed to ${status}`, 'info');
-  };
+  }, [customProjects]);
 
-  const addCustomProjectReply = (id: string, message: string, quoteAmount?: string) => {
+  const addCustomProjectReply = useCallback((id: string, message: string, quoteAmount?: string) => {
     const now = new Date();
     const dateStr = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const replyItem = {
@@ -904,32 +912,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
     if (project) void syncRecordToFirestore('customProjects', id, { ...project, replies: [...(project.replies || []), replyItem], status: quoteAmount ? 'Quoted' : 'In Discussion', quoteAmount: quoteAmount || project.quoteAmount, updatedAt: dateStr });
-    showToast('Quote / Communication Sent', `Quotation dispatched to client for #${id}`, 'success');
-  };
+  }, [customProjects]);
 
-  const markAdminNotificationRead = (id: string) => {
+  const markAdminNotificationRead = useCallback((id: string) => {
     setAdminNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
-  };
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const showToast = (title: string, message?: string, type: ToastItem['type'] = 'success', durationMs = 1300) => {
+  const showToast = useCallback((title: string, message?: string, type: ToastItem['type'] = 'success', durationMs = 1300) => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
     const visibleDuration = Math.min(durationMs, 1300);
     setToasts((prev) => [...prev, { id, title, message, type, durationMs: visibleDuration }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, visibleDuration);
-  };
+  }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  const calculateAppliedPrice = (product: Product, quantity: number): number => {
+  const calculateAppliedPrice = useCallback((product: Product, quantity: number): number => {
     if (!product.bulkTiers || product.bulkTiers.length === 0) {
       return product.price;
     }
@@ -940,9 +947,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     return product.price;
-  };
+  }, []);
 
-  const addToCart = (product: Product, quantity = 1) => {
+  const addToCart = useCallback((product: Product, quantity = 1) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
@@ -959,11 +966,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
     showToast('Added to Cart', `${quantity} × ${product.name}`, 'success');
-  };
+  }, [calculateAppliedPrice, showToast]);
 
-  const updateCartQuantity = (productId: string, quantity: number) => {
+  const updateCartQuantity = useCallback((productId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      setCart((prev) => prev.filter((item) => item.product.id !== productId));
       return;
     }
     setCart((prev) =>
@@ -975,21 +982,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return item;
       })
     );
-  };
+  }, [calculateAppliedPrice]);
 
-  const removeFromCart = (productId: string) => {
+  const removeFromCart = useCallback((productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
     showToast('Item Removed', 'Product removed from your cart', 'info');
-  };
+  }, [showToast]);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCart([]);
-    setAppliedCoupon(null);
-    setCouponDiscount(0);
-  };
+  }, []);
 
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const cartSubtotal = cart.reduce((sum, item) => sum + item.appliedUnitPrice * item.quantity, 0);
+  const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
+  const cartSubtotal = useMemo(() => cart.reduce((sum, item) => sum + item.appliedUnitPrice * item.quantity, 0), [cart]);
 
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponDiscount, setCouponDiscount] = useState<number>(0);
@@ -1015,7 +1020,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [cartSubtotal, appliedCoupon]);
 
-  const applyCoupon = async (code: string, userId?: string): Promise<CouponValidationResult> => {
+  const applyCoupon = useCallback(async (code: string, userId?: string): Promise<CouponValidationResult> => {
     const res = await validateAndCalculateCoupon(code, cartSubtotal, userId || 'guest_user');
     if (res.isValid && res.coupon) {
       setAppliedCoupon(res.coupon);
@@ -1029,16 +1034,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast('Coupon Not Applied', res.error || 'Invalid coupon code.', 'error');
     }
     return res;
-  };
+  }, [cartSubtotal, showToast]);
 
-  const removeCoupon = () => {
+  const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);
     setCouponDiscount(0);
     showToast('Coupon Removed', 'Standard item pricing restored.', 'info');
-  };
+  }, [showToast]);
 
-  const toggleWishlist = (productId: string) => {
-    const prod = products.find((p) => p.id === productId);
+  const toggleWishlist = useCallback((productId: string) => {
+    const prod = productsRef.current.find((p) => p.id === productId);
     setWishlist((prev) => {
       if (prev.includes(productId)) {
         showToast('Removed from Wishlist', prod ? prod.name : '', 'info');
@@ -1048,13 +1053,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...prev, productId];
       }
     });
-  };
+  }, [showToast]);
 
-  const isInWishlist = (productId: string) => wishlist.includes(productId);
+  const isInWishlist = useCallback((productId: string) => wishlist.includes(productId), [wishlist]);
 
-  const addToCompare = (productId: string): boolean => {
+  const addToCompare = useCallback((productId: string): boolean => {
     if (compareList.includes(productId)) {
-      removeFromCompare(productId);
+      setCompareList((prev) => prev.filter((id) => id !== productId));
       return false;
     }
     if (compareList.length >= 4) {
@@ -1062,31 +1067,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     setCompareList((prev) => [...prev, productId]);
-    const prod = products.find((p) => p.id === productId);
+    const prod = productsRef.current.find((p) => p.id === productId);
     showToast('Added to Comparison', prod ? prod.name : '', 'info');
     return true;
-  };
+  }, [compareList, showToast]);
 
-  const removeFromCompare = (productId: string) => {
+  const removeFromCompare = useCallback((productId: string) => {
     setCompareList((prev) => prev.filter((id) => id !== productId));
-  };
+  }, []);
 
-  const clearCompare = () => {
+  const clearCompare = useCallback(() => {
     setCompareList([]);
-  };
+  }, []);
 
-  const isComparing = (productId: string) => compareList.includes(productId);
+  const isComparing = useCallback((productId: string) => compareList.includes(productId), [compareList]);
 
-  const updateProductStock = async (productId: string, newStock: number) => {
-    const current = products.find((p) => p.id === productId);
+  const updateProductStock = useCallback(async (productId: string, newStock: number) => {
+    const current = productsRef.current.find((p) => p.id === productId);
     if (!current) throw new Error('Product not found');
     const updated = { ...current, stockCount: Math.max(0, newStock), inStock: newStock > 0 };
     await syncProductToFirestore(updated);
     setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
     showToast('Inventory Updated', `Stock count updated to ${newStock} units`, 'success');
-  };
+  }, [showToast]);
 
-  const updateProduct = async (updated: Product) => {
+  const updateProduct = useCallback(async (updated: Product) => {
     const nowIso = new Date().toISOString();
     const normalized = normalizeProduct({
       ...updated,
@@ -1095,9 +1100,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await syncProductToFirestore(normalized);
     setProducts((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
     showToast('Product Updated', `${normalized.name} changes synced to Firebase`, 'success');
-  };
+  }, [showToast]);
 
-  const addProduct = async (productData: Omit<Product, 'id'>) => {
+  const addProduct = useCallback(async (productData: Omit<Product, 'id'>) => {
     const id = productData.sku 
       ? `prod-${productData.sku.toLowerCase().replace(/[^a-z0-9]/g, '-')}` 
       : `prod-${Date.now().toString().slice(-6)}`;
@@ -1116,8 +1121,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addedByRole: currentRole || 'team',
     });
 
-    const nextProducts = [normalized, ...products.filter((p) => p.id !== id)];
-    setProducts(nextProducts);
+    setProducts((prev) => [normalized, ...prev.filter((p) => p.id !== id)]);
 
     try {
       await syncProductToFirestore(normalized);
@@ -1128,37 +1132,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       writeQueuedProductWrites(queuedProducts);
       showToast('Product Saved Locally', `${normalized.name} preserved locally until sync resumes.`, 'warning');
     }
-  };
+  }, [currentRole, showToast]);
 
-  const syncAllProductsToFirebase = async () => {
+  const syncAllProductsToFirebase = useCallback(async () => {
     setIsProductSyncing(true);
     try {
-      const result = await syncAllProductsToFirestore(products);
+      const result = await syncAllProductsToFirestore(productsRef.current);
       showToast('Firebase Catalog Sync', `Synced ${result.count} products to Cloud Firestore`, 'success');
     } catch (err: any) {
       showToast('Sync Error', err?.message || 'Could not sync all products to Firebase', 'warning');
     } finally {
       setIsProductSyncing(false);
     }
-  };
+  }, [showToast]);
 
-  const deleteProduct = async (productId: string) => {
+  const deleteProduct = useCallback(async (productId: string) => {
     await deleteProductFromFirestore(productId);
-    const nextProducts = products.filter((p) => p.id !== productId);
-    setProducts(nextProducts);
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
     setWishlist((prev) => prev.filter((id) => id !== productId));
     setCompareList((prev) => prev.filter((id) => id !== productId));
     showToast('Product Removed', 'Component permanently deleted from catalog', 'warning');
-  };
+  }, [showToast]);
 
-  const createOrder = (orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>): Order => {
+  const createOrder = useCallback((orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>): Order => {
     const orderNum = Math.floor(10000 + Math.random() * 90000);
     const id = `ORD-${orderNum}`;
     const trackingNumber = `RTZ-IN-${orderNum}${Math.floor(10 + Math.random() * 90)}`;
     const now = new Date();
     const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-
     const initialStatus: OrderStatus = orderData.status || 'pending_assignment';
 
     const newOrder: Order = {
@@ -1183,34 +1185,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setOrders((prev) => [newOrder, ...prev]);
+    syncOrderToFirestore(newOrder).catch((err) => console.warn('Firestore Order sync deferred:', err));
 
-    syncOrderToFirestore(newOrder).catch((err) => {
-      console.warn('Firestore Order sync deferred:', err);
-    });
-
-    orderData.items.forEach((item) => {
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === item.productId
-            ? { ...p, stockCount: Math.max(0, p.stockCount - item.quantity), inStock: p.stockCount - item.quantity > 0 }
-            : p
-        )
-      );
-    });
-
-    clearCart();
+    setCart([]);
     sendOrderPlacedEmails(newOrder).catch((e) => console.warn('[EmailService] Order emails deferred:', e));
-
     return newOrder;
-  };
+  }, []);
 
-  const deleteOrder = async (orderId: string) => {
+  const deleteOrder = useCallback(async (orderId: string) => {
     await deleteOrderFromFirestore(orderId);
     setOrders((prev) => prev.filter((order) => order.id !== orderId));
     showToast('Order Deleted', `Order ${orderId} was permanently removed.`, 'warning');
-  };
+  }, [showToast]);
 
-  const placeOrderWithCoupon = async (
+  const placeOrderWithCoupon = useCallback(async (
     orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>,
     userId?: string
   ): Promise<{ success: boolean; order: Order; error?: string }> => {
@@ -1219,7 +1207,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const trackingNumber = `RTZ-IN-${orderNum}${Math.floor(10 + Math.random() * 90)}`;
     const now = new Date();
     const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-
     const initialStatus: OrderStatus = orderData.status || 'pending_assignment';
 
     const preparedOrder: Order = {
@@ -1262,26 +1249,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setOrders((prev) => [finalizedOrder, ...prev]);
-
-    orderData.items.forEach((item) => {
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === item.productId
-            ? { ...p, stockCount: Math.max(0, p.stockCount - item.quantity), inStock: p.stockCount - item.quantity > 0 }
-            : p
-        )
-      );
-    });
-
-    clearCart();
+    setCart([]);
     setAppliedCoupon(null);
     setCouponDiscount(0);
     sendOrderPlacedEmails(finalizedOrder).catch((e) => console.warn('[EmailService] Order emails deferred:', e));
 
     return { success: true, order: finalizedOrder };
-  };
+  }, [appliedCoupon, couponDiscount]);
 
-  const assignSellerToOrder = async (
+  const assignSellerToOrder = useCallback(async (
     orderId: string,
     sellerId: string,
     sellerName: string,
@@ -1325,11 +1301,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       rating: 4.9,
     };
     sendSellerAssignmentEmail(updatedOrder, matchedSeller, notes).catch((e) => console.warn('[EmailService] error:', e));
-
     showToast('Seller Assigned', `Order ${orderId} assigned to ${sellerName}.`, 'success');
-  };
+  }, [orders, availableSellers, showToast]);
 
-  const updateOrderStatus = (
+  const updateOrderStatus = useCallback((
     orderId: string,
     newStatus: OrderStatus,
     note?: string,
@@ -1369,9 +1344,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     showToast('Order Status Advanced', `Order ${orderId} marked as ${newStatus.toUpperCase()}`, 'success');
-  };
+  }, [showToast]);
 
-  const adminOverrideOrder = (orderId: string, updates: Partial<Order>) => {
+  const adminOverrideOrder = useCallback((orderId: string, updates: Partial<Order>) => {
     setOrders((prev) =>
       prev.map((o) => {
         if (o.id === orderId) {
@@ -1383,9 +1358,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
     showToast('Order Overridden', `Admin changes applied to ${orderId}`, 'info');
-  };
+  }, [showToast]);
 
-  const flagMissingOrderItems = (
+  const flagMissingOrderItems = useCallback((
     orderId: string,
     missingItems: Array<{ productId: string; sku: string; name: string; quantity: number; reason?: string }>,
     note?: string
@@ -1422,9 +1397,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     showToast('Shortage Reported', `${missingItems.length} component(s) flagged as unavailable.`, 'warning');
-  };
+  }, [showToast]);
 
-  const reportEscalation = (issueData: Omit<EscalationIssue, 'id' | 'createdAt' | 'status'>) => {
+  const reportEscalation = useCallback((issueData: Omit<EscalationIssue, 'id' | 'createdAt' | 'status'>) => {
     const id = `ESC-${Math.floor(400 + Math.random() * 500)}`;
     const newIssue: EscalationIssue = {
       ...issueData,
@@ -1434,9 +1409,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setEscalations((prev) => [newIssue, ...prev]);
     showToast('Discrepancy Escalated', `Ticket #${id} dispatched to Admin queue`, 'warning');
-  };
+  }, [showToast]);
 
-  const resolveEscalation = (id: string, resolutionNote: string, resolvedBy: string) => {
+  const resolveEscalation = useCallback((id: string, resolutionNote: string, resolvedBy: string) => {
     setEscalations((prev) =>
       prev.map((item) =>
         item.id === id
@@ -1451,9 +1426,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
     showToast('Escalation Resolved', `Ticket #${id} marked as resolved`, 'success');
-  };
+  }, [showToast]);
 
-  const addStaff = (memberData: Omit<StaffMember, 'id' | 'lastActive'>) => {
+  const addStaff = useCallback((memberData: Omit<StaffMember, 'id' | 'lastActive'>) => {
     const id = `STF-${Math.floor(10 + Math.random() * 90)}`;
     const newMember: StaffMember = {
       ...memberData,
@@ -1463,24 +1438,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStaff((prev) => [...prev, newMember]);
     void syncRecordToFirestore('staff', id, newMember as unknown as Record<string, unknown>);
     showToast('Staff Access Granted', `${newMember.name} added as ${newMember.role.toUpperCase()}`, 'success');
-  };
+  }, [showToast]);
 
-  const toggleStaffStatus = (id: string) => {
+  const toggleStaffStatus = useCallback((id: string) => {
     setStaff((prev) =>
       prev.map((m) => (m.id === id ? { ...m, active: !m.active } : m))
     );
     const member = staff.find((item) => item.id === id);
     if (member) void syncRecordToFirestore('staff', id, { ...member, active: !member.active });
-  };
+  }, [staff]);
 
-  const resetDemoData = () => {
+  const resetDemoData = useCallback(() => {
     setCart([]);
     setWishlist([]);
     setCompareList([]);
     showToast('Reset Complete', 'Default hardware catalog & projects restored', 'info');
-  };
+  }, [showToast]);
 
-  const contextValue = React.useMemo(() => ({
+  const contextValue = useMemo(() => ({
     currentRole,
     setCurrentRole,
     products,
@@ -1559,34 +1534,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isFirebaseLive
   }), [
     currentRole,
+    setCurrentRole,
     products,
     categories,
-    cart,
-    cartItemCount,
-    cartSubtotal,
-    appliedCoupon,
-    couponDiscount,
-    wishlist,
-    compareList,
-    orders,
-    availableSellers,
-    sellerBonuses,
-    escalations,
-    staff,
-    bulkEnquiries,
-    customProjects,
-    adminNotifications,
-    searchQuery,
-    toasts,
-    isFirebaseLive,
-    isProductSyncing,
-    isProductsLoading,
     updateCategoryImage,
     resetCategoryImage,
     updateProductStock,
     updateProduct,
     addProduct,
     deleteProduct,
+    isProductSyncing,
+    isProductsLoading,
     syncAllProductsToFirebase,
     banners,
     addBanner,
@@ -1595,43 +1553,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     reorderBanners,
     toggleBannerActive,
     resetBannersToDefault,
+    cart,
     addToCart,
     updateCartQuantity,
     removeFromCart,
     clearCart,
+    cartItemCount,
+    cartSubtotal,
     calculateAppliedPrice,
+    appliedCoupon,
+    couponDiscount,
     applyCoupon,
     removeCoupon,
     placeOrderWithCoupon,
+    wishlist,
     toggleWishlist,
     isInWishlist,
+    compareList,
     addToCompare,
     removeFromCompare,
     clearCompare,
     isComparing,
+    orders,
+    availableSellers,
     addAvailableSeller,
     updateAvailableSeller,
     removeAvailableSeller,
+    sellerBonuses,
     updateSellerBonus,
     getSellerBonus,
     createOrder,
+    deleteOrder,
     assignSellerToOrder,
     updateOrderStatus,
     adminOverrideOrder,
     flagMissingOrderItems,
+    escalations,
     reportEscalation,
     resolveEscalation,
+    staff,
     addStaff,
     toggleStaffStatus,
+    bulkEnquiries,
     submitBulkEnquiry,
+    customProjects,
     submitCustomProject,
     updateCustomProjectStatus,
     addCustomProjectReply,
+    adminNotifications,
     markAdminNotificationRead,
-    setSearchQuery,
+    searchQuery,
+    toasts,
     showToast,
     removeToast,
     resetDemoData,
+    isFirebaseLive
   ]);
 
   return (

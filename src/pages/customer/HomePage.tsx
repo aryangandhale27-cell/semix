@@ -13,52 +13,26 @@ import {
   FileSpreadsheet, 
   ShieldCheck, 
   Zap, 
-  Truck,
-  CheckCircle2,
-  Activity,
-  Radio,
-  Wifi,
-  Gauge
+  Truck
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { products, categories, banners, addToCart } = useApp();
+  const { products, categories, banners } = useApp();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const isSwiping = useRef(false);
 
-  // Active banners from AppContext (synced with Firestore & local persistence)
+  // Active banners from AppContext
   const activeBanners: HomepageBanner[] = (banners || []).filter(
     (b) => b.isActive !== false
   );
 
   const currentSlideIndex = activeBanners.length > 0 ? heroSlide % activeBanners.length : 0;
   const currentSlide = activeBanners[currentSlideIndex];
-  const [displayedSlide, setDisplayedSlide] = useState<HomepageBanner | null>(null);
 
-  useEffect(() => {
-    if (!displayedSlide && currentSlide) {
-      setDisplayedSlide(currentSlide);
-    }
-  }, [currentSlide, displayedSlide]);
-
-  useEffect(() => {
-    if (!currentSlide) return;
-
-    const isMobile = window.matchMedia('(max-width: 640px)').matches;
-    const currentImageUrl = isMobile
-      ? currentSlide.mobileImage || currentSlide.desktopImage
-      : currentSlide.desktopImage || currentSlide.mobileImage;
-    if (!currentImageUrl) return;
-
-    const image = new Image();
-    image.decoding = 'async';
-    image.src = currentImageUrl;
-  }, [currentSlide]);
-
-  // Auto rotate hero slides
+  // Auto-rotate hero slides (delayed on mobile to avoid thread thrashing during load)
   useEffect(() => {
     if (isHovered || activeBanners.length <= 1) return;
     const timer = setInterval(() => {
@@ -100,92 +74,75 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-6 sm:space-y-12 pb-8 sm:pb-12">
-      {/* 1. Hero Layout: Main Banner Carousel (Total 6 Banners) */}
+      {/* 1. Hero Layout: Main Banner Carousel */}
       <section id="hero-section" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2 sm:pt-4">
-        {/* Main Banner Carousel with Cinematic Electronic Theme Animation */}
         <div 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onTouchStart={handleHeroTouchStart}
           onTouchEnd={handleHeroTouchEnd}
-          className="w-full relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y"
+          className="w-full relative aspect-[16/9] sm:aspect-[1600/700] rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y bg-slate-900"
         >
-            {!displayedSlide && (
-              <div className="aspect-[1600/700] w-full animate-pulse bg-slate-200" aria-label="Loading homepage banner" />
-            )}
-
-            {displayedSlide && (
-              <div className="relative z-10">
-                <Link
-                  to={displayedSlide.linkUrl || '/shop'}
-                  onClick={(event) => {
-                    if (isSwiping.current) event.preventDefault();
-                  }}
-                  className="block w-full"
-                >
-                  <picture className="block w-full">
-                    {displayedSlide.mobileImage && (
-                      <source media="(max-width: 640px)" srcSet={displayedSlide.mobileImage} />
-                    )}
-                    <img
-                      key={displayedSlide.id}
-                      src={displayedSlide.desktopImage || displayedSlide.mobileImage}
-                      alt={displayedSlide.title}
-                      loading="eager"
-                      fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
-                      decoding="async"
-                      width={1600}
-                      height={700}
-                      sizes="100vw"
-                      className="block w-full h-auto"
-                    />
-                  </picture>
-                </Link>
-              </div>
-            )}
-
-            {currentSlide && currentSlide.id !== displayedSlide?.id && (
-              <picture className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden="true">
-                {currentSlide.mobileImage && (
-                  <source media="(max-width: 640px)" srcSet={currentSlide.mobileImage} />
-                )}
-                <img
-                  src={currentSlide.desktopImage || currentSlide.mobileImage}
-                  alt=""
-                  onLoad={() => setDisplayedSlide(currentSlide)}
-                />
-              </picture>
-            )}
-
-            {activeBanners.length > 1 && (
-              <div className="flex items-center justify-center gap-2 py-3" aria-label="Homepage banner slides">
-                {activeBanners.map((slide, index) => (
-                  <button
-                    key={slide.id}
-                    type="button"
-                    onClick={() => setHeroSlide(index)}
-                    aria-label={`Show banner ${index + 1}`}
-                    aria-current={currentSlideIndex === index ? 'true' : undefined}
-                    className={`h-3 rounded-full transition-all duration-300 cursor-pointer ${
-                      currentSlideIndex === index
-                        ? 'w-8 bg-[#c4005a]'
-                        : 'w-3 bg-slate-400 hover:bg-slate-600'
-                    }`}
+          {!currentSlide ? (
+            <div className="w-full h-full animate-pulse bg-slate-800" aria-label="Loading homepage banner" />
+          ) : (
+            <div className="relative z-10 w-full h-full">
+              <Link
+                to={currentSlide.linkUrl || '/shop'}
+                onClick={(event) => {
+                  if (isSwiping.current) event.preventDefault();
+                }}
+                className="block w-full h-full"
+              >
+                <picture className="block w-full h-full">
+                  {currentSlide.mobileImage && (
+                    <source media="(max-width: 640px)" srcSet={currentSlide.mobileImage} />
+                  )}
+                  <img
+                    key={currentSlide.id}
+                    src={currentSlide.desktopImage || currentSlide.mobileImage}
+                    alt={currentSlide.title || 'SEMIX LABS Promotion'}
+                    loading={currentSlideIndex === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
+                    decoding="async"
+                    width={1200}
+                    height={525}
+                    sizes="(max-width: 640px) 100vw, 1200px"
+                    className="block w-full h-full object-cover"
                   />
-                ))}
-              </div>
-            )}
+                </picture>
+              </Link>
+            </div>
+          )}
 
-          </div>
-        </section>
+          {activeBanners.length > 1 && (
+            <div className="absolute bottom-2 left-0 right-0 z-20 flex items-center justify-center gap-2 py-2" aria-label="Homepage banner slides">
+              {activeBanners.map((slide, index) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  onClick={() => setHeroSlide(index)}
+                  aria-label={`Show banner ${index + 1}`}
+                  aria-current={currentSlideIndex === index ? 'true' : undefined}
+                  className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                    currentSlideIndex === index
+                      ? 'w-6 bg-[#ff6b00]'
+                      : 'w-2.5 bg-white/50 hover:bg-white/80'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
-      {/* 2. Featured Categories Section - Split-Card Vibrant Orange Grid */}
+      {/* 2. Featured Categories Section */}
       <ExploreCategories categories={categories} />
 
-      {/* 3. BOM Tool Teaser Banner - Compact on mobile */}
+      {/* 3. BOM Tool Teaser Banner */}
       <section id="bom-tool-teaser" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="bg-gradient-to-r from-[#561269] via-[#380847] to-[#380847] rounded-xl sm:rounded-2xl p-4 sm:p-8 text-white relative overflow-hidden shadow-lg border border-[#561269]/30">
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-orange-500/20 to-transparent pointer-events-none"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-orange-500/20 to-transparent pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
             <div className="max-w-xl">

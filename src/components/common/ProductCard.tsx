@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Product } from '../../types';
@@ -20,6 +20,23 @@ interface ProductCardProps {
   compact?: boolean;
 }
 
+// Downscale product images dynamically for mobile grid cards
+const optimizeProductImageUrl = (url?: string): string => {
+  if (!url) return 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=260&q=70';
+  if (url.includes('images.unsplash.com')) {
+    try {
+      const parsedUrl = new URL(url);
+      parsedUrl.searchParams.set('w', '260');
+      parsedUrl.searchParams.set('q', '70');
+      parsedUrl.searchParams.set('auto', 'format');
+      return parsedUrl.toString();
+    } catch {
+      return url.replace(/w=\d+/, 'w=260').replace(/q=\d+/, 'q=70');
+    }
+  }
+  return url;
+};
+
 export const ProductCard: React.FC<ProductCardProps> = ({ 
   product, 
   onQuickView, 
@@ -40,6 +57,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const discountPercent = Math.round(
     ((product.originalPrice - product.price) / product.originalPrice) * 100
   );
+
+  const displayImage = useMemo(() => {
+    const rawImage = (product.images && product.images.length > 0) ? product.images[0] : product.image;
+    return optimizeProductImageUrl(rawImage);
+  }, [product.images, product.image]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -104,6 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </motion.div>
       )}
+      
       {/* Top Badges */}
       <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-10 flex flex-col gap-0.5 sm:gap-1">
         {discountPercent > 0 && (
@@ -123,7 +146,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
       </div>
 
-      {/* Floating Action Icons (Wishlist always, Compare & QuickView on sm+) */}
+      {/* Floating Action Icons */}
       <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 z-10 flex flex-col gap-1 sm:gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
         <motion.button
           id={`wishlist-btn-${product.id}`}
@@ -169,18 +192,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
       </div>
 
-      {/* Image Thumbnail - square on mobile, 4/3 on tablet/desktop */}
+      {/* Image Thumbnail */}
       <Link
         to={`/product/${product.id}`}
         className="block bg-slate-50 relative p-2 sm:p-4 pt-3.5 sm:pt-6 overflow-hidden border-b border-slate-100 aspect-square sm:aspect-4/3 flex items-center justify-center"
       >
         <img
-          src={(product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80')}
+          src={displayImage}
           alt={product.name}
           loading="lazy"
-          width={480}
-          height={360}
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          fetchPriority="auto"
+          decoding="async"
+          width={260}
+          height={260}
+          sizes="(max-width: 640px) 45vw, 240px"
           className="w-full h-full max-h-[90%] object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
         />
         {product.images && product.images.length > 1 && (
@@ -194,7 +219,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Card Content Body */}
       <div className="p-2 sm:p-4 flex-1 flex flex-col justify-between">
         <div>
-          {/* Brand & SKU */}
           <div className="flex items-center justify-between text-[9px] sm:text-[11px] text-slate-500 mb-0.5 sm:mb-1 gap-1 sm:gap-2">
             <span className="font-semibold text-[#561269] truncate">{product.brand}</span>
             <span className="font-mono text-[8px] sm:text-[10px] text-slate-400 bg-slate-100 px-1 sm:px-1.5 py-0.5 rounded shrink-0">
@@ -202,7 +226,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </span>
           </div>
 
-          {/* Product Title */}
           <Link
             to={`/product/${product.id}`}
             className="block text-[11px] sm:text-sm font-semibold sm:font-bold text-slate-900 hover:text-[#561269] line-clamp-2 leading-tight mb-1 sm:mb-2 group-hover:underline min-h-[1.8rem] sm:min-h-[2.5rem]"
@@ -211,7 +234,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.name}
           </Link>
 
-          {/* Rating & In-Stock status */}
           <div className="flex items-center justify-between gap-1 sm:gap-2 mb-1.5 sm:mb-2">
             <div className="flex items-center gap-0.5 sm:gap-1 bg-amber-50 px-1 sm:px-1.5 py-0.5 rounded text-[9px] sm:text-[11px] font-bold text-amber-800 border border-amber-200/60">
               <Star className="w-2 h-2 sm:w-3 sm:h-3 fill-amber-400 text-amber-500" />
@@ -247,7 +269,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           </div>
 
-          {/* Key Specs tags (hidden on compact mobile to maintain clean height) */}
           <div className="hidden sm:flex flex-wrap gap-1 mb-3">
             {product.voltage && (
               <span className="bg-slate-100 text-slate-700 text-[10px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5">
@@ -281,7 +302,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </span>
           </div>
 
-          {/* CTA Buttons - full width on mobile, with quantity stepper on sm+ */}
           <div className="flex items-center gap-1.5">
             <div className="hidden sm:inline-flex rounded-lg border border-slate-200 bg-slate-50 items-center overflow-hidden">
               <button

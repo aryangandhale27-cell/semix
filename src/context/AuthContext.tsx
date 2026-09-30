@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { AuthUser, UserRole, CreateUserPayload } from '../types';
+import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
+import { AuthUser, UserRole, CreateUserPayload, AccountStatus } from '../types';
 import { useApp } from './AppContext';
 import { 
   auth, 
@@ -9,7 +10,6 @@ import {
   registerWithEmailPassword,
   sendPasswordReset
 } from '../lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import { syncUserToFirestore, fetchUsersFromFirestore, subscribeToUsers, deleteUserFromFirestore } from '../services/firebaseService';
 import { createAdminManagedUser } from '../services/adminUserService';
 import { sendWelcomeEmail } from '../services/emailService';
@@ -103,16 +103,11 @@ interface AuthContextType {
   createUser: (payload: CreateUserPayload) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
   updateUser: (id: string, updates: Partial<AuthUser & { passwordHash?: string }>) => Promise<{ success: boolean; error?: string }>;
   toggleUserStatus: (id: string) => void;
-  deleteUser: (id: string) => { success: boolean; error?: string };
+  deleteUser: (id: string) => Promise<{ success: boolean; error?: string }>;
   switchUser: (targetUserOrId: string | AuthUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const AUTH_STORAGE_KEYS = {
-  CURRENT_USER: 'rietz_auth_user_v6',
-  REGISTERED_USERS: 'rietz_registered_accounts_v6',
-};
 
 const DEFAULT_USERS: Array<AuthUser & { passwordHash: string }> = [
   {
@@ -126,7 +121,7 @@ const DEFAULT_USERS: Array<AuthUser & { passwordHash: string }> = [
     department: 'Executive Operations',
     designation: 'Chief Platform Controller',
     permissionLevel: 'Full Access',
-    status: 'active',
+    status: 'active' as AccountStatus,
     createdAt: '2025-08-01',
   },
   {
@@ -140,10 +135,9 @@ const DEFAULT_USERS: Array<AuthUser & { passwordHash: string }> = [
     department: 'Warehouse & Fulfillment',
     designation: 'Dispatch Lead & QA',
     permissionLevel: 'Operations Supervisor',
-    status: 'active',
+    status: 'active' as AccountStatus,
     createdAt: '2025-11-20',
   },
-
   {
     id: 'usr-cust-01',
     name: 'Aryan Gandhale',
@@ -152,7 +146,7 @@ const DEFAULT_USERS: Array<AuthUser & { passwordHash: string }> = [
     password: 'Customer@123',
     role: 'customer',
     phone: '+91 98765 43210',
-    status: 'active',
+    status: 'active' as AccountStatus,
     createdAt: '2026-01-10',
   },
   {
@@ -163,113 +157,27 @@ const DEFAULT_USERS: Array<AuthUser & { passwordHash: string }> = [
     password: 'Customer@123',
     role: 'customer',
     phone: '+91 98765 43210',
-    status: 'active',
+    status: 'active' as AccountStatus,
     createdAt: '2026-01-10',
   },
 ];
 
-// Helper to reliably evaluate demo credentials with flexible matching
-const matchDemoUser = (inputEmail: string, inputPass: string): AuthUser | null => {
-  const cleanEmail = inputEmail.trim().toLowerCase();
-  const cleanPass = inputPass.trim();
-  const lowerPass = cleanPass.toLowerCase();
-
-  // 1. Customer Match (including Aryan's email and alias names)
-  const isCustomer = 
-    ['customer@semixlabs.com', 'customer@rietzz.com', 'customer', 'maker', 'aryan', 'aryangandhale27@gmail.com'].includes(cleanEmail);
-  const isCustomerPass = 
-    ['customer@123', 'customer123', 'aryan@123', 'aryan123', '123456', 'password', 'customer'].includes(lowerPass) ||
-    cleanPass === 'Customer@123';
-
-  if (isCustomer && isCustomerPass) {
-    return {
-      id: 'usr-cust-01',
-      name: 'Aryan Gandhale',
-      email: cleanEmail.includes('@') ? cleanEmail : 'customer@semixlabs.com',
-      role: 'customer',
-      phone: '+91 98765 43210',
-      department: 'Hardware Prototyping',
-      createdAt: '2026-01-10',
-    };
-  }
-
-  // 2. Admin Match
-  const isAdmin = 
-    ['admin@semixlabs.com', 'admin@rietzz.com', 'admin', 'administrator', 'admin@semix.com'].includes(cleanEmail);
-  const isAdminPass = 
-    ['admin@123', 'admin123', 'admin@1234', 'admin', '123456'].includes(lowerPass) ||
-    cleanPass === 'Admin@123';
-
-  if (isAdmin && isAdminPass) {
-    return {
-      id: 'usr-admin-01',
-      name: 'Admin Controller',
-      email: 'admin@semixlabs.com',
-      role: 'admin',
-      phone: '+91 99999 88888',
-      department: 'Executive Operations',
-      createdAt: '2025-08-01',
-    };
-  }
-
-  // 3. Team Match
-  const isTeam = 
-    ['team@semixlabs.com', 'team@rietzz.com', 'team', 'warehouse', 'fulfillment'].includes(cleanEmail);
-  const isTeamPass = 
-    ['team@123', 'team123', 'team@1234', 'team', '123456'].includes(lowerPass) ||
-    cleanPass === 'Team@123';
-
-  if (isTeam && isTeamPass) {
-    return {
-      id: 'usr-team-01',
-      name: 'Sanjay Verma',
-      email: 'team@semixlabs.com',
-      role: 'team',
-      phone: '+91 98234 56789',
-      department: 'Warehouse Fulfillment',
-      createdAt: '2025-11-20',
-    };
-  }
-
-  // 4. Seller Match
-  const isSeller = 
-    ['seller@semixlabs.com', 'seller@rietzz.com', 'seller', 'merchant', 'vendor'].includes(cleanEmail);
-  const isSellerPass = 
-    ['seller@123', 'seller123', 'seller@1234', 'seller1234', 'seller', '123456'].includes(lowerPass) ||
-    cleanPass === 'Seller@123' || cleanPass === 'Seller@1234';
-
-  if (isSeller && isSellerPass) {
-    return {
-      id: 'usr-seller-demo',
-      name: 'Seller Hub',
-      email: 'seller@semixlabs.com',
-      role: 'seller',
-      phone: '',
-      department: 'Seller Fulfilment & Vendor Dispatch',
-      createdAt: '2026-02-01',
-    };
-  }
-
-  return null;
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { showToast, setCurrentRole, addAvailableSeller, updateAvailableSeller, removeAvailableSeller, addStaff } = useApp();
 
-  // Keep only the root admin as a local fallback; other accounts must come from Firestore.
   const [registeredUsers, setRegisteredUsers] = useState<Array<AuthUser & { passwordHash: string }>>(() => {
-  const map = new Map<string, AuthUser & { passwordHash: string }>();
+    const map = new Map<string, AuthUser & { passwordHash: string }>();
 
-  DEFAULT_USERS
-    .filter((u) => u.role === 'admin')
-    .forEach((u) => map.set(u.email.toLowerCase(), u));
+    DEFAULT_USERS
+      .filter((u) => u.role === 'admin')
+      .forEach((u) => map.set(u.email.toLowerCase(), u));
 
-  return Array.from(map.values());
-});
+    return Array.from(map.values());
+  });
 
-const [usersLoaded, setUsersLoaded] = useState(false);
+  const [usersLoaded, setUsersLoaded] = useState(false);
   const [authReady, setAuthReady] = useState(false);
-  const [firebaseAuthUser, setFirebaseAuthUser] = useState<NonNullable<typeof auth.currentUser>>(null);
+  const [firebaseAuthUser, setFirebaseAuthUser] = useState<FirebaseUser | null>(null);
 
   // Current session user
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -281,8 +189,6 @@ const [usersLoaded, setUsersLoaded] = useState(false);
   const [authRedirectUrl, setAuthRedirectUrl] = useState<string | null>(null);
   const [authNoticeMessage, setAuthNoticeMessage] = useState<string | null>(null);
 
-  // Firebase rules require an authenticated request, so wait for Auth to finish
-  // restoring the session before reading the users and staff directories.
   useEffect(() => {
     if (!authReady || !firebaseAuthUser) return;
 
@@ -323,12 +229,12 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       .then((remoteUsers) => {
         applyRemoteUsers(remoteUsers || []);
       })
-          .catch((err) => {
-      console.log('[Firestore] User initial fetch status:', err?.message || err);
-    })
-    .finally(() => {
-      setUsersLoaded(true);
-    });
+      .catch((err) => {
+        console.log('[Firestore] User initial fetch status:', err?.message || err);
+      })
+      .finally(() => {
+        setUsersLoaded(true);
+      });
 
     const unsubscribe = subscribeToUsers(
       applyRemoteUsers,
@@ -336,16 +242,15 @@ const [usersLoaded, setUsersLoaded] = useState(false);
     );
 
     return () => unsubscribe();
-  }, [authReady, firebaseAuthUser]);
+  }, [authReady, firebaseAuthUser, addAvailableSeller]);
 
-  // Listen to Firebase Auth state changes and rehydrate the current user after refresh.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setAuthReady(true);
-      setFirebaseAuthUser(firebaseUser);
+      setFirebaseAuthUser(fbUser);
 
-      if (isSigningOutRef.current && firebaseUser) return;
-      if (!firebaseUser) {
+      if (isSigningOutRef.current && fbUser) return;
+      if (!fbUser) {
         isSigningOutRef.current = false;
         setUser(null);
       }
@@ -359,8 +264,6 @@ const [usersLoaded, setUsersLoaded] = useState(false);
     registeredUsersRef.current = registeredUsers;
   }, [registeredUsers]);
 
-  // Resolve the role only after the Firestore user directory has loaded. The
-  // Firebase auth callback can run before that directory is available.
   useEffect(() => {
     if (!authReady || !usersLoaded || !firebaseAuthUser) return;
 
@@ -375,7 +278,7 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       role: assignedRole,
       phone: firebaseAuthUser.phoneNumber || matchedUser?.phone || '',
       department: matchedUser?.department || (assignedRole === 'admin' ? 'Executive Operations' : undefined),
-      status: matchedUser?.status || 'active',
+      status: (matchedUser?.status as AccountStatus) || 'active',
       createdAt: matchedUser?.createdAt || new Date().toISOString().slice(0, 10),
     };
 
@@ -385,7 +288,6 @@ const [usersLoaded, setUsersLoaded] = useState(false);
     });
   }, [authReady, usersLoaded, firebaseAuthUser, registeredUsers]);
 
-  // Firebase Auth owns session persistence; React only mirrors the current session.
   useEffect(() => {
     if (user) {
       setCurrentRole(user.role);
@@ -422,9 +324,6 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       (u) => u.email.toLowerCase() === cleanEmail || u.email.toLowerCase() === normalizedEmail
     );
 
-    // Ensure known app users are backed by a real Firebase auth identity.
-    // This is required so Firestore writes (seller assignment, product creation, etc.)
-    // are authorized after refresh and not silently reverted.
     if (matchedLocalUser && !auth.currentUser) {
       try {
         const createdUser = await registerWithEmailPassword(cleanEmail, cleanPass, matchedLocalUser.name);
@@ -434,7 +333,7 @@ const [usersLoaded, setUsersLoaded] = useState(false);
             id: createdUser.uid,
             email: cleanEmail,
             name: matchedLocalUser.name,
-            status: matchedLocalUser.status || 'active',
+            status: (matchedLocalUser.status as AccountStatus) || 'active',
           };
 
           setUser(authPayload);
@@ -456,47 +355,45 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       }
     }
 
-    // 2. Try Firebase Authentication using Email/Gmail and Password
     try {
       const fbUser = await signInWithEmailPassword(cleanEmail, cleanPass);
       if (fbUser) {
         const isAryanAdmin =
-  cleanEmail === 'aryangandhale27@gmail.com' ||
-  cleanEmail.includes('admin@');
+          cleanEmail === 'aryangandhale27@gmail.com' ||
+          cleanEmail.includes('admin@');
 
-let matchedUser = registeredUsers.find(
-  (u) => u.email.toLowerCase() === cleanEmail
-);
+        let matchedUser = registeredUsers.find(
+          (u) => u.email.toLowerCase() === cleanEmail
+        );
 
-if (!matchedUser) {
-  const remoteUsers = await fetchUsersFromFirestore();
-  matchedUser = remoteUsers.find(
-    (remoteUser) => remoteUser.email.toLowerCase() === cleanEmail
-  ) as (AuthUser & { passwordHash: string }) | undefined;
+        if (!matchedUser) {
+          const remoteUsers = await fetchUsersFromFirestore();
+          matchedUser = remoteUsers.find(
+            (remoteUser) => remoteUser.email.toLowerCase() === cleanEmail
+          ) as (AuthUser & { passwordHash: string }) | undefined;
 
-  if (matchedUser) {
-    setRegisteredUsers((prev) => {
-      const map = new Map<string, AuthUser & { passwordHash: string }>();
-      prev.forEach((existingUser) => map.set(existingUser.id, existingUser));
-      map.set(matchedUser!.id, {
-        ...matchedUser!,
-        passwordHash: '',
-        password: '',
-      });
-      return Array.from(map.values());
-    });
-  }
-}
+          if (matchedUser) {
+            setRegisteredUsers((prev) => {
+              const map = new Map<string, AuthUser & { passwordHash: string }>();
+              prev.forEach((existingUser) => map.set(existingUser.id, existingUser));
+              map.set(matchedUser!.id, {
+                ...matchedUser!,
+                passwordHash: '',
+                password: '',
+              });
+              return Array.from(map.values());
+            });
+          }
+        }
 
-if (!matchedUser && !isAryanAdmin) {
-  return {
-    success: false,
-    error: 'Your account profile could not be found. Please contact the administrator.'
-  };
-}
+        if (!matchedUser && !isAryanAdmin) {
+          return {
+            success: false,
+            error: 'Your account profile could not be found. Please contact the administrator.'
+          };
+        }
 
-const assignedRole: UserRole =
-  matchedUser?.role || 'admin';
+        const assignedRole: UserRole = matchedUser?.role || 'admin';
 
         const authPayload: AuthUser = {
           id: fbUser.uid,
@@ -505,13 +402,13 @@ const assignedRole: UserRole =
           role: assignedRole,
           phone: fbUser.phoneNumber || matchedUser?.phone || '',
           department: matchedUser?.department || (assignedRole === 'admin' ? 'Executive Operations' : undefined),
-          status: 'active',
+          status: 'active' as AccountStatus,
           createdAt: matchedUser?.createdAt || new Date().toISOString().slice(0, 10),
         };
 
         setUser(authPayload);
-setIsAuthModalOpen(false);
-setAuthNoticeMessage(null);
+        setIsAuthModalOpen(false);
+        setAuthNoticeMessage(null);
         showToast(
           `Welcome back, ${authPayload.name}!`,
           `Signed in via Firebase Auth (${authPayload.role.toUpperCase()})`,
@@ -524,35 +421,33 @@ setAuthNoticeMessage(null);
       console.log('Firebase signInWithEmailPassword status:', fbCode);
 
       if (fbCode === 'auth/user-not-found') {
-  return {
-    success: false,
-    error: 'You are not registered. Please sign up first or create an account.'
-  };
-} else if (fbCode === 'auth/wrong-password') {
-  return {
-    success: false,
-    error: 'Wrong password. Please check your password and try again.'
-  };
-} else if (fbCode === 'auth/invalid-credential') {
-  const emailExists =
-    registeredUsers.some(
-      (u) => u.email.toLowerCase() === cleanEmail
-    ) ||
-    cleanEmail === 'admin@semixlabs.com' ||
-    cleanEmail === 'aryangandhale27@gmail.com';
+        return {
+          success: false,
+          error: 'You are not registered. Please sign up first or create an account.'
+        };
+      } else if (fbCode === 'auth/wrong-password') {
+        return {
+          success: false,
+          error: 'Wrong password. Please check your password and try again.'
+        };
+      } else if (fbCode === 'auth/invalid-credential') {
+        const emailExists =
+          registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail) ||
+          cleanEmail === 'admin@semixlabs.com' ||
+          cleanEmail === 'aryangandhale27@gmail.com';
 
-  if (emailExists) {
-    return {
-      success: false,
-      error: 'Wrong password. Please check your password and try again.'
-    };
-  }
+        if (emailExists) {
+          return {
+            success: false,
+            error: 'Wrong password. Please check your password and try again.'
+          };
+        }
 
-  return {
-    success: false,
-    error: 'You are not registered. Please sign up first or create an account.'
-  };
-}else if (fbCode === 'auth/invalid-email') {
+        return {
+          success: false,
+          error: 'You are not registered. Please sign up first or create an account.'
+        };
+      } else if (fbCode === 'auth/invalid-email') {
         return {
           success: false,
           error: 'The email address is badly formatted. Please enter a valid email or Gmail address.'
@@ -562,15 +457,9 @@ setAuthNoticeMessage(null);
           success: false,
           error: 'Access temporarily disabled due to multiple failed login attempts. Please reset your password or try again later.'
         };
-      } else if (fbCode === 'auth/operation-not-allowed') {
-        console.warn('Firebase Email/Password provider not enabled in Firebase Console. Falling back to internal/Firestore verification.');
       }
     }
 
-    // 3. Normalize domain if needed (@rietzz.com -> @semixlabs.com)
-    // Reuse the normalized email from the earlier authentication branch.
-
-    // 4. Check registered accounts from state (case-insensitive on password for ease-of-use)
     const matched = registeredUsers.find(
       (u) => 
         (u.email.toLowerCase() === cleanEmail || u.email.toLowerCase() === cleanEmail.replace('@rietzz.com', '@semixlabs.com')) && 
@@ -593,7 +482,7 @@ setAuthNoticeMessage(null);
         phone: matched.phone,
         department: matched.department,
         createdAt: matched.createdAt,
-        status: matched.status || 'active',
+        status: (matched.status as AccountStatus) || 'active',
         businessName: matched.businessName,
         gstin: matched.gstin,
         warehouseHub: matched.warehouseHub,
@@ -614,9 +503,6 @@ setAuthNoticeMessage(null);
       return { success: true, role: authPayload.role };
     }
 
-    
-
-    // 6. Helpful error guidance if email is recognizable but password didn't match
     const isKnownRole = 
       cleanEmail.includes('admin') || 
       cleanEmail.includes('seller') || 
@@ -637,7 +523,7 @@ setAuthNoticeMessage(null);
     };
   };
 
-  const loginWithGoogle = async (redirectTo?: string): Promise<{ success: boolean; role?: UserRole; error?: string }> => {
+  const loginWithGoogle = async (): Promise<{ success: boolean; role?: UserRole; error?: string }> => {
     try {
       const fbUser = await signInWithGoogle();
       if (!fbUser) {
@@ -647,7 +533,6 @@ setAuthNoticeMessage(null);
       const email = fbUser.email?.toLowerCase() || '';
       const name = fbUser.displayName || 'Google User';
 
-      // Check if user is known admin or has existing record
       const matched = registeredUsers.find((u) => u.email.toLowerCase() === email);
       const isAryanAdmin = email === 'aryangandhale27@gmail.com' || email.includes('admin@');
       const assignedRole: UserRole = matched?.role || (isAryanAdmin ? 'admin' : 'customer');
@@ -659,7 +544,7 @@ setAuthNoticeMessage(null);
         role: assignedRole,
         phone: fbUser.phoneNumber || matched?.phone || '',
         department: matched?.department || (assignedRole === 'admin' ? 'Executive Operations' : undefined),
-        status: matched?.status || 'active',
+        status: (matched?.status as AccountStatus) || 'active',
         createdAt: matched?.createdAt || new Date().toISOString().slice(0, 10),
       };
 
@@ -667,7 +552,6 @@ setAuthNoticeMessage(null);
       setIsAuthModalOpen(false);
       setAuthNoticeMessage(null);
 
-      // Persist profile to Firestore
       syncUserToFirestore(authPayload).catch((e) => console.warn('Could not sync user to Firestore:', e));
 
       showToast(
@@ -699,7 +583,6 @@ setAuthNoticeMessage(null);
       return { success: false, error: 'Password must be at least 6 characters.' };
     }
 
-    // Check if email already registered in local cache
     const existing = registeredUsers.find((u) => u.email.toLowerCase() === cleanEmail);
     if (existing) {
       return { success: false, error: 'An account with this email already exists. Please sign in.' };
@@ -707,7 +590,6 @@ setAuthNoticeMessage(null);
 
     let resolvedId = `usr-cust-${Date.now().toString().slice(-4)}`;
 
-    // Create user in Firebase Auth with Email and Password
     try {
       const fbUser = await registerWithEmailPassword(cleanEmail, payload.password, cleanName);
       if (fbUser?.uid) {
@@ -729,10 +611,10 @@ setAuthNoticeMessage(null);
       name: cleanName,
       email: cleanEmail,
       phone: payload.phone.trim() || '+91 90000 00000',
-      role: 'customer', // Self-registration is strictly for customer role
+      role: 'customer',
       passwordHash: payload.password,
       password: payload.password,
-      status: 'active',
+      status: 'active' as AccountStatus,
       createdAt: new Date().toISOString().split('T')[0],
     };
 
@@ -744,7 +626,7 @@ setAuthNoticeMessage(null);
       email: newUserRecord.email,
       role: newUserRecord.role,
       phone: newUserRecord.phone,
-      status: 'active',
+      status: 'active' as AccountStatus,
       createdAt: newUserRecord.createdAt,
     };
 
@@ -753,7 +635,6 @@ setAuthNoticeMessage(null);
     setAuthNoticeMessage(null);
     syncUserToFirestore(authPayload).catch(() => {});
     
-    // Dispatch Welcome Email to user's registered Gmail / Email
     sendWelcomeEmail({ name: authPayload.name, email: authPayload.email }).catch((err) => {
       console.warn('[AuthContext] Welcome email dispatch deferred:', err);
     });
@@ -767,7 +648,6 @@ setAuthNoticeMessage(null);
     return { success: true };
   };
 
-  // Admin User Management implementations
   const createUser = async (payload: CreateUserPayload): Promise<{ success: boolean; error?: string; user?: AuthUser }> => {
     const cleanEmail = payload.email.trim().toLowerCase();
     const cleanName = payload.name.trim();
@@ -781,13 +661,11 @@ setAuthNoticeMessage(null);
       return { success: false, error: 'Please enter a valid email address (e.g. name@domain.com).' };
     }
 
-    // Unique email check
     const emailExists = registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail);
     if (emailExists) {
       return { success: false, error: `An account with email "${cleanEmail}" already exists. Email must be unique.` };
     }
 
-    // Phone number 10 digits check
     const phoneDigits = cleanPhone.replace(/\D/g, '');
     if (phoneDigits.length < 10) {
       return { success: false, error: 'Phone number must contain at least 10 valid digits.' };
@@ -800,7 +678,6 @@ setAuthNoticeMessage(null);
       return { success: false, error: 'Password must be at least 6 characters long.' };
     }
 
-    // Role-specific validations
     if (payload.role === 'seller' && !payload.businessName?.trim()) {
       return { success: false, error: 'Store / Business Name is required for seller accounts.' };
     }
@@ -842,7 +719,6 @@ setAuthNoticeMessage(null);
 
     setRegisteredUsers((prev) => [newUserRecordWithPassword, ...prev]);
 
-    // If Seller: add to availableSellers immediately for order assignments
     if (payload.role === 'seller') {
       const displayName = payload.businessName
         ? `${cleanName} (${payload.businessName})`
@@ -863,7 +739,6 @@ setAuthNoticeMessage(null);
       });
     }
 
-    // If Team: add to staff in AppContext
     if (payload.role === 'team') {
       addStaff({
         name: cleanName,
@@ -916,6 +791,7 @@ setAuthNoticeMessage(null);
     const targetUpdated: AuthUser & { passwordHash: string } = {
       ...target,
       ...updates,
+      ...(updates.status ? { status: updates.status as AccountStatus } : {}),
       ...(updates.passwordHash
         ? { password: updates.passwordHash, passwordHash: updates.passwordHash }
         : {}),
@@ -931,12 +807,10 @@ setAuthNoticeMessage(null);
       return next;
     });
 
-    // Update active user session if this is the currently logged-in account
     if (user && user.id === id && targetUpdated) {
       setUser(targetUpdated);
     }
 
-    // Sync with availableSellers if role is seller
     if (targetUpdated && (targetUpdated as AuthUser).role === 'seller') {
       const updatedSeller = targetUpdated as AuthUser;
       const displayName = updatedSeller.businessName
@@ -955,37 +829,35 @@ setAuthNoticeMessage(null);
       });
     }
 
-      showToast('Account Updated', 'User profile information updated successfully.', 'success');
-      if (targetUpdated) {
-        syncUserToFirestore(targetUpdated).catch(() => {});
-      }
-      return { success: true };
-    };
+    showToast('Account Updated', 'User profile information updated successfully.', 'success');
+    if (targetUpdated) {
+      syncUserToFirestore(targetUpdated).catch(() => {});
+    }
+    return { success: true };
+  };
 
-    const toggleUserStatus = (id: string) => {
-      const target = registeredUsers.find((u) => u.id === id);
-      if (!target) return;
+  const toggleUserStatus = (id: string) => {
+    const target = registeredUsers.find((u) => u.id === id);
+    if (!target) return;
 
-      if (target.email === 'admin@semixlabs.com') {
-        showToast('Action Blocked', 'Primary Root Administrator account cannot be suspended.', 'error');
-        return;
-      }
+    if (target.email === 'admin@semixlabs.com') {
+      showToast('Action Blocked', 'Primary Root Administrator account cannot be suspended.', 'error');
+      return;
+    }
 
-      const nextStatus = target.status === 'suspended' ? 'active' : 'suspended';
-      const updatedRecord = { ...target, status: nextStatus };
+    const nextStatus: AccountStatus = target.status === 'suspended' ? 'active' : 'suspended';
+    const updatedRecord = { ...target, status: nextStatus };
 
-      setRegisteredUsers((prev) =>
-        prev.map((u) => (u.id === id ? updatedRecord : u))
-      );
+    setRegisteredUsers((prev) =>
+      prev.map((u) => (u.id === id ? updatedRecord : u))
+    );
 
-      // Sync status change to Firestore
-      syncUserToFirestore(updatedRecord).catch(() => {});
+    syncUserToFirestore(updatedRecord).catch(() => {});
 
     if (target.role === 'seller') {
       updateAvailableSeller(id, { status: nextStatus });
     }
 
-    // If current logged-in user got suspended, inform them
     if (user && user.id === id) {
       setUser({ ...user, status: nextStatus });
     }
@@ -1054,7 +926,7 @@ setAuthNoticeMessage(null);
       phone: target.phone,
       department: target.department,
       createdAt: target.createdAt,
-      status: target.status || 'active',
+      status: (target.status as AccountStatus) || 'active',
       businessName: target.businessName,
       gstin: target.gstin,
       warehouseHub: target.warehouseHub,
@@ -1086,7 +958,6 @@ setAuthNoticeMessage(null);
   const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     
-    // Attempt Firebase password reset email
     try {
       await sendPasswordReset(cleanEmail);
       showToast('Password Reset Dispatched', `Firebase password reset link sent to ${cleanEmail}`, 'success');

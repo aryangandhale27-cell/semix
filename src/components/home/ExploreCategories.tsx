@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { CategoryCard, CATEGORY_IMAGE_MAP } from '../common/CategoryCard';
@@ -145,17 +145,24 @@ interface ExploreCategoriesProps {
   title?: string;
   subtitle?: string;
   viewAllLink?: string;
+  limit?: number;
 }
 
 export const ExploreCategories: React.FC<ExploreCategoriesProps> = ({
   categories = DEFAULT_EXPLORE_CATEGORIES,
   title = 'Explore Categories',
   subtitle = 'Browse microcontrollers, sensors, drone gear, and robotics silicon',
-  viewAllLink = '/categories'
+  viewAllLink = '/categories',
+  limit = 8
 }) => {
+  const displayCategories = useMemo(() => {
+    const list = categories.length > 0 ? categories : DEFAULT_EXPLORE_CATEGORIES;
+    return limit ? list.slice(0, limit) : list;
+  }, [categories, limit]);
+
   return (
     <section id="featured-categories-section" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-      {/* Header Section: Title, Subtitle, and View All Action */}
+      {/* Header Section */}
       <div className="flex items-center justify-between gap-2 mb-3 sm:mb-6 pb-1.5 sm:pb-2 border-b border-slate-200">
         <div>
           <h2 className="text-base sm:text-2xl font-extrabold text-[#561269] flex items-center gap-1.5 sm:gap-2">
@@ -176,10 +183,14 @@ export const ExploreCategories: React.FC<ExploreCategoriesProps> = ({
         </Link>
       </div>
 
-      {/* Responsive CSS Grid: 2 columns on mobile, 2 on tablet, 4 on desktop */}
+      {/* Responsive Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-        {categories.length > 0 ? categories.map((category, index) => (
-          <CategoryCard key={category.id} category={category} priority={index < 2} />
+        {displayCategories.length > 0 ? displayCategories.map((category, index) => (
+          <CategoryCard 
+            key={category.id} 
+            category={category} 
+            priority={index === 0} 
+          />
         )) : Array.from({ length: 4 }, (_, index) => (
           <div
             key={`category-loading-${index}`}
