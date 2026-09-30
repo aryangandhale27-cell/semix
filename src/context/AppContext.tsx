@@ -565,6 +565,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
     await Promise.all(updatedWithOrder.map((b) => syncBannerToFirestore(b)));
     setBanners(updatedWithOrder);
+    writeCachedData(APP_DATA_CACHE_KEYS.banners, updatedWithOrder);
   }, []);
 
   const toggleBannerActive = useCallback(async (bannerId: string) => {

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /seller
+Disallow: /team
+
+Sitemap: https://semixlabs.com/sitemap.xml

@@ -185,11 +185,10 @@ export const ExploreCategories: React.FC<ExploreCategoriesProps> = ({
 
       {/* Responsive Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-        {displayCategories.length > 0 ? displayCategories.map((category, index) => (
+        {displayCategories.length > 0 ? displayCategories.map((category) => (
           <CategoryCard 
             key={category.id} 
-            category={category} 
-            priority={index === 0} 
+            category={category}
           />
         )) : Array.from({ length: 4 }, (_, index) => (
           <div

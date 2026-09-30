@@ -16,8 +16,28 @@ import {
   Truck
 } from 'lucide-react';
 
+const ProductGridSkeleton: React.FC<{ count: number }> = ({ count }) => (
+  <>
+    {Array.from({ length: count }, (_, index) => (
+      <div
+        key={`product-skeleton-${index}`}
+        aria-hidden="true"
+        className="min-h-[320px] animate-pulse overflow-hidden rounded-lg border border-slate-200 bg-white sm:min-h-[440px] sm:rounded-xl"
+      >
+        <div className="aspect-square bg-slate-100 sm:aspect-4/3" />
+        <div className="space-y-3 p-2 sm:p-4">
+          <div className="h-3 w-2/3 rounded bg-slate-100 sm:h-4" />
+          <div className="h-8 rounded bg-slate-100 sm:h-10" />
+          <div className="h-4 w-1/2 rounded bg-slate-100" />
+          <div className="h-7 rounded bg-slate-100 sm:mt-8 sm:h-10" />
+        </div>
+      </div>
+    ))}
+  </>
+);
+
 export const HomePage: React.FC = () => {
-  const { products, categories, banners } = useApp();
+  const { products, categories, banners, isProductsLoading } = useApp();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -81,7 +101,7 @@ export const HomePage: React.FC = () => {
           onMouseLeave={() => setIsHovered(false)}
           onTouchStart={handleHeroTouchStart}
           onTouchEnd={handleHeroTouchEnd}
-          className="w-full relative aspect-[16/9] sm:aspect-[1600/700] rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y bg-slate-900"
+          className="w-full relative aspect-[16/9] md:aspect-[21/9] rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y bg-slate-900"
         >
           {!currentSlide ? (
             <div className="w-full h-full animate-pulse bg-slate-800" aria-label="Loading homepage banner" />
@@ -106,7 +126,7 @@ export const HomePage: React.FC = () => {
                     fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
                     decoding="async"
                     width={1200}
-                    height={525}
+                    height={500}
                     sizes="(max-width: 640px) 100vw, 1200px"
                     className="block w-full h-full object-cover"
                   />
@@ -204,7 +224,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-          {bestSellers.map((product) => (
+          {isProductsLoading && bestSellers.length === 0 ? <ProductGridSkeleton count={8} /> : bestSellers.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -237,7 +257,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-          {newArrivals.map((product) => (
+          {isProductsLoading && newArrivals.length === 0 ? <ProductGridSkeleton count={4} /> : newArrivals.map((product) => (
             <ProductCard
               key={product.id}
               product={product}

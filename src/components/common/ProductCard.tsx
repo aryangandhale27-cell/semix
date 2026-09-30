@@ -111,7 +111,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <motion.div
       id={`product-card-${product.id}`}
       whileHover={{ y: -4, transition: { duration: 0.2, ease: 'easeOut' } }}
-      className="group bg-white rounded-lg sm:rounded-xl border border-slate-200 hover:border-[#561269]/40 hover:shadow-xl hover:shadow-indigo-950/5 transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
+      className="group flex h-full min-h-[320px] flex-col justify-between overflow-hidden relative rounded-lg border border-slate-200 bg-white transition-all duration-200 hover:border-[#561269]/40 hover:shadow-xl hover:shadow-indigo-950/5 sm:min-h-[440px] sm:rounded-xl"
     >
       {cartBurst && (
         <motion.div
