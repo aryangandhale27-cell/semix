@@ -28,6 +28,7 @@ import {
   syncProductToFirestore, 
   deleteProductFromFirestore, 
   subscribeToProducts,
+  fetchInitialProducts,
   ProductSnapshotChange,
   syncAllProductsToFirestore,
   syncOrderToFirestore, 
@@ -370,9 +371,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isProductSyncing, setIsProductSyncing] = useState(false);
 
-  // Firestore Live Products Sync
+  // Fast Bounded Initial Fetch + Non-blocking Background Sync
   useEffect(() => {
     let isMounted = true;
+
+    // 1. Execute direct, bounded single-request fetch immediately (Fast initial paint)
+    fetchInitialProducts(25)
+      .then((initialProducts) => {
+        if (!isMounted || initialProducts.length === 0) return;
+        const normalized = initialProducts.map(normalizeProduct);
+        setProducts(normalized);
+        setIsProductsLoading(false);
+        writeCachedData(APP_DATA_CACHE_KEYS.products, normalized);
+      })
+      .catch((err) => {
+        console.warn('[Firestore] Initial product fetch notice:', err?.message || err);
+      });
+
+    // 2. Attach bounded realtime listener for background updates
     const unsubscribe = subscribeToProducts((remoteProducts) => {
       if (!isMounted) return;
       const normalizedProducts = remoteProducts.map(normalizeProduct);

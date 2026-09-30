@@ -14,7 +14,14 @@ import {
   signOut as fbSignOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager,
+  getFirestore,
+  doc, 
+  getDoc
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // Explicit Firebase Project Configuration for semix-ai-stdio
@@ -31,8 +38,20 @@ export const firebaseConfig = {
 // Initialize Firebase App instance
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore (default database in semix-ai-stdio)
-export const db = getFirestore(app);
+// Initialize Firestore with IndexedDB multi-tab persistent local cache
+export const db = (() => {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
+  } catch {
+    // Fallback if already initialized in another module/HMR
+    return getFirestore(app);
+  }
+})();
+
 export const storage = getStorage(app);
 
 // Initialize Firebase Auth & Providers
@@ -40,6 +59,7 @@ export const auth = getAuth(app);
 void setPersistence(auth, browserLocalPersistence).catch((error) => {
   console.error('[Firebase Auth] Could not configure Auth persistence:', error);
 });
+
 export const googleProvider = new GoogleAuthProvider();
 export const emailAuthProvider = new EmailAuthProvider();
 export { EmailAuthProvider, GoogleAuthProvider, onAuthStateChanged, fbSignOut as signOut };
@@ -92,11 +112,12 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test Connection on boot
+// Non-blocking ping test
 export async function testFirestoreConnection() {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log('Firebase Firestore connection verified successfully.');
+    // Uses standard getDoc so cache resolves immediately without stalling startup
+    await getDoc(doc(db, 'test', 'connection'));
+    console.log('Firebase Firestore connection verified.');
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.warn('Firebase Firestore client is offline or network constrained.');

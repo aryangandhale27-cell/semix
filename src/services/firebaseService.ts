@@ -23,6 +23,8 @@ import {
   StaffMember,
 } from '../types';
 
+const PRODUCTS_CACHE_KEY = 'semix_products_cache_v1';
+
 /**
  * Helper to remove undefined values so Firestore doesn't throw 'Unsupported field value: undefined'
  */
@@ -32,6 +34,7 @@ export function sanitizeForFirestore<T>(data: T): T {
   }
   return JSON.parse(JSON.stringify(data, (_, v) => (v === undefined ? null : v)));
 }
+
 export async function syncRecordToFirestore(
   collectionName: string,
   recordId: string,
@@ -46,7 +49,7 @@ export async function syncRecordToFirestore(
 }
 
 /**
- * Products Firestore Sync & Realtime Listener
+ * Products Firestore Sync & Operations
  */
 export async function syncProductToFirestore(product: Product): Promise<void> {
   const path = `products/${product.id}`;
@@ -87,19 +90,52 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
   }
 }
 
-export async function fetchProductsFromFirestore(): Promise<Product[]> {
+/**
+ * Fast direct fetch for the catalog.
+ * Uses a single getDocs network request bounded to 25 documents.
+ */
+export async function fetchInitialProducts(limitCount = 25): Promise<Product[]> {
   const path = 'products';
+
+  // 1. Instant local storage retrieval (0ms)
   try {
-    const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+    const cached = localStorage.getItem(PRODUCTS_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+
+  // 2. Fast single-hop read from Firestore
+  try {
+    const q = query(
+      collection(db, path), 
+      orderBy('createdAt', 'desc'), 
+      limit(limitCount)
+    );
     const snapshot = await getDocs(q);
     const items: Product[] = [];
     snapshot.forEach((docSnap) => {
-      items.push(docSnap.data() as Product);
+      items.push({ id: docSnap.id, ...docSnap.data() } as Product);
     });
+
+    if (items.length > 0) {
+      try {
+        localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(items));
+      } catch {}
+    }
+
     return items;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
+    return [];
   }
+}
+
+export async function fetchProductsFromFirestore(): Promise<Product[]> {
+  return fetchInitialProducts(50);
 }
 
 export interface ProductSnapshotChange {
@@ -107,22 +143,42 @@ export interface ProductSnapshotChange {
   product: Product;
 }
 
+/**
+ * Lightweight listener for real-time catalog syncing.
+ * Bounded strictly to 25 documents to prevent runaway read counts.
+ */
 export function subscribeToProducts(
   onData: (products: Product[]) => void,
   onError?: (err: any) => void,
   onChanges?: (changes: ProductSnapshotChange[]) => void
 ): Unsubscribe {
-  const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+  // 1. Instant Cache Dispatch
+  try {
+    const cached = localStorage.getItem(PRODUCTS_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        onData(parsed);
+      }
+    }
+  } catch {}
+
+  // 2. Real-time query bounded to 25 items
+  const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(25));
   let hasInitialSnapshot = false;
 
   return onSnapshot(
     q,
     (snapshot) => {
+      const items: Product[] = [];
+      snapshot.forEach((docSnap) => items.push({ id: docSnap.id, ...docSnap.data() } as Product));
+
       if (!hasInitialSnapshot) {
-        const items: Product[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
         hasInitialSnapshot = true;
         onData(items);
+        try {
+          localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(items));
+        } catch {}
         return;
       }
 
@@ -131,6 +187,11 @@ export function subscribeToProducts(
         product: { id: change.doc.id, ...change.doc.data() } as Product,
       }));
       if (changes.length > 0) onChanges?.(changes);
+      
+      onData(items);
+      try {
+        localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(items));
+      } catch {}
     },
     (err) => {
       console.warn('[Firestore] Products real-time listener notice:', err.message);
@@ -181,7 +242,7 @@ export async function deleteOrderFromFirestore(orderId: string): Promise<void> {
 export async function fetchOrdersFromFirestore(): Promise<Order[]> {
   const path = 'orders';
   try {
-    const q = query(collection(db, path), orderBy('createdAt', 'desc'), limit(100));
+    const q = query(collection(db, path), orderBy('createdAt', 'desc'), limit(50));
     const snapshot = await getDocs(q);
     const orders: Order[] = [];
     snapshot.forEach((docSnap) => {
@@ -198,19 +259,17 @@ export async function fetchOrdersFromFirestore(): Promise<Order[]> {
     return orders;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
+    return [];
   }
 }
 
-/**
- * Fetch orders filtered specifically for the logged-in user
- */
 export async function fetchUserOrdersFromFirestore(userId: string): Promise<Order[]> {
   const path = 'orders';
   try {
     const q = query(
       collection(db, path),
       where('userId', '==', userId),
-      limit(50)
+      limit(30)
     );
     const snapshot = await getDocs(q);
     const orders: Order[] = [];
@@ -220,14 +279,12 @@ export async function fetchUserOrdersFromFirestore(userId: string): Promise<Orde
     return orders;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
+    return [];
   }
 }
 
-/**
- * Real-time listener for orders
- */
 export function subscribeToOrders(onData: (orders: Order[]) => void, onError?: (err: any) => void): Unsubscribe {
-  const q = query(collection(db, 'orders'), limit(100));
+  const q = query(collection(db, 'orders'), limit(50));
   return onSnapshot(
     q,
     (snapshot) => {
@@ -252,11 +309,8 @@ export function subscribeToOrders(onData: (orders: Order[]) => void, onError?: (
   );
 }
 
-/**
- * Real-time listener for user-specific orders
- */
 export function subscribeToUserOrders(userId: string, onData: (orders: Order[]) => void, onError?: (err: any) => void): Unsubscribe {
-  const q = query(collection(db, 'orders'), where('userId', '==', userId), limit(50));
+  const q = query(collection(db, 'orders'), where('userId', '==', userId), limit(30));
   return onSnapshot(
     q,
     (snapshot) => {
@@ -291,9 +345,7 @@ export async function syncUserToFirestore(user: AuthUser): Promise<void> {
       createdAt: user.createdAt || new Date().toISOString().slice(0, 10),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
-    console.log(`[Firestore] Synced user ${user.email} (${user.id}) to collection 'users' in semix-ai-stdio`);
   } catch (error) {
-    console.error(`[Firestore] Failed to sync user ${user.email}:`, error);
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
@@ -311,45 +363,25 @@ export async function deleteUserFromFirestore(userId: string): Promise<void> {
 
 export async function fetchUsersFromFirestore(): Promise<AuthUser[]> {
   try {
-    // Fetch both users and staff records.
-    // Staff records are authoritative for Team members.
     const [usersSnapshot, staffSnapshot] = await Promise.all([
-      getDocs(query(collection(db, 'users'), limit(100))),
-      getDocs(query(collection(db, 'staff'), limit(100))),
+      getDocs(query(collection(db, 'users'), limit(50))),
+      getDocs(query(collection(db, 'staff'), limit(50))),
     ]);
 
-    // Build a map of staff members by UID/email.
     const staffMap = new Map<string, any>();
-
     staffSnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-
-      if (data.uid) {
-        staffMap.set(String(data.uid), data);
-      }
-
-      if (data.email) {
-        staffMap.set(String(data.email).toLowerCase(), data);
-      }
+      if (data.uid) staffMap.set(String(data.uid), data);
+      if (data.email) staffMap.set(String(data.email).toLowerCase(), data);
     });
 
     const users: AuthUser[] = [];
-
     usersSnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-
       const uid = data.uid || docSnap.id;
       const email = (data.email || '').toLowerCase();
-
-      // If this account exists in Staff, Staff determines the role.
-      const staffRecord =
-        staffMap.get(String(uid)) ||
-        staffMap.get(email);
-
-      const resolvedRole: UserRole =
-        staffRecord?.role === 'team'
-          ? 'team'
-          : data.role || 'customer';
+      const staffRecord = staffMap.get(String(uid)) || staffMap.get(email);
+      const resolvedRole: UserRole = staffRecord?.role === 'team' ? 'team' : data.role || 'customer';
 
       users.push({
         id: uid,
@@ -357,69 +389,22 @@ export async function fetchUsersFromFirestore(): Promise<AuthUser[]> {
         email: data.email || staffRecord?.email || '',
         phone: data.phone || staffRecord?.phone || '',
         role: resolvedRole,
-        status:
-          data.status ||
-          (staffRecord?.active === false ? 'suspended' : 'active'),
-        department:
-          data.department ||
-          staffRecord?.department ||
-          undefined,
+        status: data.status || (staffRecord?.active === false ? 'suspended' : 'active'),
+        department: data.department || staffRecord?.department || undefined,
         businessName: data.businessName || undefined,
-        createdAt:
-          data.createdAt ||
-          new Date().toISOString().slice(0, 10),
+        createdAt: data.createdAt || new Date().toISOString().slice(0, 10),
       });
-    });
-
-    // Also include Team members that exist in Staff
-    // but don't yet have a users document.
-    staffSnapshot.forEach((docSnap) => {
-      const staff = docSnap.data();
-
-      if (staff.role !== 'team') {
-        return;
-      }
-
-      const uid = staff.uid || docSnap.id;
-      const email = (staff.email || '').toLowerCase();
-
-      const alreadyExists = users.some(
-        (u) =>
-          u.id === uid ||
-          u.email.toLowerCase() === email
-      );
-
-      if (!alreadyExists) {
-        users.push({
-          id: uid,
-          name: staff.name || '',
-          email,
-          phone: staff.phone || '',
-          role: 'team',
-          status:
-            staff.active === false ? 'suspended' : 'active',
-          department:
-            staff.department || 'Warehouse & Fulfillment',
-          createdAt:
-            new Date().toISOString().slice(0, 10),
-        });
-      }
     });
 
     return users;
   } catch (error) {
-    handleFirestoreError(
-      error,
-      OperationType.GET,
-      'users + staff'
-    );
-
+    handleFirestoreError(error, OperationType.GET, 'users + staff');
     return [];
   }
 }
 
 export function subscribeToUsers(onData: (users: AuthUser[]) => void, onError?: (err: any) => void): Unsubscribe {
-  const q = query(collection(db, 'users'), limit(100));
+  const q = query(collection(db, 'users'), limit(50));
   return onSnapshot(
     q,
     (snapshot) => {
@@ -448,7 +433,7 @@ export function subscribeToUsers(onData: (users: AuthUser[]) => void, onError?: 
 }
 
 export async function fetchStaffFromFirestore(): Promise<StaffMember[]> {
-  const snapshot = await getDocs(query(collection(db, 'staff'), limit(100)));
+  const snapshot = await getDocs(query(collection(db, 'staff'), limit(50)));
   return snapshot.docs.map((docSnap) => {
     const data = docSnap.data();
     return {
@@ -465,7 +450,7 @@ export async function fetchStaffFromFirestore(): Promise<StaffMember[]> {
 
 export function subscribeToStaff(onData: (staff: StaffMember[]) => void, onError?: (err: any) => void): Unsubscribe {
   return onSnapshot(
-    query(collection(db, 'staff'), limit(100)),
+    query(collection(db, 'staff'), limit(50)),
     (snapshot) => {
       onData(snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
@@ -493,7 +478,7 @@ export function subscribeToRecords(
   onError?: (err: any) => void
 ): Unsubscribe {
   return onSnapshot(
-    query(collection(db, collectionName), limit(200)),
+    query(collection(db, collectionName), limit(50)),
     (snapshot) => onData(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))),
     (err) => {
       console.warn(`[Firestore] ${collectionName} real-time listener notice:`, err.message);
@@ -502,9 +487,6 @@ export function subscribeToRecords(
   );
 }
 
-/**
- * Custom Projects Firestore Sync
- */
 export async function syncCustomProjectToFirestore(project: CustomProjectSubmission): Promise<void> {
   const path = `customProjects/${project.id}`;
   try {
