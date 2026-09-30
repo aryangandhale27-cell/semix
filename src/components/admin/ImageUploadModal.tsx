@@ -72,17 +72,17 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
       let maxWidth = 1920;
       let maxHeight = 1080;
       if (aspectRatioType === 'mobile-banner') {
-        maxWidth = 1080;
-        maxHeight = 1080;
+        maxWidth = 640;
+        maxHeight = 640;
       } else if (aspectRatioType === 'category') {
-        maxWidth = 800;
-        maxHeight = 800;
+        maxWidth = 640;
+        maxHeight = 640;
       }
 
       const result = await optimizeAndProcessImage(file, {
         maxWidth,
         maxHeight,
-        quality: 0.9,
+        quality: aspectRatioType === 'desktop-banner' ? 0.86 : 0.8,
         targetFormat: 'image/webp'
       });
 

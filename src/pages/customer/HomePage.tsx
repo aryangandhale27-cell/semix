@@ -36,6 +36,23 @@ const ProductGridSkeleton: React.FC<{ count: number }> = ({ count }) => (
   </>
 );
 
+const getResponsiveImageSrcSet = (imageUrl: string, widths: number[]): string | undefined => {
+  try {
+    const parsedUrl = new URL(imageUrl);
+    if (parsedUrl.hostname !== 'images.unsplash.com') return undefined;
+
+    return widths.map((width) => {
+      const candidateUrl = new URL(imageUrl);
+      candidateUrl.searchParams.set('w', String(width));
+      candidateUrl.searchParams.set('q', '75');
+      candidateUrl.searchParams.set('auto', 'format');
+      return `${candidateUrl.toString()} ${width}w`;
+    }).join(', ');
+  } catch {
+    return undefined;
+  }
+};
+
 export const HomePage: React.FC = () => {
   const { products, categories, banners, isProductsLoading } = useApp();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
@@ -51,6 +68,10 @@ export const HomePage: React.FC = () => {
 
   const currentSlideIndex = activeBanners.length > 0 ? heroSlide % activeBanners.length : 0;
   const currentSlide = activeBanners[currentSlideIndex];
+  const desktopHeroImage = currentSlide?.desktopImage || currentSlide?.mobileImage || '';
+  const mobileHeroImage = currentSlide?.mobileImage || desktopHeroImage;
+  const mobileHeroSrcSet = getResponsiveImageSrcSet(mobileHeroImage, [320, 480, 640]);
+  const desktopHeroSrcSet = getResponsiveImageSrcSet(desktopHeroImage, [960, 1200, 1600]);
 
   // Auto-rotate hero slides (delayed on mobile to avoid thread thrashing during load)
   useEffect(() => {
@@ -115,18 +136,29 @@ export const HomePage: React.FC = () => {
                 className="block w-full h-full"
               >
                 <picture className="block w-full h-full">
-                  {currentSlide.mobileImage && (
-                    <source media="(max-width: 640px)" srcSet={currentSlide.mobileImage} />
+                  {mobileHeroImage && (
+                    <source
+                      media="(max-width: 640px)"
+                      srcSet={mobileHeroSrcSet || mobileHeroImage}
+                      sizes="100vw"
+                    />
+                  )}
+                  {desktopHeroSrcSet && (
+                    <source
+                      media="(min-width: 641px)"
+                      srcSet={desktopHeroSrcSet}
+                      sizes="(max-width: 1200px) 100vw, 1200px"
+                    />
                   )}
                   <img
                     key={currentSlide.id}
-                    src={currentSlide.desktopImage || currentSlide.mobileImage}
+                    src={desktopHeroImage}
                     alt={currentSlide.title || 'SEMIX LABS Promotion'}
                     loading={currentSlideIndex === 0 ? 'eager' : 'lazy'}
                     fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
                     decoding="async"
-                    width={1200}
-                    height={500}
+                    width={640}
+                    height={320}
                     sizes="(max-width: 640px) 100vw, 1200px"
                     className="block w-full h-full object-cover"
                   />

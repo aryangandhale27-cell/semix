@@ -43,6 +43,23 @@ const optimizeImageUrl = (url?: string): string => {
   return url;
 };
 
+const getCategoryImageSrcSet = (url: string): string | undefined => {
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname !== 'images.unsplash.com') return undefined;
+
+    return [320, 400, 640].map((width) => {
+      const candidateUrl = new URL(url);
+      candidateUrl.searchParams.set('w', String(width));
+      candidateUrl.searchParams.set('q', '75');
+      candidateUrl.searchParams.set('auto', 'format');
+      return `${candidateUrl.toString()} ${width}w`;
+    }).join(', ');
+  } catch {
+    return undefined;
+  }
+};
+
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className = '', priority = false }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -62,12 +79,13 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
       <Link
         to={`/shop?category=${encodeURIComponent(category.name)}`}
         id={`category-card-${category.id}`}
-        className="group flex h-full min-h-[220px] flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-slate-950 shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-900/15 sm:min-h-[270px] sm:rounded-2xl"
+        className="group flex aspect-[4/5] h-full flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-slate-950 shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-900/15 sm:aspect-square sm:rounded-2xl"
       >
-        <div className="relative min-h-[220px] flex-1 overflow-hidden bg-slate-900 sm:min-h-[270px]">
+        <div className="relative h-full flex-1 overflow-hidden bg-slate-900">
           {!imageError && displayImage && (
             <img
               src={displayImage}
+              srcSet={getCategoryImageSrcSet(displayImage)}
               alt={category.name}
               onError={() => setImageError(true)}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"

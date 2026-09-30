@@ -70,7 +70,7 @@ export const CategoriesPage: React.FC = () => {
           {Array.from({ length: 8 }, (_, index) => (
             <div
               key={`categories-loading-${index}`}
-              className="min-h-[220px] animate-pulse rounded-xl border border-slate-200 bg-slate-200 sm:min-h-[270px] sm:rounded-2xl"
+              className="aspect-[4/5] animate-pulse rounded-xl border border-slate-200 bg-slate-200 sm:aspect-square sm:rounded-2xl"
               aria-label="Loading category"
             />
           ))}
