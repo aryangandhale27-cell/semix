@@ -38,13 +38,16 @@ export const firebaseConfig = {
 // Initialize Firebase App instance
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore with IndexedDB multi-tab persistent local cache
+// Initialize Firestore with IndexedDB multi-tab cache + Pure WebSockets
 export const db = (() => {
   try {
     return initializeFirestore(app, {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
-      })
+      }),
+      // Disables sluggish HTTP long-polling round-trips on mobile cellular networks
+      experimentalAutoDetectLongPolling: false,
+      experimentalForceLongPolling: false,
     });
   } catch {
     // Fallback if already initialized in another module/HMR
@@ -115,7 +118,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 // Non-blocking ping test
 export async function testFirestoreConnection() {
   try {
-    // Uses standard getDoc so cache resolves immediately without stalling startup
     await getDoc(doc(db, 'test', 'connection'));
     console.log('Firebase Firestore connection verified.');
   } catch (error) {

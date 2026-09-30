@@ -76,6 +76,34 @@ const APP_DATA_CACHE_KEYS = {
 
 const PRODUCT_WRITE_QUEUE_KEY = 'semix-product-write-queue-v1';
 
+// Seed catalog for brand-new visitors to guarantee instant paint
+const INITIAL_SEED_PRODUCTS = [
+  {
+    id: 'esp32-wroom-32d',
+    name: 'ESP32 WROOM-32D Development Board',
+    price: 349,
+    originalPrice: 499,
+    category: 'microcontrollers',
+    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=70',
+    images: ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=70'],
+    inStock: true,
+    description: 'Dual-core 240MHz Wi-Fi and Bluetooth microcontroller module.',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'arduino-uno-r3',
+    name: 'Arduino Uno R3 Compatible Board',
+    price: 499,
+    originalPrice: 650,
+    category: 'development-boards',
+    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=70',
+    images: ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=70'],
+    inStock: true,
+    description: 'ATmega328P microcontroller with CH340 USB interface.',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  }
+];
+
 function readQueuedProductWrites(): Product[] {
   try {
     const cached = localStorage.getItem(PRODUCT_WRITE_QUEUE_KEY);
@@ -349,20 +377,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentRoleState(role);
   }, []);
 
-  // INSTANT PRODUCTS LOAD: Window data -> LocalStorage Cache -> Empty array
+  // INSTANT PRODUCTS LOAD: Window -> LocalStorage Cache -> Seed catalog (0ms)
   const [products, setProducts] = useState<Product[]>(() => {
     if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) {
       return ((window as any).__INITIAL_PRODUCTS__ as Product[]).map(normalizeProduct);
     }
     const cached = readCachedData<Product[]>(APP_DATA_CACHE_KEYS.products, []);
-    return cached.length > 0 ? cached.map(normalizeProduct) : [];
+    return cached.length > 0 
+      ? cached.map(normalizeProduct) 
+      : INITIAL_SEED_PRODUCTS.map((p) => normalizeProduct(p as any));
   });
   
-  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(() => {
-    if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) return false;
-    const cached = readCachedData<Product[]>(APP_DATA_CACHE_KEYS.products, []);
-    return cached.length === 0;
-  });
+  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(false);
 
   const productsRef = useRef(products);
   useEffect(() => {
@@ -371,12 +397,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isProductSyncing, setIsProductSyncing] = useState(false);
 
-  // Fast Bounded Initial Fetch + Non-blocking Background Sync
+  // Fast initial paint (12 products) + Delayed background real-time sync
   useEffect(() => {
     let isMounted = true;
+    let unsubscribeStream: (() => void) | undefined;
 
-    // 1. Execute direct, bounded single-request fetch immediately (Fast initial paint)
-    fetchInitialProducts(25)
+    // 1. Fetch compact batch of 12 items immediately for sub-second mobile render
+    fetchInitialProducts(12)
       .then((initialProducts) => {
         if (!isMounted || initialProducts.length === 0) return;
         const normalized = initialProducts.map(normalizeProduct);
@@ -388,62 +415,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('[Firestore] Initial product fetch notice:', err?.message || err);
       });
 
-    // 2. Attach bounded realtime listener for background updates
-    const unsubscribe = subscribeToProducts((remoteProducts) => {
+    // 2. Defer persistent listener by 2.5s so initial render and bundle parse are unblocked
+    const timer = setTimeout(() => {
       if (!isMounted) return;
-      const normalizedProducts = remoteProducts.map(normalizeProduct);
-      const queuedProducts = readQueuedProductWrites();
-      const deduped = new Map<string, Product>();
-      
-      [...queuedProducts, ...normalizedProducts].forEach((product) => {
-        deduped.set(product.id, normalizeProduct(product));
+
+      unsubscribeStream = subscribeToProducts((remoteProducts) => {
+        if (!isMounted) return;
+        const normalizedProducts = remoteProducts.map(normalizeProduct);
+        const queuedProducts = readQueuedProductWrites();
+        const deduped = new Map<string, Product>();
+        
+        [...queuedProducts, ...normalizedProducts].forEach((product) => {
+          deduped.set(product.id, normalizeProduct(product));
+        });
+
+        const nextProducts = Array.from(deduped.values()).sort((a, b) => 
+          (b.createdAt || '').localeCompare(a.createdAt || '')
+        );
+
+        setProducts(nextProducts);
+        setIsProductsLoading(false);
+        writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+        
+        const remainingQueued = nextProducts.filter(
+          (p) => !normalizedProducts.some((lp) => lp.id === p.id)
+        );
+        writeQueuedProductWrites(remainingQueued);
+      }, (err) => {
+        console.warn('[Firestore] Product live listener notice:', err?.message || err);
+        setIsProductsLoading(false);
+      }, (changes: ProductSnapshotChange[]) => {
+        if (!isMounted || changes.length === 0) return;
+
+        const changedIds = new Set(changes.map((change) => change.product.id));
+        const productsById = new Map<string, Product>(
+          productsRef.current.map((product) => [product.id, product])
+        );
+
+        changes.forEach((change) => {
+          const normalized = normalizeProduct(change.product);
+          if (change.type === 'removed') {
+            productsById.delete(normalized.id);
+            return;
+          }
+          productsById.set(normalized.id, normalized);
+        });
+
+        const nextProducts = Array.from(productsById.values()).sort((a, b) => 
+          (b.createdAt || '').localeCompare(a.createdAt || '')
+        );
+        productsRef.current = nextProducts;
+        setProducts(nextProducts);
+        setIsProductsLoading(false);
+        writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
+        writeQueuedProductWrites(readQueuedProductWrites().filter((p) => !changedIds.has(p.id)));
       });
-
-      const nextProducts = Array.from(deduped.values()).sort((a, b) => 
-        (b.createdAt || '').localeCompare(a.createdAt || '')
-      );
-
-      setProducts(nextProducts);
-      setIsProductsLoading(false);
-      writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
-      
-      const remainingQueued = nextProducts.filter(
-        (p) => !normalizedProducts.some((lp) => lp.id === p.id)
-      );
-      writeQueuedProductWrites(remainingQueued);
-    }, (err) => {
-      console.warn('[Firestore] Product live listener notice:', err?.message || err);
-      setIsProductsLoading(false);
-    }, (changes: ProductSnapshotChange[]) => {
-      if (!isMounted || changes.length === 0) return;
-
-      const changedIds = new Set(changes.map((change) => change.product.id));
-      const productsById = new Map<string, Product>(
-        productsRef.current.map((product) => [product.id, product])
-      );
-
-      changes.forEach((change) => {
-        const normalized = normalizeProduct(change.product);
-        if (change.type === 'removed') {
-          productsById.delete(normalized.id);
-          return;
-        }
-        productsById.set(normalized.id, normalized);
-      });
-
-      const nextProducts = Array.from(productsById.values()).sort((a, b) => 
-        (b.createdAt || '').localeCompare(a.createdAt || '')
-      );
-      productsRef.current = nextProducts;
-      setProducts(nextProducts);
-      setIsProductsLoading(false);
-      writeCachedData(APP_DATA_CACHE_KEYS.products, nextProducts);
-      writeQueuedProductWrites(readQueuedProductWrites().filter((p) => !changedIds.has(p.id)));
-    });
+    }, 2500);
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      clearTimeout(timer);
+      unsubscribeStream?.();
     };
   }, []);
 
