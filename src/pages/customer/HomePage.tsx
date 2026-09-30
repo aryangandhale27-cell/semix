@@ -15,6 +15,8 @@ import {
   Truck
 } from 'lucide-react';
 
+const FALLBACK_HERO_IMAGE = 'https://firebasestorage.googleapis.com/v0/b/semix-ai-stdio.firebasestorage.app/o/banners%2Fbanner-india-largest%2F1789817265080-2ad835d2-471a-4439-abec-c31aa08c93bf-9092947d-f545-4829-812a-6226531ae730.webp?alt=media&token=51635d86-6648-49bd-a3b2-0a224ff1da1f';
+
 const ProductGridSkeleton: React.FC<{ count: number }> = ({ count }) => (
   <>
     {Array.from({ length: count }, (_, index) => (
@@ -50,14 +52,16 @@ export const HomePage: React.FC = () => {
 
   const currentSlideIndex = activeBanners.length > 0 ? heroSlide % activeBanners.length : 0;
   const currentSlide = activeBanners[currentSlideIndex];
-  const heroImageSrc = currentSlide?.desktopImage || currentSlide?.mobileImage || '';
+  
+  // Direct matching image URL with instant preloaded fallback
+  const heroImageSrc = currentSlide?.mobileImage || currentSlide?.desktopImage || FALLBACK_HERO_IMAGE;
 
-  // Auto-rotate hero slides
+  // Auto-rotate hero slides delayed to 12s so it doesn't cause mobile lag on initial load
   useEffect(() => {
     if (isHovered || activeBanners.length <= 1) return;
     const timer = setInterval(() => {
       setHeroSlide((prev) => (prev + 1) % activeBanners.length);
-    }, 6500);
+    }, 12000);
     return () => clearInterval(timer);
   }, [activeBanners.length, isHovered]);
 
@@ -103,31 +107,27 @@ export const HomePage: React.FC = () => {
           onTouchEnd={handleHeroTouchEnd}
           className="w-full relative aspect-[16/9] md:aspect-[21/9] rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border border-[#561269]/40 group touch-pan-y bg-slate-900"
         >
-          {!currentSlide ? (
-            <div className="w-full h-full animate-pulse bg-slate-800" aria-label="Loading homepage banner" />
-          ) : (
-            <div className="relative z-10 w-full h-full">
-              <Link
-                to={currentSlide.linkUrl || '/shop'}
-                onClick={(event) => {
-                  if (isSwiping.current) event.preventDefault();
-                }}
-                className="block w-full h-full"
-              >
-                <img
-                  key={currentSlide.id}
-                  src={heroImageSrc}
-                  alt={currentSlide.title || 'SEMIX LABS Promotion'}
-                  loading={currentSlideIndex === 0 ? 'eager' : 'lazy'}
-                  fetchPriority={currentSlideIndex === 0 ? 'high' : 'low'}
-                  decoding="async"
-                  width={640}
-                  height={320}
-                  className="block w-full h-full object-cover"
-                />
-              </Link>
-            </div>
-          )}
+          <div className="relative z-10 w-full h-full">
+            <Link
+              to={currentSlide?.linkUrl || '/shop'}
+              onClick={(event) => {
+                if (isSwiping.current) event.preventDefault();
+              }}
+              className="block w-full h-full"
+            >
+              <img
+                key={currentSlide?.id || 'default-hero'}
+                src={heroImageSrc}
+                alt={currentSlide?.title || 'SEMIX LABS Featured'}
+                loading={currentSlideIndex === 0 ? 'eager' : 'lazy'}
+                fetchPriority={currentSlideIndex === 0 ? 'high' : 'low'}
+                decoding="async"
+                width={640}
+                height={320}
+                className="block w-full h-full object-cover"
+              />
+            </Link>
+          </div>
 
           {activeBanners.length > 1 && (
             <div className="absolute bottom-2 left-0 right-0 z-20 flex items-center justify-center gap-2 py-2" aria-label="Homepage banner slides">
