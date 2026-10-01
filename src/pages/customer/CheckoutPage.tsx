@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { auth } from '../../lib/firebase';
 import { CustomerAddress, OrderItem } from '../../types';
 import { getEmptyCustomerAddress, readSavedCustomerAddresses } from '../../utils/customerAddress';
 import confetti from 'canvas-confetti';
@@ -63,7 +64,7 @@ export const CheckoutPage: React.FC = () => {
     updateCartQuantity, 
     removeFromCart 
   } = useApp();
-  const { user } = useAuth();
+  const { user, authReady, openAuthModal } = useAuth();
   const navigate = useNavigate();
 
   // Form State
@@ -103,6 +104,21 @@ export const CheckoutPage: React.FC = () => {
   const isCodAvailable = taxableAmount > 300;
   const amountNeededForFreeShipping = Math.max(0, 500 - taxableAmount);
 
+  const getFirebaseCheckoutUserId = (): string | null => {
+    if (!authReady) {
+      showToast('Checking Account', 'Please wait while we verify your sign-in.', 'info');
+      return null;
+    }
+
+    const firebaseUserId = auth.currentUser?.uid;
+    if (!firebaseUserId) {
+      openAuthModal('signin', '/checkout', 'Sign in before applying a coupon or placing an order.');
+      return null;
+    }
+
+    return firebaseUserId;
+  };
+
   // Automatic Reversion: If taxable amount drops to <= 300 while COD was selected, revert to default 'UPI'
   useEffect(() => {
     if (!isCodAvailable && paymentMethod === 'COD') {
@@ -118,6 +134,9 @@ export const CheckoutPage: React.FC = () => {
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError(null);
+    const firebaseUserId = getFirebaseCheckoutUserId();
+    if (!firebaseUserId) return;
+
     const code = couponInput.trim().toUpperCase();
     if (!code) {
       setCouponError('Please enter a coupon code.');
@@ -126,7 +145,7 @@ export const CheckoutPage: React.FC = () => {
 
     setIsApplyingCoupon(true);
     try {
-      const res = await applyCoupon(code, user?.id || address.email);
+      const res = await applyCoupon(code, firebaseUserId);
       if (!res.isValid) {
         setCouponError(res.error || 'Invalid coupon code.');
       } else {
@@ -145,6 +164,9 @@ export const CheckoutPage: React.FC = () => {
       showToast('Cart is Empty', 'Please add items before checkout', 'warning');
       return;
     }
+
+    const firebaseUserId = getFirebaseCheckoutUserId();
+    if (!firebaseUserId) return;
 
     if (paymentMethod === 'COD' && !isCodAvailable) {
       showToast('COD Not Allowed', 'Cash on Delivery is only available for orders above ₹300.', 'error');
@@ -183,9 +205,9 @@ export const CheckoutPage: React.FC = () => {
             assignedSellerId: null,
             assignedSellerName: null,
             assignedAt: null,
-            userId: user?.id || address.email
+            userId: firebaseUserId
           },
-          user?.id || address.email
+          firebaseUserId
         );
 
         if (!result.success) {
