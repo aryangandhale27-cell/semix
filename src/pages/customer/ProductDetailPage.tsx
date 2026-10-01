@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { Product } from '../../types';
 import { ProductCard } from '../../components/common/ProductCard';
-import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
-import { ProductFormModal } from '../../components/team/ProductFormModal';
 import { 
   ShoppingCart, 
   Heart, 
@@ -35,6 +33,9 @@ import {
   Mail,
   MessageCircle
 } from 'lucide-react';
+
+const DeleteConfirmModal = lazy(() => import('../../components/common/DeleteConfirmModal').then((module) => ({ default: module.DeleteConfirmModal })));
+const ProductFormModal = lazy(() => import('../../components/team/ProductFormModal').then((module) => ({ default: module.ProductFormModal })));
 
 export const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -1022,27 +1023,33 @@ export const ProductDetailPage: React.FC = () => {
       </AnimatePresence>
 
       {/* Delete Confirmation Modal for Staff */}
-      <ProductFormModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        initialProduct={product}
-        onSave={(updatedProduct) => updateProduct(updatedProduct as Product)}
-      />
+      <Suspense fallback={null}>
+        {isEditModalOpen && (
+          <ProductFormModal
+            isOpen
+            onClose={() => setIsEditModalOpen(false)}
+            initialProduct={product}
+            onSave={(updatedProduct) => updateProduct(updatedProduct as Product)}
+          />
+        )}
 
-      <DeleteConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={() => {
-          deleteProduct(product.id);
-          setIsDeleteModalOpen(false);
-          navigate('/shop');
-        }}
-        title="Delete Component From Catalog"
-        itemName={product.name}
-        sku={product.sku}
-        description="Are you sure you want to permanently delete this hardware component? It will be removed from the catalog, shopping carts, and inventory lists."
-        confirmLabel="Delete Component"
-      />
+        {isDeleteModalOpen && (
+          <DeleteConfirmModal
+            isOpen
+            onClose={() => setIsDeleteModalOpen(false)}
+            onConfirm={() => {
+              deleteProduct(product.id);
+              setIsDeleteModalOpen(false);
+              navigate('/shop');
+            }}
+            title="Delete Component From Catalog"
+            itemName={product.name}
+            sku={product.sku}
+            description="Are you sure you want to permanently delete this hardware component? It will be removed from the catalog, shopping carts, and inventory lists."
+            confirmLabel="Delete Component"
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

@@ -14,6 +14,10 @@ import {
   Layers
 } from 'lucide-react';
 
+const prefetchProductDetailPage = () => {
+  void import('../../pages/customer/ProductDetailPage').catch(() => undefined);
+};
+
 interface ProductCardProps {
   product: Product;
   onQuickView?: (product: Product) => void;
@@ -88,7 +92,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <motion.div
       id={`product-card-${product.id}`}
-      whileHover={{ y: -4, transition: { duration: 0.2, ease: 'easeOut' } }}
       className="group bg-white rounded-lg sm:rounded-xl border border-slate-200 hover:border-[#561269]/40 hover:shadow-xl hover:shadow-indigo-950/5 transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
     >
       {cartBurst && (
@@ -172,6 +175,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Image Thumbnail - square on mobile, 4/3 on tablet/desktop */}
       <Link
         to={`/product/${product.id}`}
+        onPointerEnter={prefetchProductDetailPage}
+        onPointerDown={prefetchProductDetailPage}
+        onFocus={prefetchProductDetailPage}
         className="block bg-slate-50 relative p-2 sm:p-4 pt-3.5 sm:pt-6 overflow-hidden border-b border-slate-100 aspect-square sm:aspect-4/3 flex items-center justify-center"
       >
         <img
@@ -205,6 +211,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Product Title */}
           <Link
             to={`/product/${product.id}`}
+            onPointerEnter={prefetchProductDetailPage}
+            onPointerDown={prefetchProductDetailPage}
+            onFocus={prefetchProductDetailPage}
             className="block text-[11px] sm:text-sm font-semibold sm:font-bold text-slate-900 hover:text-[#561269] line-clamp-2 leading-tight mb-1 sm:mb-2 group-hover:underline min-h-[1.8rem] sm:min-h-[2.5rem]"
             title={product.name}
           >

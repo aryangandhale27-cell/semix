@@ -1,6 +1,6 @@
 import React from 'react';
 import { LoaderCircle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useIsPresent } from 'motion/react';
 import { SemixLabsLogo } from './SemixLabsLogo';
 
 const DesktopElectronicsScene: React.FC = () => (
@@ -125,8 +125,11 @@ const MobileElectronicsScene: React.FC = () => (
   </svg>
 );
 
-export const StoreLoadingScreen: React.FC = () => (
-  <motion.div
+export const StoreLoadingScreen: React.FC = () => {
+  const isPresent = useIsPresent();
+
+  return (
+    <motion.div
     key="store-loading-screen"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -135,8 +138,10 @@ export const StoreLoadingScreen: React.FC = () => (
     role="status"
     aria-live="polite"
     aria-label="Loading the SEMIX component catalogue"
+    aria-hidden={!isPresent}
+    style={{ pointerEvents: isPresent ? 'auto' : 'none' }}
     className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#170b24] px-4 py-8 text-white"
-  >
+    >
     <div className="relative z-10 w-full max-w-6xl">
       <header className="flex justify-center sm:justify-start">
         <SemixLabsLogo
@@ -168,5 +173,6 @@ export const StoreLoadingScreen: React.FC = () => (
         </section>
       </main>
     </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};

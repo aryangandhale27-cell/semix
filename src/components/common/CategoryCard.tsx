@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { Cpu } from 'lucide-react';
 import { Category } from '../../types';
 
@@ -26,6 +25,10 @@ export const CATEGORY_IMAGE_MAP: Record<string, string> = {
   'cat-smd-components': 'https://images.unsplash.com/photo-1608755728617-aefab37d45f1?auto=format&fit=crop&w=600&q=80',
 };
 
+const prefetchShopPage = () => {
+  void import('../../pages/customer/ShopPage').catch(() => undefined);
+};
+
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className = '', priority = false }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -33,15 +36,14 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
   const shouldPrioritizeImage = priority;
 
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      className={`h-full ${className}`}
-    >
+    <div className={`h-full ${className}`}>
       <Link
         to={`/shop?category=${encodeURIComponent(category.name)}`}
         id={`category-card-${category.id}`}
-        className="group flex h-full min-h-[220px] flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-slate-950 shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-900/15 sm:min-h-[270px] sm:rounded-2xl"
+        onPointerEnter={prefetchShopPage}
+        onPointerDown={prefetchShopPage}
+        onFocus={prefetchShopPage}
+        className="group flex h-full min-h-[220px] flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-slate-950 shadow-2xs transition-shadow duration-300 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-900/15 sm:min-h-[270px] sm:rounded-2xl"
       >
         {/* Full-bleed image treatment keeps the admin-managed image as the visual focus. */}
         <div className="relative min-h-[220px] flex-1 overflow-hidden bg-slate-900 sm:min-h-[270px]">
@@ -77,6 +79,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
 
         </div>
       </Link>
-    </motion.div>
+    </div>
   );
 };

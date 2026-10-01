@@ -249,6 +249,8 @@ export default function App() {
     // Defers modal & drawer mounting until after first paint to unblock mobile main thread
     const timer = setTimeout(() => {
       setLoadDeferredOverlays(true);
+      void import('./pages/customer/ShopPage').catch(() => undefined);
+      void import('./pages/customer/ProductDetailPage').catch(() => undefined);
     }, 1200);
     return () => clearTimeout(timer);
   }, []);

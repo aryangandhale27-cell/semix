@@ -372,7 +372,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return true;
   });
-  const [hasLoadedInitialProductSnapshot, setHasLoadedInitialProductSnapshot] = useState(false);
+  const [hasLoadedInitialProductSnapshot, setHasLoadedInitialProductSnapshot] = useState(() => (
+    typeof window !== 'undefined'
+    && Array.isArray((window as any).__INITIAL_PRODUCTS__)
+    && (window as any).__INITIAL_PRODUCTS__.length > 0
+  ));
+
+  useEffect(() => {
+    if (hasLoadedInitialProductSnapshot) return;
+
+    const timer = window.setTimeout(() => {
+      setIsProductsLoading(false);
+      setHasLoadedInitialProductSnapshot(true);
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, [hasLoadedInitialProductSnapshot]);
 
   const productsRef = useRef(products);
 
