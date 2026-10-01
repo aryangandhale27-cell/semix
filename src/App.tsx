@@ -11,8 +11,6 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { ToastContainer } from './components/common/Toast';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
-import { StoreLoadingScreen } from './components/common/ElectronicsLoadingScreen';
-import { useApp } from './context/AppContext';
 
 // Lazy-loaded Pages (Code-Split for Mobile)
 const HomePage = lazy(() => import('./pages/customer/HomePage').then((module) => ({ default: module.HomePage })));
@@ -202,11 +200,8 @@ function AnimatedRoutes() {
 }
 
 function AppContent({ loadDeferredOverlays }: { loadDeferredOverlays: boolean }) {
-  const { hasLoadedInitialProductSnapshot } = useApp();
-
   return (
-    <>
-      <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans antialiased selection:bg-[#FF6B00] selection:text-white">
+    <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans antialiased selection:bg-[#FF6B00] selection:text-white">
         <TopUtilityBar />
         <Header />
         <Navbar />
@@ -233,12 +228,7 @@ function AppContent({ loadDeferredOverlays }: { loadDeferredOverlays: boolean })
             <CompareDrawer />
           </Suspense>
         )}
-      </div>
-
-      <AnimatePresence>
-        {!hasLoadedInitialProductSnapshot && <StoreLoadingScreen />}
-      </AnimatePresence>
-    </>
+    </div>
   );
 }
 

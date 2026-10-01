@@ -18,7 +18,7 @@ import {
   HomepageBanner,
   SellerBonusRecord
 } from '../types';
-import { CATEGORIES } from '../mockData/products';
+import { CATEGORIES, INITIAL_PRODUCTS } from '../mockData/products';
 import { INITIAL_HOMEPAGE_BANNERS } from '../mockData/banners';
 import { 
   submitCustomProjectInquiry,
@@ -360,22 +360,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // PRODUCTS OPTIMIZED: Pre-loaded instantly from server-injected HTML window data if available
   const [products, setProducts] = useState<Product[]>(() => {
-    if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) {
-      return ((window as any).__INITIAL_PRODUCTS__ as Product[]).map(normalizeProduct);
-    }
-    return [];
+    const injectedProducts = typeof window !== 'undefined'
+      ? (window as any).__INITIAL_PRODUCTS__
+      : null;
+    const initialProducts = Array.isArray(injectedProducts) && injectedProducts.length > 0
+      ? injectedProducts as Product[]
+      : INITIAL_PRODUCTS;
+    return initialProducts.map(normalizeProduct);
   });
   
   const [isProductsLoading, setIsProductsLoading] = useState<boolean>(() => {
-    if (typeof window !== 'undefined' && (window as any).__INITIAL_PRODUCTS__) {
-      return false;
-    }
-    return true;
+    return INITIAL_PRODUCTS.length === 0
+      && !(typeof window !== 'undefined'
+        && Array.isArray((window as any).__INITIAL_PRODUCTS__)
+        && (window as any).__INITIAL_PRODUCTS__.length > 0);
   });
   const [hasLoadedInitialProductSnapshot, setHasLoadedInitialProductSnapshot] = useState(() => (
-    typeof window !== 'undefined'
-    && Array.isArray((window as any).__INITIAL_PRODUCTS__)
-    && (window as any).__INITIAL_PRODUCTS__.length > 0
+    INITIAL_PRODUCTS.length > 0
+    || (typeof window !== 'undefined'
+      && Array.isArray((window as any).__INITIAL_PRODUCTS__)
+      && (window as any).__INITIAL_PRODUCTS__.length > 0)
   ));
 
   useEffect(() => {

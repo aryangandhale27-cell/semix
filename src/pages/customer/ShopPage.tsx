@@ -10,6 +10,8 @@ import {
   SlidersHorizontal, 
   Grid3X3, 
   List, 
+  ChevronLeft,
+  ChevronRight,
   X, 
   Check, 
   Search, 
@@ -17,6 +19,8 @@ import {
   Sparkles,
   Zap
 } from 'lucide-react';
+
+const PRODUCTS_PER_PAGE = 24;
 
 const parsePriceParam = (value: string | null): number | null => {
   if (value === null || value === '') {
@@ -43,6 +47,7 @@ export const ShopPage: React.FC = () => {
   const [minPriceDraft, setMinPriceDraft] = useState('');
   const [maxPriceDraft, setMaxPriceDraft] = useState('');
   const [sortBy, setSortBy] = useState<string>('featured');
+  const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
@@ -245,6 +250,27 @@ export const ShopPage: React.FC = () => {
     sortBy,
   ]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+  const activePage = Math.min(currentPage, totalPages);
+  const firstVisibleProduct = filteredProducts.length === 0
+    ? 0
+    : (activePage - 1) * PRODUCTS_PER_PAGE + 1;
+  const lastVisibleProduct = Math.min(activePage * PRODUCTS_PER_PAGE, filteredProducts.length);
+  const visibleProducts = filteredProducts.slice(firstVisibleProduct - 1, lastVisibleProduct);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchQuery,
+    selectedCategory,
+    inStockOnly,
+    selectedBrands,
+    selectedVoltages,
+    minPrice,
+    maxPrice,
+    sortBy,
+  ]);
+
   const activeFilterCount =
     (selectedCategory !== 'All' ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
@@ -272,7 +298,7 @@ export const ShopPage: React.FC = () => {
             {selectedCategory === 'All' ? 'Complete Electronics Catalog' : selectedCategory}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Showing {filteredProducts.length} verified electronic parts & compute modules
+            Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length} verified electronic parts &amp; compute modules
           </p>
         </div>
 
@@ -607,7 +633,7 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
-              {filteredProducts.map((product) => (
+              {visibleProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -617,7 +643,7 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredProducts.map((product, index) => (
+              {visibleProducts.map((product, index) => (
                 <div
                   key={product.id}
                   className="bg-white rounded-xl border border-slate-200 p-4 hover:border-[#561269]/40 hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4"
@@ -660,6 +686,37 @@ export const ShopPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          )}
+
+          {!isProductsLoading && filteredProducts.length > PRODUCTS_PER_PAGE && (
+            <nav aria-label="Product result pages" className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
+              <p className="text-xs font-medium text-slate-500">
+                Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length}
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={activePage === 1}
+                  className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-[#561269] hover:text-[#561269] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </button>
+                <span aria-live="polite" className="min-w-20 text-center text-xs font-bold text-slate-600">
+                  Page {activePage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={activePage === totalPages}
+                  className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-[#561269] hover:text-[#561269] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </nav>
           )}
         </main>
       </div>
