@@ -11,6 +11,8 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { ToastContainer } from './components/common/Toast';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { StoreLoadingScreen } from './components/common/ElectronicsLoadingScreen';
+import { useApp } from './context/AppContext';
 
 // Lazy-loaded Pages (Code-Split for Mobile)
 const HomePage = lazy(() => import('./pages/customer/HomePage').then((module) => ({ default: module.HomePage })));
@@ -199,6 +201,47 @@ function AnimatedRoutes() {
   );
 }
 
+function AppContent({ loadDeferredOverlays }: { loadDeferredOverlays: boolean }) {
+  const { hasLoadedInitialProductSnapshot } = useApp();
+
+  return (
+    <>
+      <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans antialiased selection:bg-[#FF6B00] selection:text-white">
+        <TopUtilityBar />
+        <Header />
+        <Navbar />
+
+        <main className="flex-1 overflow-x-hidden">
+          <AnimatedRoutes />
+        </main>
+
+        <Footer />
+        <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 text-center sm:py-5">
+          <Link
+            to="/return-policy"
+            className="text-sm font-semibold text-slate-600 transition-colors hover:text-[#561269]"
+          >
+            Return &amp; Refund Policy
+          </Link>
+        </div>
+
+        <ToastContainer />
+
+        {loadDeferredOverlays && (
+          <Suspense fallback={null}>
+            <AuthModal />
+            <CompareDrawer />
+          </Suspense>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {!hasLoadedInitialProductSnapshot && <StoreLoadingScreen />}
+      </AnimatePresence>
+    </>
+  );
+}
+
 export default function App() {
   const [loadDeferredOverlays, setLoadDeferredOverlays] = useState(false);
 
@@ -215,34 +258,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <ScrollToTop />
-          <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans antialiased selection:bg-[#FF6B00] selection:text-white">
-            <TopUtilityBar />
-            <Header />
-            <Navbar />
-
-            <main className="flex-1 overflow-x-hidden">
-              <AnimatedRoutes />
-            </main>
-
-            <Footer />
-            <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 text-center sm:py-5">
-              <Link
-                to="/return-policy"
-                className="text-sm font-semibold text-slate-600 transition-colors hover:text-[#561269]"
-              >
-                Return &amp; Refund Policy
-              </Link>
-            </div>
-
-            <ToastContainer />
-
-            {loadDeferredOverlays && (
-              <Suspense fallback={null}>
-                <AuthModal />
-                <CompareDrawer />
-              </Suspense>
-            )}
-          </div>
+          <AppContent loadDeferredOverlays={loadDeferredOverlays} />
         </BrowserRouter>
       </AuthProvider>
     </AppProvider>

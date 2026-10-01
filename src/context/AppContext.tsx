@@ -141,6 +141,7 @@ interface AppContextType {
   deleteProduct: (productId: string) => Promise<void>;
   isProductSyncing: boolean;
   isProductsLoading: boolean;
+  hasLoadedInitialProductSnapshot: boolean;
   syncAllProductsToFirebase: () => Promise<void>;
 
   // Homepage Banners
@@ -371,6 +372,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return true;
   });
+  const [hasLoadedInitialProductSnapshot, setHasLoadedInitialProductSnapshot] = useState(false);
 
   const productsRef = useRef(products);
 
@@ -394,12 +396,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setProducts(nextProducts);
       setIsProductsLoading(false); // Finished loading live data successfully
+      setHasLoadedInitialProductSnapshot(true);
       
       const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
       writeQueuedProductWrites(remainingQueuedProducts);
     }, (err) => {
       console.warn('[Firestore] Product live listener notice:', err?.message || err);
       setIsProductsLoading(false);
+      setHasLoadedInitialProductSnapshot(true);
       const queuedProducts = readQueuedProductWrites();
       if (queuedProducts.length > 0) {
         setProducts(queuedProducts.map(normalizeProduct));
@@ -426,6 +430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       productsRef.current = nextProducts;
       setProducts(nextProducts);
       setIsProductsLoading(false);
+      setHasLoadedInitialProductSnapshot(true);
       writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
     });
 
@@ -1493,6 +1498,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteProduct,
     isProductSyncing,
     isProductsLoading,
+    hasLoadedInitialProductSnapshot,
     syncAllProductsToFirebase,
     banners,
     addBanner,
@@ -1581,6 +1587,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isFirebaseLive,
     isProductSyncing,
     isProductsLoading,
+    hasLoadedInitialProductSnapshot,
     updateCategoryImage,
     resetCategoryImage,
     updateProductStock,
