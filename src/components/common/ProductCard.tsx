@@ -285,9 +285,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </span>
               )}
             </div>
-            <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono font-semibold truncate max-w-[46%]">
-              SKU: {product.sku}
-            </span>
           </div>
 
           {/* CTA Buttons - full width on mobile, with quantity stepper on sm+ */}

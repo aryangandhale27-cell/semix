@@ -289,7 +289,7 @@ export const ProductDetailPage: React.FC = () => {
                 </span>
               </p>
               <p className="text-[11px] text-purple-200">
-                SKU: <span className="font-mono font-bold text-white">{product.sku}</span> • Stock: <span className="font-mono font-bold text-white">{product.stockCount}</span> • Bin: <span className="font-mono font-bold text-white">{product.locationBin || 'BIN-A01'}</span>
+                Stock: <span className="font-mono font-bold text-white">{product.stockCount}</span> • Bin: <span className="font-mono font-bold text-white">{product.locationBin || 'BIN-A01'}</span>
               </p>
             </div>
           </div>
@@ -464,10 +464,9 @@ export const ProductDetailPage: React.FC = () => {
           <div>
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
               <span className="font-extrabold text-[#561269] uppercase tracking-wider">{product.brand}</span>
-              <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-xs">SKU: {product.sku}</span>
             </div>
 
-            <h1 className="text-lg sm:text-2xl font-extrabold text-slate-900 leading-tight">
+            <h1 className="font-product text-lg sm:text-2xl font-bold text-slate-900 leading-[1.2]">
               {product.name}
             </h1>
 
