@@ -31,7 +31,8 @@ import {
   Share2,
   Copy,
   Mail,
-  MessageCircle
+  MessageCircle,
+  ImageOff
 } from 'lucide-react';
 
 const DeleteConfirmModal = lazy(() => import('../../components/common/DeleteConfirmModal').then((module) => ({ default: module.DeleteConfirmModal })));
@@ -39,13 +40,24 @@ const ProductFormModal = lazy(() => import('../../components/team/ProductFormMod
 
 export const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
-  const { products, addToCart, toggleWishlist, isInWishlist, addToCompare, isComparing, calculateAppliedPrice, updateProduct, deleteProduct } = useApp();
+  const { products, isProductsLoading, addToCart, toggleWishlist, isInWishlist, addToCompare, isComparing, calculateAppliedPrice, updateProduct, deleteProduct } = useApp();
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const product = useMemo(
-    () => products.find((p) => p.id === productId) || products[0],
+    () => products.find((p) => p.id === productId),
     [products, productId]
+  );
+  const images = useMemo(() => {
+    if (!product) return [];
+    const sourceImages = product.images?.length ? product.images : [product.image];
+    return sourceImages.filter((image) => typeof image === 'string' && image.trim().length > 0);
+  }, [product]);
+  const relatedProducts = useMemo(
+    () => product ? products
+      .filter((p) => p.category === product.category && p.id !== product.id)
+      .slice(0, 4) : [],
+    [products, product]
   );
 
   const [selectedQty, setSelectedQty] = useState(1);
@@ -149,6 +161,18 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   if (!product) {
+    if (isProductsLoading) {
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-16">
+          <div className="h-8 w-2/3 max-w-xl bg-slate-200 rounded animate-pulse mb-6" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="aspect-square bg-slate-100 rounded-2xl animate-pulse" />
+            <div className="h-80 bg-slate-100 rounded-2xl animate-pulse" />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
         <h2 className="text-xl font-bold text-slate-800">Component not found</h2>
@@ -158,11 +182,6 @@ export const ProductDetailPage: React.FC = () => {
       </div>
     );
   }
-
-  const images = useMemo(
-    () => (product.images && product.images.length > 0 ? product.images : [product.image]),
-    [product]
-  );
   const inWish = isInWishlist(product.id);
   const inComp = isComparing(product.id);
 
@@ -250,14 +269,6 @@ export const ProductDetailPage: React.FC = () => {
       setShareStatus('Unable to share right now');
     }
   };
-
-  // Related products
-  const relatedProducts = useMemo(
-    () => products
-      .filter((p) => p.category === product.category && p.id !== product.id)
-      .slice(0, 4),
-    [products, product]
-  );
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6 relative">
@@ -357,14 +368,16 @@ export const ProductDetailPage: React.FC = () => {
             )}
 
             {/* Lightbox Trigger Button */}
-            <button
-              type="button"
-              onClick={openLightbox}
-              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-xl bg-white/90 hover:bg-white text-slate-700 hover:text-[#561269] shadow-xs border border-slate-200/80 flex items-center justify-center transition-all cursor-pointer"
-              title="Click to expand high-resolution photo"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </button>
+            {images.length > 0 && (
+              <button
+                type="button"
+                onClick={openLightbox}
+                className="absolute top-4 right-4 z-10 w-8 h-8 rounded-xl bg-white/90 hover:bg-white text-slate-700 hover:text-[#561269] shadow-xs border border-slate-200/80 flex items-center justify-center transition-all cursor-pointer"
+                title="Click to expand high-resolution photo"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            )}
 
             {/* Navigation Arrows */}
             {images.length > 1 && (
@@ -395,19 +408,25 @@ export const ProductDetailPage: React.FC = () => {
             )}
 
             {/* Main Image with Animated Transition */}
-            <AnimatePresence mode="wait">
-              <motion.img
-                key={selectedImgIdx}
-                src={images[selectedImgIdx] || product.image}
-                alt={`${product.name} - View ${selectedImgIdx + 1}`}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.2 }}
-                onClick={openLightbox}
-                className="max-h-64 sm:max-h-72 w-full object-contain mix-blend-multiply cursor-zoom-in transition-all"
-              />
-            </AnimatePresence>
+            {images.length > 0 ? (
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={selectedImgIdx}
+                  src={images[selectedImgIdx]}
+                  alt={`${product.name} - View ${selectedImgIdx + 1}`}
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={openLightbox}
+                  className="max-h-64 sm:max-h-72 w-full object-contain mix-blend-multiply cursor-zoom-in transition-all"
+                />
+              </AnimatePresence>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-300" aria-label="Product image unavailable">
+                <ImageOff className="w-10 h-10" aria-hidden="true" />
+              </div>
+            )}
           </div>
 
           {/* Thumbnails list */}

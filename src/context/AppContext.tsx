@@ -18,7 +18,7 @@ import {
   HomepageBanner,
   SellerBonusRecord
 } from '../types';
-import { CATEGORIES, INITIAL_PRODUCTS } from '../mockData/products';
+import { CATEGORIES } from '../mockData/products';
 import { INITIAL_HOMEPAGE_BANNERS } from '../mockData/banners';
 import { 
   submitCustomProjectInquiry,
@@ -27,6 +27,7 @@ import {
 import { 
   syncProductToFirestore, 
   deleteProductFromFirestore, 
+  fetchInitialProductsFromFirestore,
   subscribeToProducts,
   ProductSnapshotChange,
   syncAllProductsToFirestore,
@@ -141,7 +142,6 @@ interface AppContextType {
   deleteProduct: (productId: string) => Promise<void>;
   isProductSyncing: boolean;
   isProductsLoading: boolean;
-  hasLoadedInitialProductSnapshot: boolean;
   syncAllProductsToFirebase: () => Promise<void>;
 
   // Homepage Banners
@@ -275,12 +275,9 @@ export const normalizeProduct = (p: Partial<Product> & Record<string, any>): Pro
   if (imagesList.length === 0 && typeof p.image === 'string' && p.image.trim().length > 0) {
     imagesList = [p.image.trim()];
   }
-  if (imagesList.length === 0) {
-    imagesList = ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80'];
-  }
   return {
     ...(p as Product),
-    image: imagesList[0],
+    image: imagesList[0] || '',
     images: imagesList,
   };
 };
@@ -358,40 +355,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentRoleState(role);
   };
 
-  // PRODUCTS OPTIMIZED: Pre-loaded instantly from server-injected HTML window data if available
-  const [products, setProducts] = useState<Product[]>(() => {
-    const injectedProducts = typeof window !== 'undefined'
-      ? (window as any).__INITIAL_PRODUCTS__
-      : null;
-    const initialProducts = Array.isArray(injectedProducts) && injectedProducts.length > 0
-      ? injectedProducts as Product[]
-      : INITIAL_PRODUCTS;
-    return initialProducts.map(normalizeProduct);
-  });
-  
-  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(() => {
-    return INITIAL_PRODUCTS.length === 0
-      && !(typeof window !== 'undefined'
-        && Array.isArray((window as any).__INITIAL_PRODUCTS__)
-        && (window as any).__INITIAL_PRODUCTS__.length > 0);
-  });
-  const [hasLoadedInitialProductSnapshot, setHasLoadedInitialProductSnapshot] = useState(() => (
-    INITIAL_PRODUCTS.length > 0
-    || (typeof window !== 'undefined'
-      && Array.isArray((window as any).__INITIAL_PRODUCTS__)
-      && (window as any).__INITIAL_PRODUCTS__.length > 0)
-  ));
-
-  useEffect(() => {
-    if (hasLoadedInitialProductSnapshot) return;
-
-    const timer = window.setTimeout(() => {
-      setIsProductsLoading(false);
-      setHasLoadedInitialProductSnapshot(true);
-    }, 3000);
-
-    return () => window.clearTimeout(timer);
-  }, [hasLoadedInitialProductSnapshot]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isProductsLoading, setIsProductsLoading] = useState(true);
 
   const productsRef = useRef(products);
 
@@ -404,58 +369,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Firestore Live Products Sync with clean state handling
   useEffect(() => {
     let isMounted = true;
-    const unsubscribe = subscribeToProducts((remoteProducts) => {
+    let hasFullProductSnapshot = false;
+    const routeProductId = window.location.pathname.startsWith('/product/')
+      ? decodeURIComponent(window.location.pathname.slice('/product/'.length))
+      : undefined;
+    const searchParams = new URLSearchParams(window.location.search);
+    const initialCategory = window.location.pathname === '/shop'
+      ? searchParams.get('category') || undefined
+      : undefined;
+    let unsubscribe: (() => void) | undefined;
+
+    const startFullProductSync = () => {
       if (!isMounted) return;
-      const normalizedProducts = remoteProducts.map(normalizeProduct);
-      const queuedProducts = readQueuedProductWrites();
-      const mergedProducts = [...queuedProducts, ...normalizedProducts];
-      const deduped = new Map<string, Product>();
-      mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
-      const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      unsubscribe = subscribeToProducts((remoteProducts, fromCache) => {
+        if (!isMounted) return;
+        if (!fromCache) hasFullProductSnapshot = true;
+        const normalizedProducts = remoteProducts.map(normalizeProduct);
+        const queuedProducts = readQueuedProductWrites();
+        const cachedProducts = fromCache ? productsRef.current : [];
+        const mergedProducts = [...queuedProducts, ...normalizedProducts, ...cachedProducts];
+        const deduped = new Map<string, Product>();
+        mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
+        const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
-      setProducts(nextProducts);
-      setIsProductsLoading(false); // Finished loading live data successfully
-      setHasLoadedInitialProductSnapshot(true);
-      
-      const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
-      writeQueuedProductWrites(remainingQueuedProducts);
-    }, (err) => {
-      console.warn('[Firestore] Product live listener notice:', err?.message || err);
-      setIsProductsLoading(false);
-      setHasLoadedInitialProductSnapshot(true);
-      const queuedProducts = readQueuedProductWrites();
-      if (queuedProducts.length > 0) {
-        setProducts(queuedProducts.map(normalizeProduct));
-      }
-    }, (changes: ProductSnapshotChange[]) => {
-      if (!isMounted || changes.length === 0) return;
+        setProducts(nextProducts);
+        productsRef.current = nextProducts;
+        if (!fromCache) setIsProductsLoading(false);
 
-      const changedIds = new Set(changes.map((change) => change.product.id));
-      const productsById = new Map<string, Product>(
-        productsRef.current.map((product) => [product.id, product])
-      );
-
-      changes.forEach((change) => {
-        const normalized = normalizeProduct(change.product);
-        if (change.type === 'removed') {
-          productsById.delete(normalized.id);
-          return;
+        const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
+        writeQueuedProductWrites(remainingQueuedProducts);
+      }, (err) => {
+        console.warn('[Firestore] Product live listener notice:', err?.message || err);
+        setIsProductsLoading(false);
+        const queuedProducts = readQueuedProductWrites();
+        if (queuedProducts.length > 0) {
+          setProducts(queuedProducts.map(normalizeProduct));
         }
-        productsById.set(normalized.id, normalized);
-      });
+      }, (changes: ProductSnapshotChange[], fromCache) => {
+        if (!isMounted || changes.length === 0) return;
 
-      const nextProducts = Array.from(productsById.values());
-      nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-      productsRef.current = nextProducts;
-      setProducts(nextProducts);
-      setIsProductsLoading(false);
-      setHasLoadedInitialProductSnapshot(true);
-      writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
-    });
+        const changedIds = new Set(changes.map((change) => change.product.id));
+        const productsById = new Map<string, Product>(
+          productsRef.current.map((product) => [product.id, product])
+        );
+
+        changes.forEach((change) => {
+          const normalized = normalizeProduct(change.product);
+          if (change.type === 'removed') {
+            productsById.delete(normalized.id);
+            return;
+          }
+          productsById.set(normalized.id, normalized);
+        });
+
+        const nextProducts = Array.from(productsById.values());
+        nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        productsRef.current = nextProducts;
+        setProducts(nextProducts);
+        if (!fromCache) setIsProductsLoading(false);
+        writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
+      });
+    };
+
+    fetchInitialProductsFromFirestore({ category: initialCategory, productId: routeProductId })
+      .then((initialProducts) => {
+        if (!isMounted || hasFullProductSnapshot || initialProducts.length === 0) return;
+
+        const mergedProducts = [...readQueuedProductWrites(), ...initialProducts.map(normalizeProduct)];
+        const dedupedProducts = new Map<string, Product>();
+        mergedProducts.forEach((product) => dedupedProducts.set(product.id, normalizeProduct(product)));
+        const nextProducts = Array.from(dedupedProducts.values())
+          .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+        productsRef.current = nextProducts;
+        setProducts(nextProducts);
+        if (routeProductId) setIsProductsLoading(false);
+      })
+      .catch((error) => console.warn('[Firestore] Initial product page fetch notice:', error?.message || error))
+      .finally(startFullProductSync);
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
@@ -1517,7 +1512,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteProduct,
     isProductSyncing,
     isProductsLoading,
-    hasLoadedInitialProductSnapshot,
     syncAllProductsToFirebase,
     banners,
     addBanner,
@@ -1606,7 +1600,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isFirebaseLive,
     isProductSyncing,
     isProductsLoading,
-    hasLoadedInitialProductSnapshot,
     updateCategoryImage,
     resetCategoryImage,
     updateProductStock,

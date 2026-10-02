@@ -17,7 +17,8 @@ import {
   Search, 
   RotateCcw,
   Sparkles,
-  Zap
+  Zap,
+  ImageOff
 } from 'lucide-react';
 
 const PRODUCTS_PER_PAGE = 24;
@@ -296,7 +297,8 @@ export const ShopPage: React.FC = () => {
             {selectedCategory === 'All' ? 'Complete Electronics Catalog' : selectedCategory}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length} verified electronic parts &amp; compute modules
+            Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length}{' '}
+            {isProductsLoading ? 'loaded products · Syncing full catalog...' : 'verified electronic parts & compute modules'}
           </p>
         </div>
 
@@ -597,7 +599,7 @@ export const ShopPage: React.FC = () => {
           )}
 
           {/* SKELETON LOADER WHEN FETCHING FROM FIREBASE */}
-          {isProductsLoading ? (
+          {isProductsLoading && filteredProducts.length === 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-4">
@@ -646,13 +648,19 @@ export const ShopPage: React.FC = () => {
                   key={product.id}
                   className="bg-white rounded-xl border border-slate-200 p-4 hover:border-[#561269]/40 hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4"
                 >
-                  <img
-                    src={(product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80')}
-                    alt={product.name}
-                    loading={index < 4 ? 'eager' : 'lazy'}
-                    decoding="async"
-                    className="w-24 h-24 object-contain mix-blend-multiply bg-slate-50 p-2 rounded-lg shrink-0"
-                  />
+                  {product.images?.[0] || product.image ? (
+                    <img
+                      src={product.images?.[0] || product.image}
+                      alt={product.name}
+                      loading={index < 4 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      className="w-24 h-24 object-contain mix-blend-multiply bg-slate-50 p-2 rounded-lg shrink-0"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 flex items-center justify-center bg-slate-50 text-slate-300 rounded-lg shrink-0" aria-label="Product image unavailable">
+                      <ImageOff className="w-6 h-6" aria-hidden="true" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
                       <span className="font-bold text-[#561269]">{product.brand}</span>

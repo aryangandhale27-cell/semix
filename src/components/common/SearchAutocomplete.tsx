@@ -35,7 +35,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   placeholder,
   className = '',
 }) => {
-  const { products, categories, searchQuery, setSearchQuery } = useApp();
+  const { products, categories, searchQuery, setSearchQuery, isProductsLoading } = useApp();
   const navigate = useNavigate();
 
   const [inputValue, setInputValue] = useState(searchQuery);
@@ -246,7 +246,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder || 'Search components, ICs, sensors...'}
-                className="w-full pl-8 pr-7 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden"
+                className="w-full pl-8 pr-7 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden"
                 autoComplete="off"
               />
               {inputValue && (
@@ -263,7 +263,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             <button
               type="submit"
               id="mobile-search-submit-btn"
-              className="bg-[#561269] hover:bg-[#460e56] text-white px-3 py-1.5 text-xs font-semibold flex items-center justify-center transition-colors"
+              className="bg-[#561269] hover:bg-[#460e56] text-white px-3 py-2 text-xs font-semibold flex items-center justify-center transition-colors"
               aria-label="Submit search"
             >
               <Search className="w-3.5 h-3.5" />
@@ -346,6 +346,12 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           id="search-autocomplete-dropdown"
           className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150"
         >
+          {isProductsLoading && (
+            <div className="border-b border-slate-100 bg-slate-50 px-3 sm:px-4 py-2 text-[11px] text-slate-600">
+              Loading the full catalog; search suggestions may update.
+            </div>
+          )}
+
           {/* Typo Correction / "Did you mean?" Banner */}
           {searchResult.didYouMean && (
             <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 py-2.5 flex items-center justify-between text-xs">
@@ -373,7 +379,12 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           )}
 
           {/* If 0 products found */}
-          {searchResult.results.length === 0 ? (
+          {searchResult.results.length === 0 && isProductsLoading ? (
+            <div className="p-6 text-center">
+              <div className="w-6 h-6 border-2 border-[#561269]/20 border-t-[#561269] rounded-full animate-spin mx-auto mb-2" />
+              <p className="text-xs sm:text-sm font-semibold text-slate-800">Searching the full catalog...</p>
+            </div>
+          ) : searchResult.results.length === 0 ? (
             <div className="p-6 text-center">
               <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="text-xs sm:text-sm font-semibold text-slate-800">

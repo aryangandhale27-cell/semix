@@ -1062,8 +1062,6 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, { index: false }));
 
-    const serverProductCache = INITIAL_PRODUCTS;
-
     app.get('*', (req, res) => {
       try {
         const indexPath = path.join(distPath, 'index.html');
@@ -1072,10 +1070,6 @@ async function startServer() {
         }
 
         let html = fs.readFileSync(indexPath, 'utf8');
-
-        // Inject initial product data directly into the HTML window object for instant pre-rendering
-        const initialDataScript = `<script>window.__INITIAL_PRODUCTS__ = ${JSON.stringify(serverProductCache)};</script>`;
-        html = html.replace('</head>', `${initialDataScript}</head>`);
 
         // Set aggressive edge caching headers so GoDaddy CDN delivers this instantly to new users
         res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');

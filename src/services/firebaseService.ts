@@ -1,6 +1,7 @@
 import { 
   collection, 
   doc, 
+  getDoc,
   getDocs, 
   setDoc, 
   addDoc,
@@ -87,6 +88,33 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
   }
 }
 
+export async function fetchInitialProductsFromFirestore(options: {
+  category?: string;
+  productId?: string;
+} = {}): Promise<Product[]> {
+  try {
+    if (options.productId) {
+      const snapshot = await getDoc(doc(db, 'products', options.productId));
+      return snapshot.exists()
+        ? [{ ...snapshot.data(), id: snapshot.id } as Product]
+        : [];
+    }
+
+    const productsRef = collection(db, 'products');
+    const initialQuery = options.category
+      ? query(productsRef, where('category', '==', options.category), limit(24))
+      : query(productsRef, orderBy('createdAt', 'desc'), limit(24));
+    const snapshot = await getDocs(initialQuery);
+    const products: Product[] = [];
+    snapshot.forEach((productDoc) => {
+      products.push({ ...productDoc.data(), id: productDoc.id } as Product);
+    });
+    return products.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'products');
+  }
+}
+
 export async function fetchProductsFromFirestore(): Promise<Product[]> {
   const path = 'products';
   try {
@@ -108,21 +136,32 @@ export interface ProductSnapshotChange {
 }
 
 export function subscribeToProducts(
-  onData: (products: Product[]) => void,
+  onData: (products: Product[], fromCache: boolean) => void,
   onError?: (err: any) => void,
-  onChanges?: (changes: ProductSnapshotChange[]) => void
+  onChanges?: (changes: ProductSnapshotChange[], fromCache: boolean) => void
 ): Unsubscribe {
   const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
   let hasInitialSnapshot = false;
+  let hasInitialServerSnapshot = false;
 
   return onSnapshot(
     q,
+    { includeMetadataChanges: true },
     (snapshot) => {
       if (!hasInitialSnapshot) {
         const items: Product[] = [];
         snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
         hasInitialSnapshot = true;
-        onData(items);
+        hasInitialServerSnapshot = !snapshot.metadata.fromCache;
+        onData(items, snapshot.metadata.fromCache);
+        return;
+      }
+
+      if (!snapshot.metadata.fromCache && !hasInitialServerSnapshot) {
+        const items: Product[] = [];
+        snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
+        hasInitialServerSnapshot = true;
+        onData(items, false);
         return;
       }
 
@@ -130,7 +169,7 @@ export function subscribeToProducts(
         type: change.type,
         product: { id: change.doc.id, ...change.doc.data() } as Product,
       }));
-      if (changes.length > 0) onChanges?.(changes);
+      if (changes.length > 0) onChanges?.(changes, snapshot.metadata.fromCache);
     },
     (err) => {
       console.warn('[Firestore] Products real-time listener notice:', err.message);

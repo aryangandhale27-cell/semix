@@ -11,7 +11,8 @@ import {
   Star, 
   Check, 
   Zap,
-  Layers
+  Layers,
+  ImageOff
 } from 'lucide-react';
 
 const prefetchProductDetailPage = () => {
@@ -88,6 +89,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const inWish = isInWishlist(product.id);
   const inComp = isComparing(product.id);
+  const productImage = product.images?.find((image) => image.trim()) || product.image?.trim();
 
   return (
     <motion.div
@@ -180,15 +182,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         onFocus={prefetchProductDetailPage}
         className="block bg-slate-50 relative p-2 sm:p-4 pt-3.5 sm:pt-6 overflow-hidden border-b border-slate-100 aspect-square sm:aspect-4/3 flex items-center justify-center"
       >
-        <img
-          src={(product.images && product.images.length > 0) ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80')}
-          alt={product.name}
-          loading="lazy"
-          width={480}
-          height={360}
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="w-full h-full max-h-[90%] object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
-        />
+        {productImage ? (
+          <img
+            src={productImage}
+            alt={product.name}
+            loading="lazy"
+            width={480}
+            height={360}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="w-full h-full max-h-[90%] object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-300" aria-label="Product image unavailable">
+            <ImageOff className="w-8 h-8" aria-hidden="true" />
+          </div>
+        )}
         {product.images && product.images.length > 1 && (
           <span className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-slate-900/60 backdrop-blur-xs text-white text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5 sm:gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
             <Layers className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-[#FF6B00]" />
