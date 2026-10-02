@@ -55,9 +55,7 @@ export const ShopPage: React.FC = () => {
   // Sync URL search params
   useEffect(() => {
     const cat = searchParams.get('category');
-    if (cat) {
-      setSelectedCategory(cat);
-    }
+    setSelectedCategory(cat || 'All');
 
     const q = searchParams.get('q');
     if (q !== null && q !== undefined) {

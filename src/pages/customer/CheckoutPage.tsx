@@ -104,6 +104,12 @@ export const CheckoutPage: React.FC = () => {
   const isCodAvailable = taxableAmount > 300;
   const amountNeededForFreeShipping = Math.max(0, 500 - taxableAmount);
 
+  useEffect(() => {
+    if (confirmedOrderId) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [confirmedOrderId]);
+
   const getFirebaseCheckoutUserId = (): string | null => {
     if (!authReady) {
       showToast('Checking Account', 'Please wait while we verify your sign-in.', 'info');
