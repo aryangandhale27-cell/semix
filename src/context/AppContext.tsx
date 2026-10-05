@@ -431,6 +431,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     };
 
+    startFullProductSync();
+
     fetchInitialProductsFromFirestore({ category: initialCategory, productId: routeProductId })
       .then((initialProducts) => {
         if (!isMounted || hasFullProductSnapshot || initialProducts.length === 0) return;
@@ -445,8 +447,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setProducts(nextProducts);
         if (routeProductId) setIsProductsLoading(false);
       })
-      .catch((error) => console.warn('[Firestore] Initial product page fetch notice:', error?.message || error))
-      .finally(startFullProductSync);
+      .catch((error) => console.warn('[Firestore] Initial product page fetch notice:', error?.message || error));
 
     return () => {
       isMounted = false;

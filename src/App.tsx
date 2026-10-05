@@ -11,6 +11,8 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { ToastContainer } from './components/common/Toast';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { StoreLoadingScreen } from './components/common/ElectronicsLoadingScreen';
+import { useApp } from './context/AppContext';
 
 // Lazy-loaded Pages (Code-Split for Mobile)
 const HomePage = lazy(() => import('./pages/customer/HomePage').then((module) => ({ default: module.HomePage })));
@@ -200,6 +202,24 @@ function AnimatedRoutes() {
 }
 
 function AppContent({ loadDeferredOverlays }: { loadDeferredOverlays: boolean }) {
+  const { isProductsLoading } = useApp();
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => window.matchMedia('(max-width: 767px)').matches
+  );
+
+  useEffect(() => {
+    const mobileViewport = window.matchMedia('(max-width: 767px)');
+    const updateViewport = (event: MediaQueryListEvent) => setIsMobileViewport(event.matches);
+
+    setIsMobileViewport(mobileViewport.matches);
+    mobileViewport.addEventListener('change', updateViewport);
+    return () => mobileViewport.removeEventListener('change', updateViewport);
+  }, []);
+
+  if (isMobileViewport && isProductsLoading) {
+    return <StoreLoadingScreen />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans antialiased selection:bg-[#FF6B00] selection:text-white">
         <TopUtilityBar />
