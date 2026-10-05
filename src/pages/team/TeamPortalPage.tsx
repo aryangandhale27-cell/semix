@@ -32,7 +32,8 @@ import {
   Clock,
   ShieldCheck,
   Building2,
-  RefreshCw
+  RefreshCw,
+  Star
 } from 'lucide-react';
 
 const INVENTORY_BATCH_SIZE = 50;
@@ -94,6 +95,7 @@ export const TeamPortalPage: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<{ id: string; name: string; sku?: string } | null>(null);
+  const [updatingFeaturedProductId, setUpdatingFeaturedProductId] = useState<string | null>(null);
 
   // Inline Stock Editing state: { [productId]: number | null }
   const [inlineEditingStockId, setInlineEditingStockId] = useState<string | null>(null);
@@ -265,6 +267,17 @@ export const TeamPortalPage: React.FC = () => {
   const handleOpenEditProduct = (product: Product) => {
     setEditingProduct(product);
     setProductModalOpen(true);
+  };
+
+  const handleToggleFeatured = async (product: Product) => {
+    setUpdatingFeaturedProductId(product.id);
+    try {
+      await updateProduct({ ...product, isFeatured: !product.isFeatured });
+    } catch (error) {
+      showToast('Featured Mark Update Failed', error instanceof Error ? error.message : 'Could not update this product.', 'error');
+    } finally {
+      setUpdatingFeaturedProductId(null);
+    }
   };
 
   const handleDeleteProductConfirm = (productId: string, name: string, sku?: string) => {
@@ -777,6 +790,21 @@ export const TeamPortalPage: React.FC = () => {
                                   <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
                                     Synced
                                   </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleToggleFeatured(prod)}
+                                    disabled={updatingFeaturedProductId === prod.id}
+                                    aria-pressed={Boolean(prod.isFeatured)}
+                                    title={prod.isFeatured ? 'Remove featured mark' : 'Mark as featured'}
+                                    className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                                      prod.isFeatured
+                                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700'
+                                    }`}
+                                  >
+                                    <Star className={`h-2.5 w-2.5 ${prod.isFeatured ? 'fill-current' : ''}`} />
+                                    {prod.isFeatured ? 'Featured' : 'Mark'}
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -797,9 +825,17 @@ export const TeamPortalPage: React.FC = () => {
                           {/* Added By / Attribution */}
                           <td className="p-3.5">
                             <div className="max-w-[130px]">
-                              <span className="text-[11px] font-semibold text-slate-800 line-clamp-1">
-                                {prod.addedBy || 'Semix Team'}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] font-semibold text-slate-800 line-clamp-1">
+                                  {prod.addedBy || 'Semix Team'}
+                                </span>
+                                {prod.isFeatured && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-amber-700 border border-amber-200">
+                                    <Star className="w-2.5 h-2.5 fill-current" />
+                                    Featured
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-[9px] text-slate-400 capitalize">
                                 {prod.addedByRole || 'Tech Lead'}
                               </span>

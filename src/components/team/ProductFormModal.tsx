@@ -77,6 +77,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [images, setImages] = useState<string[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const [activePreviewIdx, setActivePreviewIdx] = useState(0);
+  const [isFeatured, setIsFeatured] = useState(false);
   const [specifications, setSpecifications] = useState<ProductSpec[]>([]);
   
   // Validation errors
@@ -105,6 +106,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setImages(initialImages);
       setActivePreviewIdx(0);
       setUrlInput('');
+      setIsFeatured(Boolean(initialProduct.isFeatured || initialProduct.isBestSeller || initialProduct.isNew));
       setSpecifications(initialProduct.specifications ? [...initialProduct.specifications] : []);
       setErrors({});
     } else {
@@ -124,6 +126,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setImages([]);
       setActivePreviewIdx(0);
       setUrlInput('');
+      setIsFeatured(false);
       setSpecifications([]);
       setErrors({});
     }
@@ -296,7 +299,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         { minQty: 50, discountPercent: 15, unitPrice: Math.round(numPrice * 0.85) }
       ],
       tags: initialProduct?.tags || ['Electronics', category],
-      locationBin: locationBin.trim().toUpperCase() || 'BIN-A01'
+      locationBin: locationBin.trim().toUpperCase() || 'BIN-A01',
+      isFeatured,
+      isNew: initialProduct?.isNew ?? false,
+      isBestSeller: initialProduct?.isBestSeller ?? false,
     };
 
     try {
@@ -686,6 +692,21 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
                   {/* Right: Add Methods & Presets */}
                   <div className="md:col-span-7 space-y-3">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <span className="text-xs font-bold text-slate-700">Mark this product as featured</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsFeatured((prev) => !prev)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isFeatured ? 'bg-[#561269]' : 'bg-slate-300'}`}
+                          aria-label="Toggle featured mark"
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isFeatured ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </label>
+                      <p className="mt-1 text-[10px] text-slate-500">Featured products show a visible highlight in the catalog for quick identification.</p>
+                    </div>
+
                     {/* Direct URL input */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
