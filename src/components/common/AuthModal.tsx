@@ -148,11 +148,11 @@ export const AuthModal: React.FC = () => {
           navigate('/admin/dashboard');
         } else if (authRedirectUrl) {
           navigate(authRedirectUrl);
-        } else if (res.role === 'admin' || signInEmail.toLowerCase().includes('admin')) {
+        } else if (signInEmail.toLowerCase().includes('admin')) {
           navigate('/admin/dashboard');
         } else if (res.role === 'seller' || signInEmail.toLowerCase().includes('seller')) {
           navigate('/seller');
-        } else if (res.role === 'team' || signInEmail.toLowerCase().includes('team')) {
+        } else if (signInEmail.toLowerCase().includes('team')) {
           navigate('/team/fulfillment?tab=stock');
         } else {
           navigate('/customer/dashboard');
@@ -178,8 +178,6 @@ export const AuthModal: React.FC = () => {
           navigate('/admin/dashboard');
         } else if (authRedirectUrl) {
           navigate(authRedirectUrl);
-        } else if (res.role === 'admin') {
-          navigate('/admin/dashboard');
         } else if (res.role === 'seller') {
           navigate('/seller');
         } else {

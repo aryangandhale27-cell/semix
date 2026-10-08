@@ -11,6 +11,7 @@ export interface AuthUser {
   createdAt?: string;
   status?: AccountStatus;
   password?: string;
+  displayName?: string;
   // Seller-specific:
   businessName?: string;
   gstin?: string;
@@ -132,7 +133,7 @@ export interface HomepageBanner {
   price?: string;
   productId?: string;
   highlights?: string[];
-  order: number;
+  order?: number;
   isActive: boolean;
   bgGradient?: string;
   createdAt?: string;
@@ -146,6 +147,7 @@ export interface CartItem {
 }
 
 export interface OrderItem {
+  id?: string;
   productId: string;
   name: string;
   sku: string;
@@ -276,6 +278,7 @@ export interface AvailableSeller {
   bonusAmount?: number;
   bonusUpdatedAt?: string;
   bonusUpdatedBy?: string;
+  bonusHistory?: SellerBonusAuditEntry[];
 }
 
 export interface SellerBonusAuditEntry {

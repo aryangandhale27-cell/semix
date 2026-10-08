@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { AuthUser, UserRole, CreateUserPayload } from '../types';
+import { AccountStatus, AuthUser, UserRole, CreateUserPayload } from '../types';
 import { useApp } from './AppContext';
 import { 
   auth, 
@@ -103,7 +103,7 @@ interface AuthContextType {
   createUser: (payload: CreateUserPayload) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
   updateUser: (id: string, updates: Partial<AuthUser & { passwordHash?: string }>) => Promise<{ success: boolean; error?: string }>;
   toggleUserStatus: (id: string) => void;
-  deleteUser: (id: string) => { success: boolean; error?: string };
+  deleteUser: (id: string) => Promise<{ success: boolean; error?: string }>;
   switchUser: (targetUserOrId: string | AuthUser) => void;
 }
 
@@ -971,8 +971,8 @@ setAuthNoticeMessage(null);
         return;
       }
 
-      const nextStatus = target.status === 'suspended' ? 'active' : 'suspended';
-      const updatedRecord = { ...target, status: nextStatus };
+      const nextStatus: AccountStatus = target.status === 'suspended' ? 'active' : 'suspended';
+      const updatedRecord: AuthUser & { passwordHash: string } = { ...target, status: nextStatus };
 
       setRegisteredUsers((prev) =>
         prev.map((u) => (u.id === id ? updatedRecord : u))
