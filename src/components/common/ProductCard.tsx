@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Product } from '../../types';
 import { useApp } from '../../context/AppContext';
+import { useNearViewport } from '../../hooks/useNearViewport';
 import { 
   ShoppingCart, 
   Heart, 
@@ -90,6 +91,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const inWish = isInWishlist(product.id);
   const inComp = isComparing(product.id);
   const productImage = product.images?.find((image) => image.trim()) || product.image?.trim();
+  const { ref: productImageRef, isNearViewport } = useNearViewport<HTMLAnchorElement>();
 
   return (
     <motion.div
@@ -177,21 +179,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Image Thumbnail - square on mobile, 4/3 on tablet/desktop */}
       <Link
         to={`/product/${product.id}`}
+        ref={productImageRef}
         onPointerEnter={prefetchProductDetailPage}
         onPointerDown={prefetchProductDetailPage}
         onFocus={prefetchProductDetailPage}
         className="block bg-slate-50 relative p-2 sm:p-4 pt-3.5 sm:pt-6 overflow-hidden border-b border-slate-100 aspect-square sm:aspect-4/3 flex items-center justify-center"
       >
         {productImage ? (
-          <img
-            src={productImage}
-            alt={product.name}
-            loading="lazy"
-            width={480}
-            height={360}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="w-full h-full max-h-[90%] object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
-          />
+          isNearViewport && (
+            <img
+              src={productImage}
+              alt={product.name}
+              loading="eager"
+              width={480}
+              height={360}
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="w-full h-full max-h-[90%] object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
+            />
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-300" aria-label="Product image unavailable">
             <ImageOff className="w-8 h-8" aria-hidden="true" />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useProductCatalog } from '../../context/ProductContext';
 import { ProductCard } from '../../components/common/ProductCard';
 import { ExploreCategories } from '../../components/home/ExploreCategories';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
@@ -22,7 +23,8 @@ import {
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { products, categories, banners, addToCart } = useApp();
+  const { categories, banners, addToCart } = useApp();
+  const { products } = useProductCatalog();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -36,13 +38,21 @@ export const HomePage: React.FC = () => {
 
   const currentSlideIndex = activeBanners.length > 0 ? heroSlide % activeBanners.length : 0;
   const currentSlide = activeBanners[currentSlideIndex];
-  const [displayedSlide, setDisplayedSlide] = useState<HomepageBanner | null>(null);
+  const [displayedSlide, setDisplayedSlide] = useState<HomepageBanner | null>(
+    () => activeBanners[0] || (banners && banners.length > 0 ? banners[0] : null)
+  );
 
   useEffect(() => {
-    if (!displayedSlide && currentSlide) {
+    if (currentSlide) {
       setDisplayedSlide(currentSlide);
     }
-  }, [currentSlide, displayedSlide]);
+  }, [currentSlide]);
+
+  useEffect(() => {
+    if (!displayedSlide && activeBanners.length > 0) {
+      setDisplayedSlide(activeBanners[0]);
+    }
+  }, [activeBanners, displayedSlide]);
 
   useEffect(() => {
     if (!currentSlide) return;
@@ -68,7 +78,9 @@ export const HomePage: React.FC = () => {
   }, [activeBanners.length, isHovered]);
 
   const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 8);
+  const displayBestSellers = bestSellers.length > 0 ? bestSellers : products.slice(0, 8);
   const newArrivals = products.filter((p) => p.isNew).slice(0, 4);
+  const displayNewArrivals = newArrivals.length > 0 ? newArrivals : products.slice(8, 12);
 
   const handleHeroTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     const touch = event.touches[0];
@@ -241,13 +253,13 @@ export const HomePage: React.FC = () => {
             to="/shop"
             className="text-[11px] sm:text-xs font-bold text-[#561269] hover:text-[#FF6B00] flex items-center gap-0.5 sm:gap-1 shrink-0 ml-2"
           >
-            <span>Catalog ({products.length})</span>
+            <span>Loaded ({products.length})</span>
             <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </Link>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-          {bestSellers.map((product) => (
+          {displayBestSellers.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -280,7 +292,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-          {newArrivals.map((product) => (
+          {displayNewArrivals.map((product) => (
             <ProductCard
               key={product.id}
               product={product}

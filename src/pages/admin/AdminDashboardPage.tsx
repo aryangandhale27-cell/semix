@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useProductCatalog } from '../../context/ProductContext';
 import { Product, StaffMember } from '../../types';
 import { SemixLabsLogo } from '../../components/common/SemixLabsLogo';
 import { 
@@ -50,7 +51,6 @@ const ADMIN_PRODUCT_BATCH_SIZE = 50;
 
 export const AdminDashboardPage: React.FC = () => {
   const { 
-    products, 
     orders, 
     staff, 
     categories, 
@@ -64,9 +64,9 @@ export const AdminDashboardPage: React.FC = () => {
     toggleStaffStatus, 
     customProjects,
     adminNotifications,
-    showToast,
-    isFirebaseLive
+    showToast
   } = useApp();
+  const { products, isFirebaseLive } = useProductCatalog();
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);

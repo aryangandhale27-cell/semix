@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
+import { useProductCatalog } from '../../context/ProductContext';
 import { Order, Product, EscalationIssue, OrderStatus, EscalationType, EscalationPriority } from '../../types';
 import { ProductFormModal } from '../../components/team/ProductFormModal';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
@@ -41,7 +42,6 @@ const INVENTORY_BATCH_SIZE = 50;
 export const TeamPortalPage: React.FC = () => {
   const { 
     orders, 
-    products, 
     escalations, 
     updateOrderStatus, 
     updateProductStock, 
@@ -55,6 +55,7 @@ export const TeamPortalPage: React.FC = () => {
     categories,
     showToast 
   } = useApp();
+  const { products } = useProductCatalog();
 
   const location = useLocation();
   const [searchParams] = useSearchParams();

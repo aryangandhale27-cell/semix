@@ -27,9 +27,6 @@ import {
 import { 
   syncProductToFirestore, 
   deleteProductFromFirestore, 
-  fetchInitialProductsFromFirestore,
-  subscribeToProducts,
-  ProductSnapshotChange,
   syncAllProductsToFirestore,
   syncOrderToFirestore, 
   deleteOrderFromFirestore,
@@ -65,34 +62,15 @@ import {
   formatInrBonus
 } from '../services/bonusService';
 import { logActivity, recordActivityLog } from '../services/auditService';
-import { auth, onAuthStateChanged, testFirestoreConnection } from '../lib/firebase';
+import { auth, onAuthStateChanged } from '../lib/firebase';
 import { saveUserAppState, subscribeToUserAppState } from '../services/userStateService';
+import { useProductCommands } from './ProductContext';
+import { normalizeProduct, readQueuedProductWrites, writeQueuedProductWrites } from '../utils/productStorage';
 
 const APP_DATA_CACHE_KEYS = {
   categories: 'semix-cache-categories-v1',
   banners: 'semix-cache-banners-v1',
 } as const;
-
-const PRODUCT_WRITE_QUEUE_KEY = 'semix-product-write-queue-v1';
-
-function readQueuedProductWrites(): Product[] {
-  try {
-    const cached = localStorage.getItem(PRODUCT_WRITE_QUEUE_KEY);
-    if (!cached) return [];
-    const parsed = JSON.parse(cached) as Product[];
-    return Array.isArray(parsed) ? parsed.map(normalizeProduct) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeQueuedProductWrites(products: Product[]): void {
-  try {
-    localStorage.setItem(PRODUCT_WRITE_QUEUE_KEY, JSON.stringify(products));
-  } catch {
-    // Ignore storage write failures.
-  }
-}
 
 function readCachedData<T>(key: string, fallback: T): T {
   try {
@@ -132,7 +110,6 @@ interface AppContextType {
   setCurrentRole: (role: UserRole) => void;
 
   // Products
-  products: Product[];
   categories: Category[];
   updateCategoryImage: (categoryId: string, imageUrl: string) => Promise<void>;
   resetCategoryImage: (categoryId: string) => Promise<void>;
@@ -141,7 +118,6 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   isProductSyncing: boolean;
-  isProductsLoading: boolean;
   syncAllProductsToFirebase: () => Promise<void>;
 
   // Homepage Banners
@@ -232,7 +208,6 @@ interface AppContextType {
   removeToast: (id: string) => void;
 
   resetDemoData: () => void;
-  isFirebaseLive: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -254,7 +229,6 @@ function mergeCategoriesWithDefaults(remoteCategories: Category[]): Category[] {
 
 const STORAGE_KEYS = {
   ROLE: 'rietz_user_role',
-  PRODUCTS: 'rietz_products_v1',
   CART: 'rietz_cart_v1',
   WISHLIST: 'rietz_wishlist_v1',
   COMPARE: 'rietz_compare_v1',
@@ -265,21 +239,6 @@ const STORAGE_KEYS = {
   BULK_ENQUIRIES: 'rietz_bulk_enquiries_v1',
   CUSTOM_PROJECTS: 'rietz_custom_projects_v1',
   ADMIN_NOTIFICATIONS: 'rietz_admin_notifications_v1',
-};
-
-export const normalizeProduct = (p: Partial<Product> & Record<string, any>): Product => {
-  let imagesList: string[] = [];
-  if (Array.isArray(p.images) && p.images.length > 0) {
-    imagesList = p.images.filter((img: any) => typeof img === 'string' && img.trim().length > 0);
-  }
-  if (imagesList.length === 0 && typeof p.image === 'string' && p.image.trim().length > 0) {
-    imagesList = [p.image.trim()];
-  }
-  return {
-    ...(p as Product),
-    image: imagesList[0] || '',
-    images: imagesList,
-  };
 };
 
 export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order => {
@@ -327,7 +286,7 @@ export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order =
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isFirebaseLive, setIsFirebaseLive] = useState(true);
+  const { getProduct, getProducts, updateProducts } = useProductCommands();
 
   const isAdminOrSellerOrTeam = () => {
     const email = auth.currentUser?.email?.trim().toLowerCase() || '';
@@ -339,121 +298,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return email.includes('admin@');
   };
 
-  useEffect(() => {
-    const scheduleConnectionCheck = window.setTimeout(() => {
-      testFirestoreConnection()
-        .then(() => setIsFirebaseLive(true))
-        .catch(() => setIsFirebaseLive(false));
-    }, 2000);
-
-    return () => window.clearTimeout(scheduleConnectionCheck);
-  }, []);
-
   const [currentRole, setCurrentRoleState] = useState<UserRole>('customer');
 
   const setCurrentRole = (role: UserRole) => {
     setCurrentRoleState(role);
   };
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isProductsLoading, setIsProductsLoading] = useState(true);
-
-  const productsRef = useRef(products);
-
-  useEffect(() => {
-    productsRef.current = products;
-  }, [products]);
-
   const [isProductSyncing, setIsProductSyncing] = useState(false);
-
-  // Firestore Live Products Sync with clean state handling
-  useEffect(() => {
-    let isMounted = true;
-    let hasFullProductSnapshot = false;
-    const routeProductId = window.location.pathname.startsWith('/product/')
-      ? decodeURIComponent(window.location.pathname.slice('/product/'.length))
-      : undefined;
-    const searchParams = new URLSearchParams(window.location.search);
-    const initialCategory = window.location.pathname === '/shop'
-      ? searchParams.get('category') || undefined
-      : undefined;
-    let unsubscribe: (() => void) | undefined;
-
-    const startFullProductSync = () => {
-      if (!isMounted) return;
-      unsubscribe = subscribeToProducts((remoteProducts, fromCache) => {
-        if (!isMounted) return;
-        if (!fromCache) hasFullProductSnapshot = true;
-        const normalizedProducts = remoteProducts.map(normalizeProduct);
-        const queuedProducts = readQueuedProductWrites();
-        const cachedProducts = fromCache ? productsRef.current : [];
-        const mergedProducts = [...queuedProducts, ...normalizedProducts, ...cachedProducts];
-        const deduped = new Map<string, Product>();
-        mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
-        const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-        setProducts(nextProducts);
-        productsRef.current = nextProducts;
-        if (!fromCache) setIsProductsLoading(false);
-
-        const remainingQueuedProducts = nextProducts.filter((product) => !normalizedProducts.some((liveProduct) => liveProduct.id === product.id));
-        writeQueuedProductWrites(remainingQueuedProducts);
-      }, (err) => {
-        console.warn('[Firestore] Product live listener notice:', err?.message || err);
-        setIsProductsLoading(false);
-        const queuedProducts = readQueuedProductWrites();
-        if (queuedProducts.length > 0) {
-          setProducts(queuedProducts.map(normalizeProduct));
-        }
-      }, (changes: ProductSnapshotChange[], fromCache) => {
-        if (!isMounted || changes.length === 0) return;
-
-        const changedIds = new Set(changes.map((change) => change.product.id));
-        const productsById = new Map<string, Product>(
-          productsRef.current.map((product) => [product.id, product])
-        );
-
-        changes.forEach((change) => {
-          const normalized = normalizeProduct(change.product);
-          if (change.type === 'removed') {
-            productsById.delete(normalized.id);
-            return;
-          }
-          productsById.set(normalized.id, normalized);
-        });
-
-        const nextProducts = Array.from(productsById.values());
-        nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-        productsRef.current = nextProducts;
-        setProducts(nextProducts);
-        if (!fromCache) setIsProductsLoading(false);
-        writeQueuedProductWrites(readQueuedProductWrites().filter((product) => !changedIds.has(product.id)));
-      });
-    };
-
-    startFullProductSync();
-
-    fetchInitialProductsFromFirestore({ category: initialCategory, productId: routeProductId })
-      .then((initialProducts) => {
-        if (!isMounted || hasFullProductSnapshot || initialProducts.length === 0) return;
-
-        const mergedProducts = [...readQueuedProductWrites(), ...initialProducts.map(normalizeProduct)];
-        const dedupedProducts = new Map<string, Product>();
-        mergedProducts.forEach((product) => dedupedProducts.set(product.id, normalizeProduct(product)));
-        const nextProducts = Array.from(dedupedProducts.values())
-          .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-        productsRef.current = nextProducts;
-        setProducts(nextProducts);
-        if (routeProductId) setIsProductsLoading(false);
-      })
-      .catch((error) => console.warn('[Firestore] Initial product page fetch notice:', error?.message || error));
-
-    return () => {
-      isMounted = false;
-      unsubscribe?.();
-    };
-  }, []);
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -1058,7 +909,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleWishlist = (productId: string) => {
-    const prod = products.find((p) => p.id === productId);
+    const prod = getProduct(productId);
     setWishlist((prev) => {
       if (prev.includes(productId)) {
         showToast('Removed from Wishlist', prod ? prod.name : '', 'info');
@@ -1082,7 +933,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     setCompareList((prev) => [...prev, productId]);
-    const prod = products.find((p) => p.id === productId);
+    const prod = getProduct(productId);
     showToast('Added to Comparison', prod ? prod.name : '', 'info');
     return true;
   };
@@ -1098,11 +949,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isComparing = (productId: string) => compareList.includes(productId);
 
   const updateProductStock = async (productId: string, newStock: number) => {
-    const current = products.find((p) => p.id === productId);
+    const current = getProduct(productId);
     if (!current) throw new Error('Product not found');
     const updated = { ...current, stockCount: Math.max(0, newStock), inStock: newStock > 0 };
     await syncProductToFirestore(updated);
-    setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+    updateProducts((prev) => prev.map((product) => (product.id === productId ? updated : product)));
     showToast('Inventory Updated', `Stock count updated to ${newStock} units`, 'success');
   };
 
@@ -1113,7 +964,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: nowIso,
     });
     await syncProductToFirestore(normalized);
-    setProducts((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
+    updateProducts((prev) => prev.map((product) => (product.id === normalized.id ? normalized : product)));
     showToast('Product Updated', `${normalized.name} changes synced to Firebase`, 'success');
   };
 
@@ -1136,8 +987,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addedByRole: currentRole || 'team',
     });
 
-    const nextProducts = [normalized, ...products.filter((p) => p.id !== id)];
-    setProducts(nextProducts);
+    updateProducts((prev) => [normalized, ...prev.filter((product) => product.id !== id)]);
 
     try {
       await syncProductToFirestore(normalized);
@@ -1153,7 +1003,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncAllProductsToFirebase = async () => {
     setIsProductSyncing(true);
     try {
-      const result = await syncAllProductsToFirestore(products);
+      const result = await syncAllProductsToFirestore(getProducts());
       showToast('Firebase Catalog Sync', `Synced ${result.count} products to Cloud Firestore`, 'success');
     } catch (err: any) {
       showToast('Sync Error', err?.message || 'Could not sync all products to Firebase', 'warning');
@@ -1164,8 +1014,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteProduct = async (productId: string) => {
     await deleteProductFromFirestore(productId);
-    const nextProducts = products.filter((p) => p.id !== productId);
-    setProducts(nextProducts);
+    updateProducts((prev) => prev.filter((product) => product.id !== productId));
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
     setWishlist((prev) => prev.filter((id) => id !== productId));
     setCompareList((prev) => prev.filter((id) => id !== productId));
@@ -1209,7 +1058,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     orderData.items.forEach((item) => {
-      setProducts((prev) =>
+      updateProducts((prev) =>
         prev.map((p) =>
           p.id === item.productId
             ? { ...p, stockCount: Math.max(0, p.stockCount - item.quantity), inStock: p.stockCount - item.quantity > 0 }
@@ -1284,7 +1133,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders((prev) => [finalizedOrder, ...prev]);
 
     orderData.items.forEach((item) => {
-      setProducts((prev) =>
+      updateProducts((prev) =>
         prev.map((p) =>
           p.id === item.productId
             ? { ...p, stockCount: Math.max(0, p.stockCount - item.quantity), inStock: p.stockCount - item.quantity > 0 }
@@ -1503,7 +1352,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const contextValue = React.useMemo(() => ({
     currentRole,
     setCurrentRole,
-    products,
     categories,
     updateCategoryImage,
     resetCategoryImage,
@@ -1512,7 +1360,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addProduct,
     deleteProduct,
     isProductSyncing,
-    isProductsLoading,
     syncAllProductsToFirebase,
     banners,
     addBanner,
@@ -1576,10 +1423,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast,
     removeToast,
     resetDemoData,
-    isFirebaseLive
   }), [
     currentRole,
-    products,
     categories,
     cart,
     cartItemCount,
@@ -1598,9 +1443,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     adminNotifications,
     searchQuery,
     toasts,
-    isFirebaseLive,
     isProductSyncing,
-    isProductsLoading,
     updateCategoryImage,
     resetCategoryImage,
     updateProductStock,

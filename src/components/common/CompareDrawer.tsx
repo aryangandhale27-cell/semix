@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
+import { useProductCatalog } from '../../context/ProductContext';
 import { GitCompare, X, Trash2, ArrowRight, CheckCircle2, Star, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const CompareDrawer: React.FC = () => {
-  const { compareList, removeFromCompare, clearCompare, products, addToCart } = useApp();
+  const { compareList, removeFromCompare, clearCompare, addToCart } = useApp();
+  const { products } = useProductCatalog();
   const [modalOpen, setModalOpen] = useState(false);
 
   const comparedProducts = products.filter((p) => compareList.includes(p.id));

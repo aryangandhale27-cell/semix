@@ -26,6 +26,7 @@ import {
   Cpu
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useProductCatalog } from '../../context/ProductContext';
 import { useAuth } from '../../context/AuthContext';
 import { BulkEnquiryComponentItem, BulkEnquirySubmission, CustomProjectSubmission } from '../../types';
 import { CsvImportModal } from '../../components/bulk-enquiry/CsvImportModal';
@@ -63,7 +64,8 @@ const POPULAR_SUGGESTIONS = [
 ];
 
 export const BulkEnquiryPage: React.FC = () => {
-  const { submitBulkEnquiry, showToast, products } = useApp();
+  const { submitBulkEnquiry, showToast } = useApp();
+  const { products } = useProductCatalog();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
 

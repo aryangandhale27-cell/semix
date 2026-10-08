@@ -1,8 +1,10 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider } from './context/AppContext';
-import { AuthProvider } from './context/AuthContext';
+import { useApp } from './context/AppContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProductProvider } from './context/ProductContext';
 
 // Core Layout Components (Instant Paint)
 import { TopUtilityBar } from './components/layout/TopUtilityBar';
@@ -11,8 +13,6 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { ToastContainer } from './components/common/Toast';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
-import { StoreLoadingScreen } from './components/common/ElectronicsLoadingScreen';
-import { useApp } from './context/AppContext';
 
 // Lazy-loaded Pages (Code-Split for Mobile)
 const HomePage = lazy(() => import('./pages/customer/HomePage').then((module) => ({ default: module.HomePage })));
@@ -201,25 +201,25 @@ function AnimatedRoutes() {
   );
 }
 
-function AppContent({ loadDeferredOverlays }: { loadDeferredOverlays: boolean }) {
-  const { isProductsLoading } = useApp();
-  const [isMobileViewport, setIsMobileViewport] = useState(
-    () => window.matchMedia('(max-width: 767px)').matches
-  );
+function AuthModalHost() {
+  const { isAuthModalOpen } = useAuth();
+  return isAuthModalOpen ? (
+    <Suspense fallback={null}>
+      <AuthModal />
+    </Suspense>
+  ) : null;
+}
 
-  useEffect(() => {
-    const mobileViewport = window.matchMedia('(max-width: 767px)');
-    const updateViewport = (event: MediaQueryListEvent) => setIsMobileViewport(event.matches);
+function CompareDrawerHost() {
+  const { compareList } = useApp();
+  return compareList.length > 0 ? (
+    <Suspense fallback={null}>
+      <CompareDrawer />
+    </Suspense>
+  ) : null;
+}
 
-    setIsMobileViewport(mobileViewport.matches);
-    mobileViewport.addEventListener('change', updateViewport);
-    return () => mobileViewport.removeEventListener('change', updateViewport);
-  }, []);
-
-  if (isMobileViewport && isProductsLoading) {
-    return <StoreLoadingScreen />;
-  }
-
+function AppContent() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans antialiased selection:bg-[#FF6B00] selection:text-white">
         <TopUtilityBar />
@@ -242,37 +242,23 @@ function AppContent({ loadDeferredOverlays }: { loadDeferredOverlays: boolean })
 
         <ToastContainer />
 
-        {loadDeferredOverlays && (
-          <Suspense fallback={null}>
-            <AuthModal />
-            <CompareDrawer />
-          </Suspense>
-        )}
+        <AuthModalHost />
+        <CompareDrawerHost />
     </div>
   );
 }
 
 export default function App() {
-  const [loadDeferredOverlays, setLoadDeferredOverlays] = useState(false);
-
-  useEffect(() => {
-    // Defers modal & drawer mounting until after first paint to unblock mobile main thread
-    const timer = setTimeout(() => {
-      setLoadDeferredOverlays(true);
-      void import('./pages/customer/ShopPage').catch(() => undefined);
-      void import('./pages/customer/ProductDetailPage').catch(() => undefined);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <AppProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <AppContent loadDeferredOverlays={loadDeferredOverlays} />
-        </BrowserRouter>
-      </AuthProvider>
-    </AppProvider>
+    <ProductProvider>
+      <AppProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <AppContent />
+          </BrowserRouter>
+        </AuthProvider>
+      </AppProvider>
+    </ProductProvider>
   );
 }

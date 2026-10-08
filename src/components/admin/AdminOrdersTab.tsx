@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, OrderStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
+import { useProductCatalog } from '../../context/ProductContext';
 import { AdminOrderAssignmentModal } from './AdminOrderAssignmentModal';
 import { 
   Store, 
@@ -38,7 +39,8 @@ import {
 } from '../../services/emailService';
 
 export const AdminOrdersTab: React.FC = () => {
-  const { orders, availableSellers, products, deleteOrder, updateOrderStatus } = useApp();
+  const { orders, availableSellers, deleteOrder, updateOrderStatus } = useApp();
+  const { products } = useProductCatalog();
   const [viewMode, setViewMode] = useState<'orders' | 'ordered_products'>('orders');
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'delivered'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');

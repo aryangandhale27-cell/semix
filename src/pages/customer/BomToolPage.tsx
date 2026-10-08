@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useProductCatalog } from '../../context/ProductContext';
 import { Product } from '../../types';
 import { 
   FileSpreadsheet, 
@@ -24,7 +25,8 @@ interface MatchedBomItem {
 }
 
 export const BomToolPage: React.FC = () => {
-  const { products, addToCart, showToast, calculateAppliedPrice } = useApp();
+  const { addToCart, showToast, calculateAppliedPrice } = useApp();
+  const { products } = useProductCatalog();
   const navigate = useNavigate();
 
   const [rawInput, setRawInput] = useState(`Raspberry Pi 5 x 2
