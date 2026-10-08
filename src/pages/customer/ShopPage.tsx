@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 
 const PRODUCTS_PER_PAGE = 24;
-const SEARCH_RESULTS_PER_PAGE = 100;
 
 const parsePriceParam = (value: string | null): number | null => {
   if (value === null || value === '') {
@@ -188,25 +187,13 @@ export const ShopPage: React.FC = () => {
   }, [products, searchQuery, selectedCategory]);
 
   const filteredProducts = useMemo(() => {
-    let candidateList: { product: Product; searchScore: number }[] = [];
+    let filtered = searchEngineResult
+      ? searchEngineResult.results.map((hit) => hit.product)
+      : products.filter((product) =>
+          selectedCategory === 'All' || product.category === selectedCategory
+        );
 
-    if (searchEngineResult) {
-      candidateList = searchEngineResult.results.map((hit) => ({
-        product: hit.product,
-        searchScore: hit.score,
-      }));
-    } else {
-      candidateList = products
-        .filter((product) => {
-          if (selectedCategory !== 'All' && product.category !== selectedCategory) {
-            return false;
-          }
-          return true;
-        })
-        .map((p) => ({ product: p, searchScore: 0 }));
-    }
-
-    const filtered = candidateList.filter(({ product }) => {
+    filtered = filtered.filter((product) => {
       if (inStockOnly && (!product.inStock || product.stockCount <= 0)) {
         return false;
       }
@@ -225,19 +212,17 @@ export const ShopPage: React.FC = () => {
       return true;
     });
 
-    filtered.sort((a, b) => {
-      if (sortBy === 'price-low') return a.product.price - b.product.price;
-      if (sortBy === 'price-high') return b.product.price - a.product.price;
-      if (sortBy === 'rating') return b.product.rating - a.product.rating;
-      if (sortBy === 'newest') return (b.product.isNew ? 1 : 0) - (a.product.isNew ? 1 : 0);
-      
-      if (searchEngineResult) {
-        return b.searchScore - a.searchScore;
-      }
-      return 0;
-    });
+    if (sortBy !== 'featured') {
+      filtered.sort((a, b) => {
+        if (sortBy === 'price-low') return a.price - b.price;
+        if (sortBy === 'price-high') return b.price - a.price;
+        if (sortBy === 'rating') return b.rating - a.rating;
+        if (sortBy === 'newest') return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
+        return 0;
+      });
+    }
 
-    return filtered.map((item) => item.product);
+    return filtered;
   }, [
     products,
     searchEngineResult,
@@ -250,13 +235,12 @@ export const ShopPage: React.FC = () => {
     sortBy,
   ]);
 
-  const productsPerPage = searchQuery.trim() ? SEARCH_RESULTS_PER_PAGE : PRODUCTS_PER_PAGE;
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage));
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
   const activePage = Math.min(currentPage, totalPages);
   const firstVisibleProduct = filteredProducts.length === 0
     ? 0
-    : (activePage - 1) * productsPerPage + 1;
-  const lastVisibleProduct = Math.min(activePage * productsPerPage, filteredProducts.length);
+    : (activePage - 1) * PRODUCTS_PER_PAGE + 1;
+  const lastVisibleProduct = Math.min(activePage * PRODUCTS_PER_PAGE, filteredProducts.length);
   const visibleProducts = filteredProducts.slice(firstVisibleProduct - 1, lastVisibleProduct);
 
   useEffect(() => {
@@ -696,7 +680,7 @@ export const ShopPage: React.FC = () => {
             </div>
           )}
 
-          {!isProductsLoading && filteredProducts.length > productsPerPage && (
+          {!isProductsLoading && filteredProducts.length > PRODUCTS_PER_PAGE && (
             <nav aria-label="Product result pages" className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
               <p className="text-xs font-medium text-slate-500">
                 Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length}

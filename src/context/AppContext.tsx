@@ -387,10 +387,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const normalizedProducts = remoteProducts.map(normalizeProduct);
         const queuedProducts = readQueuedProductWrites();
         const cachedProducts = fromCache ? productsRef.current : [];
-        const mergedProducts = [...queuedProducts, ...normalizedProducts, ...cachedProducts];
         const deduped = new Map<string, Product>();
-        mergedProducts.forEach((product) => deduped.set(product.id, normalizeProduct(product)));
-        const nextProducts = Array.from(deduped.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        queuedProducts.forEach((product) => deduped.set(product.id, product));
+        normalizedProducts.forEach((product) => deduped.set(product.id, product));
+        cachedProducts.forEach((product) => deduped.set(product.id, product));
+        const nextProducts = Array.from(deduped.values());
+        if (nextProducts.length > normalizedProducts.length) {
+          nextProducts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        }
 
         setProducts(nextProducts);
         productsRef.current = nextProducts;
