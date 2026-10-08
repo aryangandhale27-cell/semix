@@ -1,12 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { useProductCatalog } from '../../context/ProductContext';
 import { ProductCard } from '../../components/common/ProductCard';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { Product } from '../../types';
 import { searchProducts } from '../../services/searchEngine';
-import { fetchProductCountFromFirestore, searchProductsInFirestore } from '../../services/firebaseService';
 import { 
   Filter, 
   SlidersHorizontal, 
@@ -34,25 +32,7 @@ const parsePriceParam = (value: string | null): number | null => {
 };
 
 export const ShopPage: React.FC = () => {
-  const {
-    categories,
-    searchQuery,
-    setSearchQuery,
-  } = useApp();
-  const {
-    products,
-    isProductsLoading,
-    isLoadingMoreProducts,
-    hasMoreProducts,
-    productLoadError,
-    productQueryCategory,
-    isProductPageInitialized,
-    isFullCatalogLoading,
-    isFullCatalogLoaded,
-    fullCatalogLoadError,
-    loadMoreProducts,
-    loadAllProducts,
-  } = useProductCatalog();
+  const { products, categories, searchQuery, setSearchQuery, isProductsLoading } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Filters state
@@ -72,86 +52,6 @@ export const ShopPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
-  const [remoteSearchProducts, setRemoteSearchProducts] = useState<Product[]>([]);
-  const [isRemoteSearchLoading, setIsRemoteSearchLoading] = useState(false);
-  const [remoteSearchError, setRemoteSearchError] = useState<string | null>(null);
-  const [searchRetryCount, setSearchRetryCount] = useState(0);
-  const [catalogTotalCount, setCatalogTotalCount] = useState<number | null>(null);
-  const [catalogCountError, setCatalogCountError] = useState(false);
-
-  useEffect(() => {
-    if (!isFullCatalogLoaded) {
-      void loadAllProducts().catch((error) => {
-        console.error('[Shop] Full catalog loading failed:', error);
-      });
-    }
-  }, [isFullCatalogLoaded, loadAllProducts]);
-
-  useEffect(() => {
-    let isCurrentRequest = true;
-    const category = selectedCategory === 'All' ? undefined : selectedCategory;
-    setCatalogTotalCount(null);
-    setCatalogCountError(false);
-
-    void fetchProductCountFromFirestore(category)
-      .then((count) => {
-        if (isCurrentRequest) setCatalogTotalCount(count);
-      })
-      .catch((error) => {
-        console.error('[Shop] Catalog count request failed:', error);
-        if (isCurrentRequest) setCatalogCountError(true);
-      });
-
-    return () => {
-      isCurrentRequest = false;
-    };
-  }, [selectedCategory]);
-
-  useEffect(() => {
-    const category = selectedCategory === 'All' ? undefined : selectedCategory;
-    if (isProductsLoading || (isProductPageInitialized && category === productQueryCategory)) return;
-    setCurrentPage(1);
-    void loadMoreProducts(category);
-  }, [
-    selectedCategory,
-    productQueryCategory,
-    isProductPageInitialized,
-    isProductsLoading,
-    loadMoreProducts,
-  ]);
-
-  useEffect(() => {
-    const term = searchQuery.trim();
-    if (term.length < 2) {
-      setRemoteSearchProducts([]);
-      setRemoteSearchError(null);
-      setIsRemoteSearchLoading(false);
-      return;
-    }
-
-    let isCurrentRequest = true;
-    setRemoteSearchProducts([]);
-    setIsRemoteSearchLoading(true);
-    setRemoteSearchError(null);
-    void searchProductsInFirestore(term, 24)
-      .then((results) => {
-        if (isCurrentRequest) setRemoteSearchProducts(results);
-      })
-      .catch((error) => {
-        console.error('[Shop] Product search failed:', error);
-        if (isCurrentRequest) {
-          setRemoteSearchProducts([]);
-          setRemoteSearchError('Search is temporarily unavailable. Please try again.');
-        }
-      })
-      .finally(() => {
-        if (isCurrentRequest) setIsRemoteSearchLoading(false);
-      });
-
-    return () => {
-      isCurrentRequest = false;
-    };
-  }, [searchQuery, searchRetryCount]);
 
   // Sync URL search params
   useEffect(() => {
@@ -280,14 +180,11 @@ export const ShopPage: React.FC = () => {
 
   const searchEngineResult = useMemo(() => {
     if (!searchQuery.trim()) return null;
-    const searchableProducts = Array.from(new Map(
-      [...products, ...remoteSearchProducts].map((product) => [product.id, product])
-    ).values());
-    return searchProducts(searchableProducts, searchQuery, {
+    return searchProducts(products, searchQuery, {
       category: selectedCategory !== 'All' ? selectedCategory : undefined,
       limit: undefined,
     });
-  }, [products, remoteSearchProducts, searchQuery, selectedCategory]);
+  }, [products, searchQuery, selectedCategory]);
 
   const filteredProducts = useMemo(() => {
     let candidateList: { product: Product; searchScore: number }[] = [];
@@ -401,35 +298,8 @@ export const ShopPage: React.FC = () => {
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length}{' '}
-            {searchQuery.trim().length >= 2
-              ? (isRemoteSearchLoading ? ' · Searching product names...' : ' · Name-prefix results')
-              : (isProductsLoading
-                ? 'loaded products · Loading first page...'
-                : catalogTotalCount !== null
-                  ? `loaded products · ${catalogTotalCount.toLocaleString()} products in ${selectedCategory === 'All' ? 'the Firestore catalog' : 'this category'}${hasMoreProducts ? ' · more available below' : ''}`
-                  : catalogCountError
-                    ? 'loaded products · catalog total unavailable'
-                    : 'loaded products · checking catalog total...')}
+            {isProductsLoading ? 'loaded products · Syncing full catalog...' : 'verified electronic parts & compute modules'}
           </p>
-          {isFullCatalogLoading && (
-            <p role="status" className="mt-1 text-xs font-semibold text-[#561269]">
-              Loading all products from Firestore. The catalog will be fully searchable when loading finishes.
-            </p>
-          )}
-          {fullCatalogLoadError && (
-            <p role="alert" className="mt-1 text-xs font-semibold text-rose-700">
-              {fullCatalogLoadError}{' '}
-              <button
-                type="button"
-                onClick={() => void loadAllProducts().catch((error) => {
-                  console.error('[Shop] Full catalog retry failed:', error);
-                })}
-                className="underline"
-              >
-                Retry
-              </button>
-            </p>
-          )}
         </div>
 
         <div className="flex items-center gap-3 self-end md:self-auto">
@@ -729,7 +599,7 @@ export const ShopPage: React.FC = () => {
           )}
 
           {/* SKELETON LOADER WHEN FETCHING FROM FIREBASE */}
-          {(isProductsLoading || isRemoteSearchLoading) && filteredProducts.length === 0 ? (
+          {isProductsLoading && filteredProducts.length === 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-4">
@@ -853,52 +723,6 @@ export const ShopPage: React.FC = () => {
                 </button>
               </div>
             </nav>
-          )}
-
-          {productLoadError && !searchQuery.trim() && (
-            <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-center">
-              <p className="text-sm font-semibold text-rose-800">{productLoadError}</p>
-              <button
-                type="button"
-                onClick={() => void loadMoreProducts(selectedCategory === 'All' ? undefined : selectedCategory)}
-                disabled={isLoadingMoreProducts}
-                className="mt-2 text-sm font-bold text-[#561269] underline disabled:opacity-50"
-              >
-                Retry loading products
-              </button>
-            </div>
-          )}
-
-          {remoteSearchError && searchQuery.trim().length >= 2 && (
-            <div role="status" className="mt-4 flex items-center justify-center gap-3 text-sm text-rose-700">
-              <span>{remoteSearchError}</span>
-              <button
-                type="button"
-                onClick={() => setSearchRetryCount((count) => count + 1)}
-                className="font-bold underline"
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {hasMoreProducts && !searchQuery.trim() && (
-            <div className="mt-6 flex flex-col items-center gap-2 border-t border-slate-200 pt-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentPage(totalPages + 1);
-                  void loadMoreProducts(selectedCategory === 'All' ? undefined : selectedCategory);
-                }}
-                disabled={isLoadingMoreProducts || isProductsLoading}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#561269] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#460e56] disabled:cursor-wait disabled:opacity-60"
-              >
-                {isLoadingMoreProducts ? 'Loading components…' : 'Load next 24 components'}
-              </button>
-              <p className="text-center text-xs text-slate-500">
-                More products load only when requested.
-              </p>
-            </div>
           )}
         </main>
       </div>

@@ -11,14 +11,9 @@ import {
   where,
   orderBy, 
   limit,
-  startAfter,
-  startAt,
-  endAt,
-  getCountFromServer,
   onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
-import type { QueryConstraint, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   Product,
@@ -93,199 +88,41 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
   }
 }
 
-export async function fetchProductByIdFromFirestore(productId: string): Promise<Product | null> {
-  try {
-    if (!productId) return null;
-    const snapshot = await getDoc(doc(db, 'products', productId));
-    if (!snapshot.exists()) return null;
-    return { ...snapshot.data(), id: snapshot.id } as Product;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, `products/${productId}`);
-  }
-}
-
 export async function fetchInitialProductsFromFirestore(options: {
   category?: string;
   productId?: string;
-  limitCount?: number;
 } = {}): Promise<Product[]> {
   try {
     if (options.productId) {
-      const single = await fetchProductByIdFromFirestore(options.productId);
-      return single ? [single] : [];
+      const snapshot = await getDoc(doc(db, 'products', options.productId));
+      return snapshot.exists()
+        ? [{ ...snapshot.data(), id: snapshot.id } as Product]
+        : [];
     }
 
     const productsRef = collection(db, 'products');
-    const batchLimit = options.limitCount || 24;
-
     const initialQuery = options.category
-      ? query(productsRef, where('category', '==', options.category), limit(batchLimit))
-      : query(productsRef, orderBy('createdAt', 'desc'), limit(batchLimit));
-
+      ? query(productsRef, where('category', '==', options.category), limit(24))
+      : query(productsRef, orderBy('createdAt', 'desc'), limit(24));
     const snapshot = await getDocs(initialQuery);
     const products: Product[] = [];
     snapshot.forEach((productDoc) => {
       products.push({ ...productDoc.data(), id: productDoc.id } as Product);
     });
-
     return products.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, 'products');
   }
 }
 
-export async function fetchProductCountFromFirestore(category?: string): Promise<number> {
-  try {
-    const productsRef = collection(db, 'products');
-    const q = category && category !== 'All'
-      ? query(productsRef, where('category', '==', category))
-      : productsRef;
-    const countSnapshot = await getCountFromServer(q);
-    return countSnapshot.data().count;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, 'products');
-  }
-}
-
-export interface PaginatedProductsResult {
-  products: Product[];
-  lastDoc: QueryDocumentSnapshot | null;
-  hasMore: boolean;
-  totalCount: number;
-}
-
-export async function fetchPaginatedProductsFromFirestore(options: {
-  category?: string;
-  pageSize?: number;
-  startAfterDoc?: QueryDocumentSnapshot | null;
-  sortBy?: string;
-  inStockOnly?: boolean;
-}): Promise<PaginatedProductsResult> {
-  try {
-    const productsRef = collection(db, 'products');
-    const pageSize = options.pageSize || 24;
-    const category = options.category && options.category !== 'All' ? options.category : undefined;
-
-    // Build constraints
-    const constraints: QueryConstraint[] = [];
-    if (category) {
-      constraints.push(where('category', '==', category));
-    }
-    if (options.inStockOnly) {
-      constraints.push(where('inStock', '==', true));
-    }
-
-    // Sort constraints
-    if (!category && !options.inStockOnly) {
-      if (options.sortBy === 'newest') {
-        constraints.push(orderBy('createdAt', 'desc'));
-      } else if (options.sortBy === 'price-low') {
-        constraints.push(orderBy('price', 'asc'));
-      } else if (options.sortBy === 'price-high') {
-        constraints.push(orderBy('price', 'desc'));
-      }
-    }
-
-    if (options.startAfterDoc) {
-      constraints.push(startAfter(options.startAfterDoc));
-    }
-
-    // Request 1 extra item to accurately detect hasMore
-    constraints.push(limit(pageSize + 1));
-
-    const q = query(productsRef, ...constraints);
-    const snapshot = await getDocs(q);
-
-    const docs = snapshot.docs;
-    const hasMore = docs.length > pageSize;
-    const resultDocs = hasMore ? docs.slice(0, pageSize) : docs;
-    const lastDoc = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1] : null;
-
-    const products: Product[] = resultDocs.map((docSnap) => ({
-      ...docSnap.data(),
-      id: docSnap.id,
-    } as Product));
-
-    return {
-      products,
-      lastDoc,
-      hasMore,
-      totalCount: 0,
-    };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, 'products');
-  }
-}
-
-const PRODUCT_SEARCH_CACHE_TTL_MS = 5_000;
-const productSearchCache = new Map<string, { expiresAt: number; request: Promise<Product[]> }>();
-
-export function searchProductsInFirestore(term: string, limitCount = 10): Promise<Product[]> {
-  const cleanTerm = term.trim();
-  if (!cleanTerm || cleanTerm.length < 2) return Promise.resolve([]);
-
-  const cacheKey = `${cleanTerm.toLocaleLowerCase()}|${limitCount}`;
-  const cached = productSearchCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.request;
-
-  const request = (async () => {
-    try {
-      const productsRef = collection(db, 'products');
-      const titleCase = cleanTerm.charAt(0).toUpperCase() + cleanTerm.slice(1);
-      const lowerCase = cleanTerm.toLowerCase();
-      const upperCase = cleanTerm.toUpperCase();
-      const variations = Array.from(new Set([titleCase, cleanTerm, lowerCase, upperCase]));
-      const perQueryLimit = Math.max(1, Math.ceil(limitCount / variations.length));
-
-      const queries = variations.map((prefix) =>
-        query(
-          productsRef,
-          orderBy('name'),
-          startAt(prefix),
-          endAt(prefix + '\uf8ff'),
-          limit(perQueryLimit)
-        )
-      );
-
-      const snapshots = await Promise.all(queries.map((q) => getDocs(q)));
-      const productMap = new Map<string, Product>();
-
-      snapshots.forEach((snap) => {
-        snap.forEach((docSnap) => {
-          productMap.set(docSnap.id, { ...docSnap.data(), id: docSnap.id } as Product);
-        });
-      });
-
-      return Array.from(productMap.values()).slice(0, limitCount);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.GET, 'products');
-    }
-  })();
-
-  for (const [key, entry] of productSearchCache) {
-    if (entry.expiresAt <= Date.now()) productSearchCache.delete(key);
-  }
-  if (productSearchCache.size >= 50) {
-    const oldestKey = productSearchCache.keys().next().value;
-    if (oldestKey) productSearchCache.delete(oldestKey);
-  }
-  productSearchCache.set(cacheKey, { expiresAt: Date.now() + PRODUCT_SEARCH_CACHE_TTL_MS, request });
-  void request.catch(() => {
-    if (productSearchCache.get(cacheKey)?.request === request) {
-      productSearchCache.delete(cacheKey);
-    }
-  });
-  return request;
-}
-
-export async function fetchProductsFromFirestore(limitCount = 50): Promise<Product[]> {
+export async function fetchProductsFromFirestore(): Promise<Product[]> {
   const path = 'products';
   try {
-    const q = query(collection(db, path), orderBy('createdAt', 'desc'), limit(limitCount));
+    const q = query(collection(db, path), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     const items: Product[] = [];
     snapshot.forEach((docSnap) => {
-      items.push({ ...docSnap.data(), id: docSnap.id } as Product);
+      items.push(docSnap.data() as Product);
     });
     return items;
   } catch (error) {
@@ -301,11 +138,9 @@ export interface ProductSnapshotChange {
 export function subscribeToProducts(
   onData: (products: Product[], fromCache: boolean) => void,
   onError?: (err: any) => void,
-  onChanges?: (changes: ProductSnapshotChange[], fromCache: boolean) => void,
-  limitCount = 24
+  onChanges?: (changes: ProductSnapshotChange[], fromCache: boolean) => void
 ): Unsubscribe {
-  // CRITICAL: Bound query to prevent streaming 11,000+ documents on startup
-  const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(limitCount));
+  const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
   let hasInitialSnapshot = false;
   let hasInitialServerSnapshot = false;
 
@@ -315,7 +150,7 @@ export function subscribeToProducts(
     (snapshot) => {
       if (!hasInitialSnapshot) {
         const items: Product[] = [];
-        snapshot.forEach((docSnap) => items.push({ ...docSnap.data(), id: docSnap.id } as Product));
+        snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
         hasInitialSnapshot = true;
         hasInitialServerSnapshot = !snapshot.metadata.fromCache;
         onData(items, snapshot.metadata.fromCache);
@@ -324,7 +159,7 @@ export function subscribeToProducts(
 
       if (!snapshot.metadata.fromCache && !hasInitialServerSnapshot) {
         const items: Product[] = [];
-        snapshot.forEach((docSnap) => items.push({ ...docSnap.data(), id: docSnap.id } as Product));
+        snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
         hasInitialServerSnapshot = true;
         onData(items, false);
         return;

@@ -2,11 +2,9 @@ import React, { Suspense, lazy, useState, useEffect, useMemo, useRef } from 'rea
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { useProductCatalog } from '../../context/ProductContext';
 import { useAuth } from '../../context/AuthContext';
 import { Product } from '../../types';
 import { ProductCard } from '../../components/common/ProductCard';
-import { fetchProductByIdFromFirestore } from '../../services/firebaseService';
 import { 
   ShoppingCart, 
   Heart, 
@@ -42,47 +40,14 @@ const ProductFormModal = lazy(() => import('../../components/team/ProductFormMod
 
 export const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
-  const { addToCart, toggleWishlist, isInWishlist, addToCompare, isComparing, calculateAppliedPrice, updateProduct, deleteProduct } = useApp();
-  const { products, isProductsLoading } = useProductCatalog();
+  const { products, isProductsLoading, addToCart, toggleWishlist, isInWishlist, addToCompare, isComparing, calculateAppliedPrice, updateProduct, deleteProduct } = useApp();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const contextProduct = useMemo(
+  const product = useMemo(
     () => products.find((p) => p.id === productId),
     [products, productId]
   );
-  const [fetchedProduct, setFetchedProduct] = useState<Product | null>(null);
-  const [isProductLookupLoading, setIsProductLookupLoading] = useState(false);
-  const [productLookupError, setProductLookupError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!productId || contextProduct || isProductsLoading) {
-      setFetchedProduct(null);
-      return;
-    }
-
-    let isCurrentRequest = true;
-    setFetchedProduct(null);
-    setIsProductLookupLoading(true);
-    setProductLookupError(null);
-    void fetchProductByIdFromFirestore(productId)
-      .then((result) => {
-        if (isCurrentRequest) setFetchedProduct(result);
-      })
-      .catch((error) => {
-        console.error('[ProductDetail] Product lookup failed:', error);
-        if (isCurrentRequest) setProductLookupError('We could not load this product. Please try again.');
-      })
-      .finally(() => {
-        if (isCurrentRequest) setIsProductLookupLoading(false);
-      });
-
-    return () => {
-      isCurrentRequest = false;
-    };
-  }, [productId, contextProduct, isProductsLoading]);
-
-  const product = contextProduct ?? fetchedProduct;
   const images = useMemo(() => {
     if (!product) return [];
     const sourceImages = product.images?.length ? product.images : [product.image];
@@ -196,7 +161,7 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   if (!product) {
-    if (isProductsLoading || isProductLookupLoading) {
+    if (isProductsLoading) {
       return (
         <div className="max-w-7xl mx-auto px-4 py-16">
           <div className="h-8 w-2/3 max-w-xl bg-slate-200 rounded animate-pulse mb-6" />
@@ -210,9 +175,7 @@ export const ProductDetailPage: React.FC = () => {
 
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-xl font-bold text-slate-800">
-          {productLookupError || 'Component not found'}
-        </h2>
+        <h2 className="text-xl font-bold text-slate-800">Component not found</h2>
         <Link to="/shop" className="text-[#561269] font-bold underline mt-2 inline-block">
           Return to Catalog
         </Link>

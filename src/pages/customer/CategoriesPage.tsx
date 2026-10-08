@@ -81,11 +81,11 @@ export const CategoriesPage: React.FC = () => {
         </div>
       ) : (
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2.5 px-3 sm:grid-cols-2 sm:gap-4 sm:px-6 md:grid-cols-3 lg:grid-cols-4 lg:gap-5 lg:px-8">
-          {visibleCategories.map((category, index) => (
+          {visibleCategories.map((category) => (
             <CategoryCard
               key={category.id}
               category={category}
-              priority={index < 2}
+              priority
             />
           ))}
         </div>

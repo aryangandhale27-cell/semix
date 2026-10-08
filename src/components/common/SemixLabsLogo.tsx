@@ -1,5 +1,5 @@
 import React from 'react';
-import logoImage from '../../assets/images/semix-logo-optimized.png';
+import logoImage from '../../assets/images/logo semix.png';
 
 interface SemixLabsLogoProps {
   variant?: 'dark' | 'light' | 'icon' | 'full';

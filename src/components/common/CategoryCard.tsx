@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Cpu } from 'lucide-react';
 import { Category } from '../../types';
-import { useNearViewport } from '../../hooks/useNearViewport';
 
 interface CategoryCardProps {
   category: Category;
@@ -32,7 +31,6 @@ const prefetchShopPage = () => {
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className = '', priority = false }) => {
   const [imageError, setImageError] = useState(false);
-  const { ref: imageContainerRef, isNearViewport } = useNearViewport<HTMLDivElement>();
 
   const displayImage = category.image;
   const shouldPrioritizeImage = priority;
@@ -48,8 +46,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, className 
         className="group flex h-full min-h-[220px] flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-slate-950 shadow-2xs transition-shadow duration-300 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-900/15 sm:min-h-[270px] sm:rounded-2xl"
       >
         {/* Full-bleed image treatment keeps the admin-managed image as the visual focus. */}
-        <div ref={imageContainerRef} className="relative min-h-[220px] flex-1 overflow-hidden bg-slate-900 sm:min-h-[270px]">
-          {!imageError && isNearViewport && (
+        <div className="relative min-h-[220px] flex-1 overflow-hidden bg-slate-900 sm:min-h-[270px]">
+          {!imageError && (
             <img
               src={displayImage}
               alt={category.name}

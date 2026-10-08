@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { useProductCatalog } from '../../context/ProductContext';
 import { 
   Layers, 
   Box, 
@@ -19,8 +18,7 @@ import {
 
 export const ServicesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const { showToast, addToCart } = useApp();
-  const { products } = useProductCatalog();
+  const { showToast, addToCart, products } = useApp();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'pcb' | '3d-print' | 'laser-cutting' | 'battery-pack'>('pcb');

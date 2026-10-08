@@ -36,7 +36,6 @@ export const AdminKpiCardsRow: React.FC<AdminKpiCardsRowProps> = ({
     lowStockSkusCount,
     isLowStockWarning,
     isLoading,
-    isProductsLoaded,
     lastUpdated,
   } = kpis;
 
@@ -168,7 +167,7 @@ export const AdminKpiCardsRow: React.FC<AdminKpiCardsRowProps> = ({
               Total Silicon SKUs
             </span>
 
-            {isLoading || !isProductsLoaded ? (
+            {isLoading ? (
               <div className="space-y-2 py-1">
                 <div className="h-7 bg-slate-200 rounded-lg animate-pulse w-16"></div>
                 <div className="h-3 bg-slate-100 rounded-md animate-pulse w-28"></div>
@@ -207,7 +206,7 @@ export const AdminKpiCardsRow: React.FC<AdminKpiCardsRowProps> = ({
               Low Stock Alerts
             </span>
 
-            {isLoading || !isProductsLoaded ? (
+            {isLoading ? (
               <div className="space-y-2 py-1">
                 <div className="h-7 bg-slate-200 rounded-lg animate-pulse w-16"></div>
                 <div className="h-3 bg-slate-100 rounded-md animate-pulse w-28"></div>

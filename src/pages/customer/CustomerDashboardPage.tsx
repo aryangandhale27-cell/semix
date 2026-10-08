@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { useProductCatalog } from '../../context/ProductContext';
 import { useAuth } from '../../context/AuthContext';
 import { StatusTimeline } from '../../components/common/StatusTimeline';
 import { CustomerAddress, Order, EscalationType, EscalationPriority } from '../../types';
@@ -28,8 +27,7 @@ import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
 
 export const CustomerDashboardPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { orders, wishlist, addToCart, toggleWishlist, reportEscalation, showToast, bulkEnquiries } = useApp();
-  const { products } = useProductCatalog();
+  const { orders, wishlist, products, addToCart, toggleWishlist, reportEscalation, showToast, bulkEnquiries } = useApp();
   const { user } = useAuth();
 
   const customerOrders = user

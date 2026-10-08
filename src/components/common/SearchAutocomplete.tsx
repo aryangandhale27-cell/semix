@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { useProductCatalog } from '../../context/ProductContext';
 import { 
   Search, 
   X, 
@@ -16,7 +15,6 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { searchProducts, SearchHit } from '../../services/searchEngine';
-import { searchProductsInFirestore } from '../../services/firebaseService';
 import { recordSearchQuery } from '../../services/searchConfig';
 import { Product } from '../../types';
 
@@ -37,18 +35,13 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   placeholder,
   className = '',
 }) => {
-  const { categories, searchQuery, setSearchQuery } = useApp();
-  const { products } = useProductCatalog();
+  const { products, categories, searchQuery, setSearchQuery, isProductsLoading } = useApp();
   const navigate = useNavigate();
 
   const [inputValue, setInputValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
-  const [remoteProducts, setRemoteProducts] = useState<Product[]>([]);
-  const [isRemoteSearchLoading, setIsRemoteSearchLoading] = useState(false);
-  const [remoteSearchError, setRemoteSearchError] = useState<string | null>(null);
-  const [searchRetryCount, setSearchRetryCount] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,51 +60,16 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     return () => clearTimeout(handler);
   }, [inputValue]);
 
-  useEffect(() => {
-    if (debouncedQuery.length < 2) {
-      setRemoteProducts([]);
-      setRemoteSearchError(null);
-      setIsRemoteSearchLoading(false);
-      return;
-    }
-
-    let isCurrentRequest = true;
-    setRemoteProducts([]);
-    setIsRemoteSearchLoading(true);
-    setRemoteSearchError(null);
-    void searchProductsInFirestore(debouncedQuery, 24)
-      .then((results) => {
-        if (isCurrentRequest) setRemoteProducts(results);
-      })
-      .catch((error) => {
-        console.error('[SearchAutocomplete] Product search failed:', error);
-        if (isCurrentRequest) {
-          setRemoteProducts([]);
-          setRemoteSearchError('Live product search is temporarily unavailable.');
-        }
-      })
-      .finally(() => {
-        if (isCurrentRequest) setIsRemoteSearchLoading(false);
-      });
-
-    return () => {
-      isCurrentRequest = false;
-    };
-  }, [debouncedQuery, searchRetryCount]);
-
-  // Search loaded products immediately, then include bounded Firestore prefix results.
+  // Execute intelligent search on actual catalog products
   const searchResult = useMemo(() => {
     if (!debouncedQuery) {
       return null;
     }
-    const searchableProducts = Array.from(new Map(
-      [...products, ...remoteProducts].map((product) => [product.id, product])
-    ).values());
-    return searchProducts(searchableProducts, debouncedQuery, {
+    return searchProducts(products, debouncedQuery, {
       category: selectedCategory !== 'all' ? selectedCategory : undefined,
       limit: isMobile ? 5 : 8,
     });
-  }, [products, remoteProducts, debouncedQuery, selectedCategory, isMobile]);
+  }, [products, debouncedQuery, selectedCategory, isMobile]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -388,21 +346,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           id="search-autocomplete-dropdown"
           className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150"
         >
-          {isRemoteSearchLoading && (
+          {isProductsLoading && (
             <div className="border-b border-slate-100 bg-slate-50 px-3 sm:px-4 py-2 text-[11px] text-slate-600">
-              Searching product names while suggestions update.
-            </div>
-          )}
-          {remoteSearchError && (
-            <div role="status" className="flex items-center justify-between gap-3 border-b border-rose-100 bg-rose-50 px-3 sm:px-4 py-2 text-[11px] text-rose-700">
-              <span>{remoteSearchError} Showing matches from the products already loaded.</span>
-              <button
-                type="button"
-                onClick={() => setSearchRetryCount((count) => count + 1)}
-                className="shrink-0 font-bold underline"
-              >
-                Retry
-              </button>
+              Loading the full catalog; search suggestions may update.
             </div>
           )}
 
@@ -433,10 +379,10 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           )}
 
           {/* If 0 products found */}
-          {searchResult.results.length === 0 && isRemoteSearchLoading ? (
+          {searchResult.results.length === 0 && isProductsLoading ? (
             <div className="p-6 text-center">
               <div className="w-6 h-6 border-2 border-[#561269]/20 border-t-[#561269] rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs sm:text-sm font-semibold text-slate-800">Searching product names...</p>
+              <p className="text-xs sm:text-sm font-semibold text-slate-800">Searching the full catalog...</p>
             </div>
           ) : searchResult.results.length === 0 ? (
             <div className="p-6 text-center">
@@ -564,7 +510,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                   onClick={() => executeSearch(inputValue)}
                   className="font-semibold text-[#561269] hover:text-[#FF6B00] flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <span>View matching products for &ldquo;{inputValue}&rdquo;</span>
+                  <span>View all {searchResult.total} verified results for &ldquo;{inputValue}&rdquo;</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
                 <span className="text-[11px] text-slate-400 hidden sm:inline">
