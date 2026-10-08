@@ -6,7 +6,7 @@ import { ProductCard } from '../../components/common/ProductCard';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { Product } from '../../types';
 import { searchProducts } from '../../services/searchEngine';
-import { searchProductsInFirestore } from '../../services/firebaseService';
+import { fetchProductCountFromFirestore, searchProductsInFirestore } from '../../services/firebaseService';
 import { 
   Filter, 
   SlidersHorizontal, 
@@ -47,7 +47,11 @@ export const ShopPage: React.FC = () => {
     productLoadError,
     productQueryCategory,
     isProductPageInitialized,
+    isFullCatalogLoading,
+    isFullCatalogLoaded,
+    fullCatalogLoadError,
     loadMoreProducts,
+    loadAllProducts,
   } = useProductCatalog();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -72,6 +76,36 @@ export const ShopPage: React.FC = () => {
   const [isRemoteSearchLoading, setIsRemoteSearchLoading] = useState(false);
   const [remoteSearchError, setRemoteSearchError] = useState<string | null>(null);
   const [searchRetryCount, setSearchRetryCount] = useState(0);
+  const [catalogTotalCount, setCatalogTotalCount] = useState<number | null>(null);
+  const [catalogCountError, setCatalogCountError] = useState(false);
+
+  useEffect(() => {
+    if (!isFullCatalogLoaded) {
+      void loadAllProducts().catch((error) => {
+        console.error('[Shop] Full catalog loading failed:', error);
+      });
+    }
+  }, [isFullCatalogLoaded, loadAllProducts]);
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+    const category = selectedCategory === 'All' ? undefined : selectedCategory;
+    setCatalogTotalCount(null);
+    setCatalogCountError(false);
+
+    void fetchProductCountFromFirestore(category)
+      .then((count) => {
+        if (isCurrentRequest) setCatalogTotalCount(count);
+      })
+      .catch((error) => {
+        console.error('[Shop] Catalog count request failed:', error);
+        if (isCurrentRequest) setCatalogCountError(true);
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [selectedCategory]);
 
   useEffect(() => {
     const category = selectedCategory === 'All' ? undefined : selectedCategory;
@@ -369,8 +403,33 @@ export const ShopPage: React.FC = () => {
             Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length}{' '}
             {searchQuery.trim().length >= 2
               ? (isRemoteSearchLoading ? ' · Searching product names...' : ' · Name-prefix results')
-              : (isProductsLoading ? 'loaded products · Loading first page...' : 'verified electronic parts & compute modules')}
+              : (isProductsLoading
+                ? 'loaded products · Loading first page...'
+                : catalogTotalCount !== null
+                  ? `loaded products · ${catalogTotalCount.toLocaleString()} products in ${selectedCategory === 'All' ? 'the Firestore catalog' : 'this category'}${hasMoreProducts ? ' · more available below' : ''}`
+                  : catalogCountError
+                    ? 'loaded products · catalog total unavailable'
+                    : 'loaded products · checking catalog total...')}
           </p>
+          {isFullCatalogLoading && (
+            <p role="status" className="mt-1 text-xs font-semibold text-[#561269]">
+              Loading all products from Firestore. The catalog will be fully searchable when loading finishes.
+            </p>
+          )}
+          {fullCatalogLoadError && (
+            <p role="alert" className="mt-1 text-xs font-semibold text-rose-700">
+              {fullCatalogLoadError}{' '}
+              <button
+                type="button"
+                onClick={() => void loadAllProducts().catch((error) => {
+                  console.error('[Shop] Full catalog retry failed:', error);
+                })}
+                className="underline"
+              >
+                Retry
+              </button>
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 self-end md:self-auto">

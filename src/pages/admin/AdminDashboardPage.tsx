@@ -66,7 +66,22 @@ export const AdminDashboardPage: React.FC = () => {
     adminNotifications,
     showToast
   } = useApp();
-  const { products, isFirebaseLive } = useProductCatalog();
+  const {
+    products,
+    isFirebaseLive,
+    isFullCatalogLoading,
+    isFullCatalogLoaded,
+    fullCatalogLoadError,
+    loadAllProducts,
+  } = useProductCatalog();
+
+  useEffect(() => {
+    if (!isFullCatalogLoaded) {
+      void loadAllProducts().catch((error) => {
+        console.error('[Admin] Full catalog loading failed:', error);
+      });
+    }
+  }, [isFullCatalogLoaded, loadAllProducts]);
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
@@ -129,12 +144,14 @@ export const AdminDashboardPage: React.FC = () => {
   });
 
   // Real-time Firestore Admin KPIs
-  const firestoreKPIs = useFirestoreAdminKPIs(orders, products);
+  const firestoreKPIs = useFirestoreAdminKPIs(orders, products, isFullCatalogLoaded);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [adminSectionsOpen, setAdminSectionsOpen] = useState(false);
   const sentEmailsList = getLocalSentEmails();
   const productAttribution = useMemo(() => {
     const counts = new Map<string, { name: string; email: string; role: string; count: number }>();
+
+    if (!isFullCatalogLoaded) return [];
 
     products.forEach((product) => {
       const name = product.addedBy || 'Semix Team';
@@ -149,7 +166,7 @@ export const AdminDashboardPage: React.FC = () => {
     return Array.from(counts.values())
       .sort((a, b) => b.count - a.count)
       .map((member, index) => ({ ...member, rank: index + 1 }));
-  }, [products]);
+  }, [products, isFullCatalogLoaded]);
 
   const topProductContributor = productAttribution[0];
 
@@ -347,6 +364,25 @@ export const AdminDashboardPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {(isFullCatalogLoading || fullCatalogLoadError) && (
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {fullCatalogLoadError || 'Loading the full Firestore catalog for accurate inventory metrics and contributor totals…'}
+          </span>
+          {fullCatalogLoadError && (
+            <button
+              type="button"
+              onClick={() => void loadAllProducts().catch((error) => {
+                console.error('[Admin] Full catalog retry failed:', error);
+              })}
+              className="font-bold underline"
+            >
+              Retry catalog load
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Real-time Dynamic Firestore KPI Cards Row */}
       <AdminKpiCardsRow
@@ -691,11 +727,15 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
               <div className="mb-3">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Lifetime Product Adds</p>
-                <h3 className="mt-1 text-lg font-black text-slate-900">{products.length} products attributed</h3>
+                <h3 className="mt-1 text-lg font-black text-slate-900">
+                  {isFullCatalogLoaded ? `${products.length} products attributed` : 'Loading full catalog…'}
+                </h3>
               </div>
               <div className="space-y-2">
-                {productAttribution.length === 0 ? (
+                {isFullCatalogLoaded && productAttribution.length === 0 ? (
                   <p className="text-xs text-slate-500">No product attribution data is available yet.</p>
+                ) : !isFullCatalogLoaded ? (
+                  <p className="text-xs text-slate-500">Contributor totals will appear when the complete catalog is loaded.</p>
                 ) : productAttribution.map((member) => (
                   <div
                     key={`${member.email || member.name}-${member.role}`}

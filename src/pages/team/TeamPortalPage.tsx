@@ -55,7 +55,21 @@ export const TeamPortalPage: React.FC = () => {
     categories,
     showToast 
   } = useApp();
-  const { products } = useProductCatalog();
+  const {
+    products,
+    isFullCatalogLoading,
+    isFullCatalogLoaded,
+    fullCatalogLoadError,
+    loadAllProducts,
+  } = useProductCatalog();
+
+  useEffect(() => {
+    if (!isFullCatalogLoaded) {
+      void loadAllProducts().catch((error) => {
+        console.error('[Team] Full catalog loading failed:', error);
+      });
+    }
+  }, [isFullCatalogLoaded, loadAllProducts]);
 
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -135,6 +149,12 @@ export const TeamPortalPage: React.FC = () => {
   const [resolvingTicketId, setResolvingTicketId] = useState<string | null>(null);
   const [resolutionText, setResolutionText] = useState('');
 
+  useEffect(() => {
+    if (!issueProductId && products.length > 0) {
+      setIssueProductId(products[0].id);
+    }
+  }, [issueProductId, products]);
+
   // ----------------- DERIVED STATS (Today's Overview) -----------------
   const stats = useMemo(() => {
     const totalInventoryItems = products.length;
@@ -146,6 +166,8 @@ export const TeamPortalPage: React.FC = () => {
   }, [products, orders]);
 
   const lifetimeTeamProductCounts = useMemo(() => {
+    if (!isFullCatalogLoaded) return [];
+
     const counts = new Map<string, { name: string; email: string; role: string; count: number }>();
 
     products.forEach((product) => {
@@ -161,15 +183,16 @@ export const TeamPortalPage: React.FC = () => {
     return Array.from(counts.values())
       .sort((a, b) => b.count - a.count)
       .map((member, index) => ({ ...member, rank: index + 1 }));
-  }, [products]);
+  }, [products, isFullCatalogLoaded]);
 
   const myLifetimeProductCount = useMemo(() => {
+    if (!isFullCatalogLoaded) return 0;
     const currentUserEmail = auth.currentUser?.email?.toLowerCase();
     return products.filter((product) => {
       const productEmail = product.addedByEmail?.toLowerCase();
       return productEmail && currentUserEmail && productEmail === currentUserEmail;
     }).length;
-  }, [products]);
+  }, [products, isFullCatalogLoaded]);
 
   const topContributor = lifetimeTeamProductCounts[0];
 
@@ -421,20 +444,43 @@ export const TeamPortalPage: React.FC = () => {
         </div>
       </motion.div>
 
+      {(isFullCatalogLoading || fullCatalogLoadError) && (
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {fullCatalogLoadError || 'Loading the full Firestore catalog for accurate inventory and lifetime contributor totals…'}
+          </span>
+          {fullCatalogLoadError && (
+            <button
+              type="button"
+              onClick={() => void loadAllProducts().catch((error) => {
+                console.error('[Team] Full catalog retry failed:', error);
+              })}
+              className="font-bold underline"
+            >
+              Retry catalog load
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Lifetime Product Adds</p>
-              <h3 className="text-lg font-black text-slate-900 mt-1">{myLifetimeProductCount} items added by you</h3>
+              <h3 className="text-lg font-black text-slate-900 mt-1">
+                {isFullCatalogLoaded ? `${myLifetimeProductCount} items added by you` : 'Loading contributor totals…'}
+              </h3>
             </div>
             <div className="bg-[#561269]/10 text-[#561269] px-2.5 py-1.5 rounded-lg text-xs font-bold">
               {auth.currentUser?.displayName || auth.currentUser?.email || 'Team member'}
             </div>
           </div>
           <div className="space-y-2">
-            {lifetimeTeamProductCounts.length === 0 ? (
+            {isFullCatalogLoaded && lifetimeTeamProductCounts.length === 0 ? (
               <p className="text-xs text-slate-500">No products have been added yet.</p>
+            ) : !isFullCatalogLoaded ? (
+              <p className="text-xs text-slate-500">Lifetime leaderboard will appear after the full catalog loads.</p>
             ) : lifetimeTeamProductCounts.map((member) => (
               <div
                 key={`${member.email || member.name}-${member.role}`}
@@ -488,7 +534,9 @@ export const TeamPortalPage: React.FC = () => {
             <Boxes className="w-4 h-4 text-[#561269]" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-slate-900 font-mono">{stats.totalInventoryItems}</span>
+            <span className="text-2xl font-black text-slate-900 font-mono">
+              {isFullCatalogLoaded ? stats.totalInventoryItems : '…'}
+            </span>
             <span className="text-[10px] font-semibold text-slate-400">SKU Lines</span>
           </div>
         </motion.div>
@@ -503,7 +551,9 @@ export const TeamPortalPage: React.FC = () => {
             <TrendingDown className="w-4 h-4 text-amber-600" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-amber-600 font-mono">{stats.lowStockItems}</span>
+            <span className="text-2xl font-black text-amber-600 font-mono">
+              {isFullCatalogLoaded ? stats.lowStockItems : '…'}
+            </span>
             <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">≤ 20 pcs</span>
           </div>
         </motion.div>

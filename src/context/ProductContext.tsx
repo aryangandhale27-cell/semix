@@ -24,7 +24,11 @@ interface ProductCatalogValue {
   isFirebaseLive: boolean;
   productQueryCategory?: string;
   isProductPageInitialized: boolean;
+  isFullCatalogLoading: boolean;
+  isFullCatalogLoaded: boolean;
+  fullCatalogLoadError: string | null;
   loadMoreProducts: (category?: string) => Promise<void>;
+  loadAllProducts: () => Promise<void>;
 }
 
 interface ProductCommands {
@@ -49,6 +53,9 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isFirebaseLive, setIsFirebaseLive] = useState(true);
   const [productQueryCategory, setProductQueryCategory] = useState<string | undefined>(initialProductCategory);
   const [isProductPageInitialized, setIsProductPageInitialized] = useState(false);
+  const [isFullCatalogLoading, setIsFullCatalogLoading] = useState(false);
+  const [isFullCatalogLoaded, setIsFullCatalogLoaded] = useState(false);
+  const [fullCatalogLoadError, setFullCatalogLoadError] = useState<string | null>(null);
 
   const productsRef = useRef(products);
   const productCursorRef = useRef<QueryDocumentSnapshot | null>(null);
@@ -62,6 +69,8 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
     lastDoc: QueryDocumentSnapshot | null;
     hasMore: boolean;
   }> | null>(null);
+  const fullCatalogLoadedRef = useRef(false);
+  const fullCatalogRequestRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     productsRef.current = products;
@@ -81,6 +90,16 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const loadMoreProducts = useCallback(async (category?: string) => {
     const requestedCategory = category && category !== 'All' ? category : undefined;
+    if (fullCatalogLoadedRef.current) {
+      productQueryCategoryRef.current = requestedCategory;
+      productPageInitializedRef.current = true;
+      hasMoreProductsRef.current = false;
+      setProductQueryCategory(requestedCategory);
+      setIsProductPageInitialized(true);
+      setHasMoreProducts(false);
+      return;
+    }
+
     const isNewCategory = productQueryCategoryRef.current !== requestedCategory;
     if (productPageRequestRef.current) {
       if (isNewCategory) queuedCategoryRequestRef.current = { category: requestedCategory };
@@ -111,9 +130,14 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
       productCursorRef.current = page.lastDoc;
       productQueryCategoryRef.current = requestedCategory;
       productPageInitializedRef.current = true;
-      hasMoreProductsRef.current = page.hasMore;
-      updateProducts(nextProducts);
-      setHasMoreProducts(page.hasMore);
+      if (fullCatalogLoadedRef.current) {
+        hasMoreProductsRef.current = false;
+        setHasMoreProducts(false);
+      } else {
+        hasMoreProductsRef.current = page.hasMore;
+        updateProducts(nextProducts);
+        setHasMoreProducts(page.hasMore);
+      }
       setProductQueryCategory(requestedCategory);
       setIsProductPageInitialized(true);
       setIsFirebaseLive(true);
@@ -130,6 +154,65 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         void loadMoreProducts(queuedRequest.category);
       }
     }
+  }, [updateProducts]);
+
+  const loadAllProducts = useCallback((): Promise<void> => {
+    if (fullCatalogLoadedRef.current) return Promise.resolve();
+    if (fullCatalogRequestRef.current) return fullCatalogRequestRef.current;
+
+    setIsFullCatalogLoading(true);
+    setFullCatalogLoadError(null);
+
+    const request = (async () => {
+      try {
+        const allProducts = new Map<string, Product>();
+        let cursor: QueryDocumentSnapshot | null = null;
+        let hasMore = true;
+
+        while (hasMore) {
+          const page = await fetchPaginatedProductsFromFirestore({
+            pageSize: 500,
+            startAfterDoc: cursor,
+          });
+          page.products.forEach((product) => allProducts.set(product.id, normalizeProduct(product)));
+          cursor = page.lastDoc;
+          hasMore = page.hasMore;
+
+          if (hasMore && !cursor) {
+            throw new Error('Product catalog pagination returned more data without a cursor.');
+          }
+        }
+
+        updateProducts((currentProducts) => {
+          const mergedProducts = new Map(allProducts);
+          currentProducts.forEach((product) => {
+            if (!mergedProducts.has(product.id)) {
+              mergedProducts.set(product.id, product);
+            }
+          });
+          readQueuedProductWrites().forEach((product) => {
+            if (!mergedProducts.has(product.id)) {
+              mergedProducts.set(product.id, normalizeProduct(product));
+            }
+          });
+          return Array.from(mergedProducts.values());
+        });
+        fullCatalogLoadedRef.current = true;
+        setIsFullCatalogLoaded(true);
+        hasMoreProductsRef.current = false;
+        setHasMoreProducts(false);
+      } catch (error) {
+        console.error('[Firestore] Could not load the full product catalog:', error);
+        setFullCatalogLoadError('The full product catalog could not be loaded. Please retry.');
+        throw error;
+      } finally {
+        fullCatalogRequestRef.current = null;
+        setIsFullCatalogLoading(false);
+      }
+    })();
+
+    fullCatalogRequestRef.current = request;
+    return request;
   }, [updateProducts]);
 
   useEffect(() => {
@@ -168,7 +251,9 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         productPageInitializedRef.current = !routeProductId;
         hasMoreProductsRef.current = page.hasMore;
         productQueryCategoryRef.current = initialProductCategory;
-        updateProducts(nextProducts);
+        if (!fullCatalogLoadedRef.current) {
+          updateProducts(nextProducts);
+        }
         setHasMoreProducts(page.hasMore);
         setIsProductPageInitialized(!routeProductId);
         setIsFirebaseLive(true);
@@ -197,7 +282,11 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
     isFirebaseLive,
     productQueryCategory,
     isProductPageInitialized,
+    isFullCatalogLoading,
+    isFullCatalogLoaded,
+    fullCatalogLoadError,
     loadMoreProducts,
+    loadAllProducts,
   }), [
     products,
     isProductsLoading,
@@ -207,7 +296,11 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
     isFirebaseLive,
     productQueryCategory,
     isProductPageInitialized,
+    isFullCatalogLoading,
+    isFullCatalogLoaded,
+    fullCatalogLoadError,
     loadMoreProducts,
+    loadAllProducts,
   ]);
   const commandValue = useMemo(() => ({
     getProduct,

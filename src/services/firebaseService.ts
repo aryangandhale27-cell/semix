@@ -143,8 +143,7 @@ export async function fetchProductCountFromFirestore(category?: string): Promise
     const countSnapshot = await getCountFromServer(q);
     return countSnapshot.data().count;
   } catch (error) {
-    console.warn('[Firestore] fetchProductCount notice:', error);
-    return 0;
+    handleFirestoreError(error, OperationType.GET, 'products');
   }
 }
 
@@ -184,8 +183,6 @@ export async function fetchPaginatedProductsFromFirestore(options: {
         constraints.push(orderBy('price', 'asc'));
       } else if (options.sortBy === 'price-high') {
         constraints.push(orderBy('price', 'desc'));
-      } else {
-        constraints.push(orderBy('createdAt', 'desc'));
       }
     }
 

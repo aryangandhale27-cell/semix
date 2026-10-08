@@ -62,7 +62,11 @@ const DEFAULT_KPIS: FirestoreAdminKPIs = {
  * Hook to aggregate real-time admin KPIs directly from Cloud Firestore collections
  * Queries 'orders' and 'products' collections with real-time listeners.
  */
-export function useFirestoreAdminKPIs(orders: Order[], products: Product[]): FirestoreAdminKPIs {
+export function useFirestoreAdminKPIs(
+  orders: Order[],
+  products: Product[],
+  isFullCatalogLoaded: boolean
+): FirestoreAdminKPIs {
   const [kpis, setKpis] = useState<FirestoreAdminKPIs>(DEFAULT_KPIS);
   // Compute metrics from the existing AppContext snapshots instead of opening duplicate listeners.
   useEffect(() => {
@@ -169,7 +173,7 @@ export function useFirestoreAdminKPIs(orders: Order[], products: Product[]): Fir
     const isLowStockWarning = lowStockSkusCount > 0;
 
     const isOrdersLoaded = true;
-    const isProductsLoaded = true;
+    const isProductsLoaded = isFullCatalogLoaded;
     const isLoading = false;
 
     setKpis({
@@ -194,7 +198,7 @@ export function useFirestoreAdminKPIs(orders: Order[], products: Product[]): Fir
       error: null,
       lastUpdated: new Date(),
     });
-  }, [orders, products]);
+  }, [orders, products, isFullCatalogLoaded]);
 
   return kpis;
 }
