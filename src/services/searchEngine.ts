@@ -31,7 +31,7 @@ export interface SearchOptions {
   inStockOnly?: boolean;
   minPrice?: number;
   maxPrice?: number;
-  limit?: number;
+  limit?: number | null;
   config?: Partial<SearchConfig>;
 }
 
@@ -557,8 +557,8 @@ export function searchProducts(
   hits.sort((a, b) => b.score - a.score);
 
   // Apply limit if specified
-  const limit = options.limit || config.autocompleteLimit;
-  const finalResults = options.limit !== undefined || limit ? hits.slice(0, limit) : hits;
+  const resultLimit = options.limit === undefined ? config.autocompleteLimit : options.limit;
+  const finalResults = resultLimit === null ? hits : hits.slice(0, resultLimit);
 
   return {
     query: rawClean,

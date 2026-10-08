@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 const PRODUCTS_PER_PAGE = 24;
+const SEARCH_RESULTS_PER_PAGE = 100;
 
 const parsePriceParam = (value: string | null): number | null => {
   if (value === null || value === '') {
@@ -182,7 +183,7 @@ export const ShopPage: React.FC = () => {
     if (!searchQuery.trim()) return null;
     return searchProducts(products, searchQuery, {
       category: selectedCategory !== 'All' ? selectedCategory : undefined,
-      limit: undefined,
+      limit: null,
     });
   }, [products, searchQuery, selectedCategory]);
 
@@ -249,12 +250,13 @@ export const ShopPage: React.FC = () => {
     sortBy,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+  const productsPerPage = searchQuery.trim() ? SEARCH_RESULTS_PER_PAGE : PRODUCTS_PER_PAGE;
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage));
   const activePage = Math.min(currentPage, totalPages);
   const firstVisibleProduct = filteredProducts.length === 0
     ? 0
-    : (activePage - 1) * PRODUCTS_PER_PAGE + 1;
-  const lastVisibleProduct = Math.min(activePage * PRODUCTS_PER_PAGE, filteredProducts.length);
+    : (activePage - 1) * productsPerPage + 1;
+  const lastVisibleProduct = Math.min(activePage * productsPerPage, filteredProducts.length);
   const visibleProducts = filteredProducts.slice(firstVisibleProduct - 1, lastVisibleProduct);
 
   useEffect(() => {
@@ -694,7 +696,7 @@ export const ShopPage: React.FC = () => {
             </div>
           )}
 
-          {!isProductsLoading && filteredProducts.length > PRODUCTS_PER_PAGE && (
+          {!isProductsLoading && filteredProducts.length > productsPerPage && (
             <nav aria-label="Product result pages" className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
               <p className="text-xs font-medium text-slate-500">
                 Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length}
