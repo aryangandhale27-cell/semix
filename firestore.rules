@@ -77,6 +77,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /payment_collections/{paymentId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
     // User Profiles: Public registration create, owner & staff/admin read/update
     match /users/{userId} {
       allow read: if isOwner(userId) || isStaff();
