@@ -306,7 +306,11 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#561269] via-[#380847] to-slate-900 rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg border border-[#561269]/30">
         <div className="flex items-center gap-4">
-          <SemixLabsLogo variant="icon" size="lg" className="h-12 w-12 bg-white/10 p-1.5 rounded-xl border border-white/10 hidden sm:block shrink-0" />
+          <SemixLabsLogo
+            variant="full"
+            size="md"
+            className="!h-12 !w-40 !min-w-0 shrink-0 rounded-xl border border-white/20 bg-white px-2 py-1 object-cover"
+          />
           <div>
             <div className="inline-flex items-center gap-1.5 bg-[#FF6B00] text-white text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full mb-1.5">
               <Sliders className="w-3.5 h-3.5" />
