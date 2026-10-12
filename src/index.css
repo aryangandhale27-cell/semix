@@ -499,8 +499,8 @@
   #main-header > div > div:first-child > a img {
     width: 7rem !important;
     min-width: 0 !important;
-    height: auto !important;
-    object-fit: contain;
+    height: 2.5rem !important;
+    object-fit: cover;
   }
 
   #main-header > div > div:first-child {
@@ -557,8 +557,8 @@
   #main-header > div > div:first-child > a img {
     width: 13.75rem;
     min-width: 13.75rem;
-    height: auto;
-    object-fit: contain;
+    height: 3.5rem;
+    object-fit: cover;
   }
 
   #main-header > div > div:first-child > div.flex-1 {

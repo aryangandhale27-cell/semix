@@ -40,7 +40,7 @@ const ProductFormModal = lazy(() => import('../../components/team/ProductFormMod
 
 export const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
-  const { products, isProductsLoading, addToCart, toggleWishlist, isInWishlist, addToCompare, isComparing, calculateAppliedPrice, updateProduct, deleteProduct } = useApp();
+  const { products, isProductsLoading, loadProductsByIds, addToCart, toggleWishlist, isInWishlist, addToCompare, isComparing, calculateAppliedPrice, updateProduct, deleteProduct } = useApp();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -61,6 +61,9 @@ export const ProductDetailPage: React.FC = () => {
   );
 
   const [selectedQty, setSelectedQty] = useState(1);
+  const [isProductLookupLoading, setIsProductLookupLoading] = useState(false);
+  const [productLookupError, setProductLookupError] = useState(false);
+  const [productLookupAttempt, setProductLookupAttempt] = useState(0);
   const [selectedImgIdx, setSelectedImgIdx] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -71,6 +74,26 @@ export const ProductDetailPage: React.FC = () => {
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState('');
   const lightboxHistoryPushed = useRef(false);
+
+  useEffect(() => {
+    if (!productId || product) return;
+
+    let isCurrent = true;
+    setIsProductLookupLoading(true);
+    setProductLookupError(false);
+    loadProductsByIds([productId])
+      .catch((error: unknown) => {
+        console.error('[ProductDetailPage] Could not load product:', error);
+        if (isCurrent) setProductLookupError(true);
+      })
+      .finally(() => {
+        if (isCurrent) setIsProductLookupLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [productId, product, loadProductsByIds, productLookupAttempt]);
 
   const openLightbox = () => {
     if (!isLightboxOpen) {
@@ -161,7 +184,7 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   if (!product) {
-    if (isProductsLoading) {
+    if (isProductsLoading || isProductLookupLoading) {
       return (
         <div className="max-w-7xl mx-auto px-4 py-16">
           <div className="h-8 w-2/3 max-w-xl bg-slate-200 rounded animate-pulse mb-6" />
@@ -175,7 +198,21 @@ export const ProductDetailPage: React.FC = () => {
 
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-xl font-bold text-slate-800">Component not found</h2>
+        {productLookupError ? (
+          <>
+            <h2 className="text-xl font-bold text-slate-800">Unable to load this component</h2>
+            <p className="mt-2 text-sm text-slate-600">Check your connection and try again.</p>
+            <button
+              type="button"
+              onClick={() => setProductLookupAttempt((attempt) => attempt + 1)}
+              className="mt-3 font-bold text-[#561269] underline"
+            >
+              Try again
+            </button>
+          </>
+        ) : (
+          <h2 className="text-xl font-bold text-slate-800">Component not found</h2>
+        )}
         <Link to="/shop" className="text-[#561269] font-bold underline mt-2 inline-block">
           Return to Catalog
         </Link>

@@ -27,7 +27,6 @@ import {
 import { 
   syncProductToFirestore, 
   deleteProductFromFirestore, 
-  fetchInitialProductsFromFirestore,
   fetchProductsByIdsFromFirestore,
   subscribeToProducts,
   ProductSnapshotChange,
@@ -386,9 +385,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // The storefront keeps a small live window; operational screens explicitly request the full catalog.
   useEffect(() => {
     let isMounted = true;
-    const routeProductId = window.location.pathname.startsWith('/product/')
-      ? decodeURIComponent(window.location.pathname.slice('/product/'.length))
-      : undefined;
     let fullCatalogUnsubscribe: (() => void) | undefined;
     let fullCatalogPromise: Promise<void> | undefined;
 
@@ -463,32 +459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     fullCatalogLoaderRef.current = startFullCatalogSync;
-    if (routeProductId) {
-      fetchInitialProductsFromFirestore({ productId: routeProductId })
-        .then((initialProducts) => {
-          if (!isMounted) return;
-          if (initialProducts.length === 0) {
-            setIsProductsLoading(false);
-            return;
-          }
-
-          const mergedProducts = [...productsRef.current, ...readQueuedProductWrites(), ...initialProducts.map(normalizeProduct)];
-          const dedupedProducts = new Map<string, Product>();
-          mergedProducts.forEach((product) => dedupedProducts.set(product.id, normalizeProduct(product)));
-          const nextProducts = Array.from(dedupedProducts.values())
-            .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-          productsRef.current = nextProducts;
-          setProducts(nextProducts);
-          setIsProductsLoading(false);
-        })
-        .catch((error) => {
-          console.warn('[Firestore] Initial product lookup notice:', error?.message || error);
-          if (isMounted) setIsProductsLoading(false);
-        });
-    } else {
-      setIsProductsLoading(false);
-    }
+    setIsProductsLoading(false);
 
     return () => {
       isMounted = false;
