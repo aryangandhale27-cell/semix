@@ -28,7 +28,10 @@ import {
   syncProductToFirestore, 
   deleteProductFromFirestore, 
   fetchProductsByIdsFromFirestore,
+  fetchProductsPageFromFirestore,
   subscribeToProducts,
+  ProductPage,
+  ProductPageOptions,
   ProductSnapshotChange,
   syncAllProductsToFirestore,
   syncOrderToFirestore, 
@@ -143,6 +146,7 @@ interface AppContextType {
   isProductSyncing: boolean;
   isProductsLoading: boolean;
   loadAllProducts: () => Promise<void>;
+  loadProductsPage: (options?: ProductPageOptions) => Promise<ProductPage>;
   loadProductsByIds: (productIds: string[]) => Promise<void>;
   syncAllProductsToFirebase: () => Promise<void>;
 
@@ -383,6 +387,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const nextProducts = Array.from(productsById.values());
     productsRef.current = nextProducts;
     setProducts(nextProducts);
+  }, []);
+  const loadProductsPage = React.useCallback(async (options?: ProductPageOptions) => {
+    const page = await fetchProductsPageFromFirestore(options);
+    const productsById = new Map(productsRef.current.map((product) => [product.id, product]));
+    page.products.forEach((product) => productsById.set(product.id, normalizeProduct(product)));
+    const nextProducts = Array.from(productsById.values())
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    productsRef.current = nextProducts;
+    setProducts(nextProducts);
+    return page;
   }, []);
 
   useEffect(() => {
@@ -958,14 +972,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const showToast = (title: string, message?: string, type: ToastItem['type'] = 'success', durationMs = 1300) => {
+  const showToast = React.useCallback((title: string, message?: string, type: ToastItem['type'] = 'success', durationMs = 1300) => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
     const visibleDuration = Math.min(durationMs, 1300);
     setToasts((prev) => [...prev, { id, title, message, type, durationMs: visibleDuration }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, visibleDuration);
-  };
+  }, []);
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -1536,6 +1550,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isProductSyncing,
     isProductsLoading,
     loadAllProducts,
+    loadProductsPage,
     loadProductsByIds,
     syncAllProductsToFirebase,
     banners,

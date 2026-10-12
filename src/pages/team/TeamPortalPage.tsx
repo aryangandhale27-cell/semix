@@ -50,6 +50,7 @@ export const TeamPortalPage: React.FC = () => {
     deleteProduct,
     isProductSyncing,
     loadAllProducts,
+    loadProductsPage,
     syncAllProductsToFirebase,
     reportEscalation,
     resolveEscalation, 
@@ -59,13 +60,41 @@ export const TeamPortalPage: React.FC = () => {
 
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const [isTeamCatalogLoading, setIsTeamCatalogLoading] = useState(true);
+  const [isTeamCatalogLoaded, setIsTeamCatalogLoaded] = useState(false);
+  const [teamCatalogError, setTeamCatalogError] = useState(false);
 
   useEffect(() => {
-    void loadAllProducts().catch((error) => {
-      console.error('[Team] Could not load the product catalog:', error);
-      showToast('Catalog Load Failed', 'The product catalog could not be loaded. Please retry.', 'error');
-    });
-  }, [loadAllProducts, showToast]);
+    let isCurrent = true;
+
+    const loadTeamCatalog = async () => {
+      setIsTeamCatalogLoading(true);
+      setTeamCatalogError(false);
+      try {
+        await loadProductsPage({ pageSize: 50, sortBy: 'newest' });
+      } catch (error) {
+        console.warn('[Team] Could not preload the first catalog page:', error);
+      }
+
+      try {
+        await loadAllProducts();
+        if (isCurrent) setIsTeamCatalogLoaded(true);
+      } catch (error) {
+        console.error('[Team] Could not load the product catalog:', error);
+        if (isCurrent) {
+          setTeamCatalogError(true);
+          showToast('Catalog Load Failed', 'The product catalog could not be loaded. Please retry.', 'error');
+        }
+      } finally {
+        if (isCurrent) setIsTeamCatalogLoading(false);
+      }
+    };
+
+    void loadTeamCatalog();
+    return () => {
+      isCurrent = false;
+    };
+  }, [loadAllProducts, loadProductsPage, showToast]);
 
   // Active Main Tab: 'stock' | 'fulfillment' | 'issues'
   const [activeTab, setActiveTab] = useState<'stock' | 'fulfillment' | 'issues'>(() => {
@@ -440,7 +469,11 @@ export const TeamPortalPage: React.FC = () => {
             </div>
           </div>
           <div className="space-y-2">
-            {lifetimeTeamProductCounts.length === 0 ? (
+            {!isTeamCatalogLoaded ? (
+              <p className={`text-xs ${teamCatalogError ? 'text-rose-600' : 'text-slate-500'}`} role={teamCatalogError ? 'alert' : 'status'}>
+                {teamCatalogError ? 'Leaderboard could not be loaded with the product catalog.' : 'Loading product attribution and leaderboard…'}
+              </p>
+            ) : lifetimeTeamProductCounts.length === 0 ? (
               <p className="text-xs text-slate-500">No products have been added yet.</p>
             ) : lifetimeTeamProductCounts.map((member) => (
               <div
@@ -495,7 +528,9 @@ export const TeamPortalPage: React.FC = () => {
             <Boxes className="w-4 h-4 text-[#561269]" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-slate-900 font-mono">{stats.totalInventoryItems}</span>
+            <span className="text-2xl font-black text-slate-900 font-mono">
+              {isTeamCatalogLoaded ? stats.totalInventoryItems.toLocaleString() : isTeamCatalogLoading ? '…' : '—'}
+            </span>
             <span className="text-[10px] font-semibold text-slate-400">SKU Lines</span>
           </div>
         </motion.div>
@@ -510,7 +545,9 @@ export const TeamPortalPage: React.FC = () => {
             <TrendingDown className="w-4 h-4 text-amber-600" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-amber-600 font-mono">{stats.lowStockItems}</span>
+            <span className="text-2xl font-black text-amber-600 font-mono">
+              {isTeamCatalogLoaded ? stats.lowStockItems.toLocaleString() : isTeamCatalogLoading ? '…' : '—'}
+            </span>
             <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">≤ 20 pcs</span>
           </div>
         </motion.div>
@@ -573,7 +610,7 @@ export const TeamPortalPage: React.FC = () => {
           }`}
         >
           <Boxes className={`w-4 h-4 ${activeTab === 'stock' ? 'text-[#FF6B00]' : 'text-slate-400'}`} />
-          <span>1. Stock Management ({products.length})</span>
+          <span>1. Stock Management ({isTeamCatalogLoaded ? products.length.toLocaleString() : isTeamCatalogLoading ? 'Loading…' : 'Unavailable'})</span>
         </button>
 
         <button
@@ -725,7 +762,11 @@ export const TeamPortalPage: React.FC = () => {
                 <h3 className="font-extrabold text-sm text-[#561269] flex items-center gap-2">
                   <span>Hardware Inventory &amp; Stock Calibration Matrix</span>
                   <span className="text-xs font-normal text-slate-500">
-                    (Showing {filteredProducts.length} of {products.length} components)
+                    {isTeamCatalogLoaded
+                      ? `(Showing ${filteredProducts.length} of ${products.length} components)`
+                      : isTeamCatalogLoading
+                        ? `(${filteredProducts.length ? `Showing ${filteredProducts.length} loaded` : 'Loading products'}; full catalog syncing…)`
+                        : '(Catalog unavailable)'}
                   </span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -757,7 +798,11 @@ export const TeamPortalPage: React.FC = () => {
                   {filteredProducts.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="p-8 text-center text-slate-400 text-xs">
-                        No products match your search or filter criteria.
+                        {isTeamCatalogLoading
+                          ? 'Loading inventory products…'
+                          : teamCatalogError
+                            ? 'The product catalog could not be loaded.'
+                            : 'No products match your search or filter criteria.'}
                       </td>
                     </tr>
                   ) : (

@@ -269,6 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 const [usersLoaded, setUsersLoaded] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
   const [firebaseAuthUser, setFirebaseAuthUser] = useState<NonNullable<typeof auth.currentUser>>(null);
 
   // Current session user
@@ -284,7 +285,7 @@ const [usersLoaded, setUsersLoaded] = useState(false);
   // Firebase rules require an authenticated request, so wait for Auth to finish
   // restoring the session before reading the users and staff directories.
   useEffect(() => {
-    if (!authReady || !firebaseAuthUser) return;
+    if (!firebaseAuthReady || !firebaseAuthUser) return;
 
     const applyRemoteUsers = (remoteUsers: AuthUser[]) => {
       setRegisteredUsers((prev) => {
@@ -336,19 +337,25 @@ const [usersLoaded, setUsersLoaded] = useState(false);
     );
 
     return () => unsubscribe();
-  }, [authReady, firebaseAuthUser]);
+  }, [firebaseAuthReady, firebaseAuthUser]);
 
   // Listen to Firebase Auth state changes and rehydrate the current user after refresh.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setAuthReady(true);
+      setFirebaseAuthReady(true);
       setFirebaseAuthUser(firebaseUser);
 
       if (isSigningOutRef.current && firebaseUser) return;
       if (!firebaseUser) {
         isSigningOutRef.current = false;
+        setUsersLoaded(true);
         setUser(null);
+        setAuthReady(true);
+        return;
       }
+
+      setUsersLoaded(false);
+      setAuthReady(false);
     });
 
     return () => unsubscribe();
@@ -362,7 +369,7 @@ const [usersLoaded, setUsersLoaded] = useState(false);
   // Resolve the role only after the Firestore user directory has loaded. The
   // Firebase auth callback can run before that directory is available.
   useEffect(() => {
-    if (!authReady || !usersLoaded || !firebaseAuthUser) return;
+    if (!firebaseAuthReady || !usersLoaded || !firebaseAuthUser) return;
 
     const cleanEmail = firebaseAuthUser.email?.toLowerCase() || '';
     const isAryanAdmin = cleanEmail === 'aryangandhale27@gmail.com' || cleanEmail.includes('admin@');
@@ -383,7 +390,8 @@ const [usersLoaded, setUsersLoaded] = useState(false);
       const sameUser = prev && prev.id === authPayload.id && prev.role === authPayload.role && prev.email === authPayload.email;
       return sameUser ? prev : authPayload;
     });
-  }, [authReady, usersLoaded, firebaseAuthUser, registeredUsers]);
+    setAuthReady(true);
+  }, [firebaseAuthReady, usersLoaded, firebaseAuthUser, registeredUsers]);
 
   // Firebase Auth owns session persistence; React only mirrors the current session.
   useEffect(() => {
