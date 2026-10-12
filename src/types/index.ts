@@ -89,6 +89,7 @@ export interface Product {
   datasheetUrl?: string;
   bulkTiers: BulkPriceTier[];
   tags: string[];
+  searchKeywords?: string[];
   locationBin: string;
   isNew?: boolean;
   isFeatured?: boolean;

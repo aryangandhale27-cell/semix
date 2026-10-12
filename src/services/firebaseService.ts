@@ -1,6 +1,7 @@
 import { 
   collection, 
   doc, 
+  writeBatch,
   getDoc,
   getDocs, 
   setDoc, 
@@ -57,6 +58,7 @@ export async function syncProductToFirestore(product: Product): Promise<void> {
   try {
     const payload = sanitizeForFirestore({
       ...product,
+      searchKeywords: generateProductSearchKeywords(product),
       updatedAt: new Date().toISOString(),
     });
     await setDoc(doc(db, 'products', product.id), payload, { merge: true });
@@ -64,6 +66,64 @@ export async function syncProductToFirestore(product: Product): Promise<void> {
   } catch (error) {
     console.error(`[Firestore] Error syncing product ${product.id}:`, error);
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+const normalizeProductSearchValue = (value: string) =>
+  value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+export function generateProductSearchKeywords(product: Product): string[] {
+  const values = [
+    product.name,
+    product.sku,
+    product.brand,
+    product.category,
+    product.subcategory,
+    product.shortDescription,
+    product.description,
+    product.voltage,
+    product.protocol,
+    ...(product.tags || []),
+    ...(product.specifications || []).flatMap((specification) => [specification.name, specification.value]),
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  const keywords = new Set<string>();
+
+  values.forEach((value) => {
+    const normalized = normalizeProductSearchValue(value);
+    normalized.split(/\s+/).forEach((word) => {
+      if (word.length >= 2) keywords.add(word);
+      word.match(/[a-z]+|\d+/g)?.forEach((part) => {
+        if (part.length >= 2) keywords.add(part);
+      });
+    });
+  });
+
+  return Array.from(keywords).slice(0, 1000);
+}
+
+export async function backfillProductSearchKeywords(
+  products: Product[],
+  onProgress?: (completed: number, total: number) => void
+): Promise<number> {
+  const batchSize = 400;
+  let completed = 0;
+
+  try {
+    for (let offset = 0; offset < products.length; offset += batchSize) {
+      const batch = writeBatch(db);
+      const batchProducts = products.slice(offset, offset + batchSize);
+      batchProducts.forEach((product) => {
+        batch.update(doc(db, 'products', product.id), {
+          searchKeywords: generateProductSearchKeywords(product),
+        });
+      });
+      await batch.commit();
+      completed += batchProducts.length;
+      onProgress?.(completed, products.length);
+    }
+    return completed;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'products.searchKeywords');
   }
 }
 
@@ -246,7 +306,7 @@ export async function fetchFlaggedProductsFromFirestore(
 }
 
 export interface ProductSearchCursor {
-  field: 'name' | 'sku';
+  field: 'name' | 'sku' | 'searchKeywords';
   value: string;
   id: string;
 }
@@ -257,6 +317,12 @@ export interface ProductSearchPage {
   hasMore: boolean;
 }
 
+// Reuse autocomplete results briefly when the same query is submitted or revisited.
+const productSearchCache = new Map<string, { expiresAt: number; page: ProductSearchPage }>();
+const productSearchRequests = new Map<string, Promise<ProductSearchPage>>();
+const PRODUCT_SEARCH_CACHE_TTL_MS = 10_000;
+const PRODUCT_SEARCH_CACHE_LIMIT = 50;
+
 export async function searchProductsPageFromFirestore(
   rawQuery: string,
   after?: ProductSearchCursor | null,
@@ -266,11 +332,84 @@ export async function searchProductsPageFromFirestore(
   if (!trimmedQuery) return { products: [], nextCursor: null, hasMore: false };
 
   const pageLimit = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  const cursorKey = after ? `${after.field}:${after.value}:${after.id}` : '';
+  const cacheKey = `${trimmedQuery}|${cursorKey}|${pageLimit}`;
+  const cached = productSearchCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.page;
+  if (cached) productSearchCache.delete(cacheKey);
+
+  const pendingRequest = productSearchRequests.get(cacheKey);
+  if (pendingRequest) return pendingRequest;
+
+  const request = fetchProductsSearchPageFromFirestore(trimmedQuery, after, pageLimit);
+  productSearchRequests.set(cacheKey, request);
+  try {
+    const page = await request;
+    productSearchCache.set(cacheKey, { expiresAt: Date.now() + PRODUCT_SEARCH_CACHE_TTL_MS, page });
+    if (productSearchCache.size > PRODUCT_SEARCH_CACHE_LIMIT) {
+      const oldestKey = productSearchCache.keys().next().value;
+      if (oldestKey) productSearchCache.delete(oldestKey);
+    }
+    return page;
+  } finally {
+    productSearchRequests.delete(cacheKey);
+  }
+}
+
+async function fetchProductsSearchPageFromFirestore(
+  trimmedQuery: string,
+  after: ProductSearchCursor | null | undefined,
+  pageLimit: number
+): Promise<ProductSearchPage> {
   try {
     const normalizeSearchText = (value: string) =>
       value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
     const normalizedQuery = normalizeSearchText(trimmedQuery);
-    const queryTokens = trimmedQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    const queryTokens = Array.from(new Set(
+      trimmedQuery.toLowerCase().split(/\s+/).map(normalizeSearchText).filter((token) => token.length >= 2)
+    ));
+    const keywordConstraintsFor = (token: string): QueryConstraint[] => {
+      const constraints: QueryConstraint[] = [
+        where('searchKeywords', 'array-contains', token),
+        orderBy(documentId()),
+      ];
+      if (after?.field === 'searchKeywords') constraints.push(startAfter(after.id));
+      constraints.push(limit(pageLimit + 1));
+      return constraints;
+    };
+    const keywordSnapshots = await Promise.all(queryTokens.map((token) =>
+      getDocs(query(collection(db, 'products'), ...keywordConstraintsFor(token)))
+    ));
+    const matchedKeywordIds = keywordSnapshots.length === 0
+      ? new Set<string>()
+      : keywordSnapshots.slice(1).reduce(
+        (ids, snapshot) => {
+          const snapshotIds = new Set(snapshot.docs.map((product) => product.id));
+          return new Set(Array.from(ids).filter((id) => snapshotIds.has(id)));
+        },
+        new Set(keywordSnapshots[0].docs.map((product) => product.id))
+      );
+    const keywordProducts = keywordSnapshots.length > 0
+      ? keywordSnapshots[0].docs
+        .filter((item) => matchedKeywordIds.has(item.id))
+        .map((item) => ({ ...item.data(), id: item.id } as Product))
+      : [];
+
+    if (after?.field === 'searchKeywords' || keywordProducts.length > 0) {
+      const hasMore = keywordSnapshots.some((snapshot) => snapshot.docs.length > pageLimit);
+      const pageProducts = keywordProducts.slice(0, pageLimit);
+      const cursorProduct = hasMore
+        ? keywordSnapshots[0]?.docs[Math.min(pageLimit - 1, (keywordSnapshots[0]?.docs.length || 1) - 1)]
+        : undefined;
+      return {
+        products: pageProducts,
+        hasMore,
+        nextCursor: cursorProduct
+          ? { field: 'searchKeywords', value: queryTokens[0], id: cursorProduct.id }
+          : null,
+      };
+    }
+
     const prefixQuery = trimmedQuery.split(/\s+/)[0];
     const searchFields: Array<'name' | 'sku'> = after ? [after.field] : ['name', 'sku'];
     const rawPrefixes = new Set([

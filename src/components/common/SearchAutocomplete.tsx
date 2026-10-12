@@ -54,11 +54,11 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     setInputValue(searchQuery);
   }, [searchQuery]);
 
-  // Debounce input updates with 250ms delay
+  // Wait for a short pause before searching so keystrokes don't fan out to Firestore.
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(inputValue.trim());
-    }, 250);
+    }, 350);
 
     return () => clearTimeout(handler);
   }, [inputValue]);
@@ -66,7 +66,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   useEffect(() => {
     let isCurrent = true;
 
-    if (!debouncedQuery) {
+    if (!isOpen || debouncedQuery.length < 2) {
       setSearchResult(null);
       setSearchError(null);
       setIsSearchLoading(false);
@@ -106,7 +106,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     return () => {
       isCurrent = false;
     };
-  }, [debouncedQuery, selectedCategory, isMobile]);
+  }, [debouncedQuery, selectedCategory, isMobile, isOpen]);
 
   // Close suggestions when clicking outside
   useEffect(() => {

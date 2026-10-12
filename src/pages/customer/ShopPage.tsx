@@ -63,6 +63,7 @@ export const ShopPage: React.FC = () => {
   const [pageError, setPageError] = useState<string | null>(null);
   const pageRequestId = React.useRef(0);
   const pageProducts = productPages[currentPage - 1] || [];
+  const featuredProducts = searchQuery.trim() ? null : products;
 
   // Sync URL search params
   useEffect(() => {
@@ -207,15 +208,15 @@ export const ShopPage: React.FC = () => {
           setProductPages([matchingProducts]);
           setPageCursors([null, result.nextCursor]);
           setHasMoreProducts(result.hasMore);
-        } else if (selectedCategory === 'All' && sortBy === 'featured' && products.length > 0) {
-          const firstPage = products.slice(0, PAGE_SIZE);
+        } else if (selectedCategory === 'All' && sortBy === 'featured' && featuredProducts && featuredProducts.length > 0) {
+          const firstPage = featuredProducts.slice(0, PAGE_SIZE);
           const last = firstPage[firstPage.length - 1];
           setProductPages([firstPage]);
           setPageCursors([
             null,
             last?.createdAt ? { id: last.id, value: last.createdAt } : null,
           ]);
-          setHasMoreProducts(products.length > PAGE_SIZE || firstPage.length === PAGE_SIZE);
+          setHasMoreProducts(featuredProducts.length > PAGE_SIZE || firstPage.length === PAGE_SIZE);
         } else {
           const result = await fetchProductsPageFromFirestore({
             category: selectedCategory,
@@ -244,7 +245,7 @@ export const ShopPage: React.FC = () => {
       isCurrent = false;
       if (pageRequestId.current === requestId) pageRequestId.current += 1;
     };
-  }, [products, searchQuery, selectedCategory, sortBy]);
+  }, [featuredProducts, searchQuery, selectedCategory, sortBy]);
 
   const filteredProducts = useMemo(() => {
     const filtered = pageProducts.filter((product) => {

@@ -46,6 +46,7 @@ import { Tag, Mail, SlidersHorizontal, FolderTree, Image as ImageIcon, Award, Sh
 import { CATEGORIES } from '../../mockData/products';
 import { generateProductDescription } from '../../services/aiService';
 import { getProductPriceBreakdown } from '../../utils/pricing';
+import { backfillProductSearchKeywords } from '../../services/firebaseService';
 
 const ADMIN_PRODUCT_BATCH_SIZE = 50;
 
@@ -83,6 +84,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [productSearch, setProductSearch] = useState('');
   const [visibleProductCount, setVisibleProductCount] = useState(ADMIN_PRODUCT_BATCH_SIZE);
   const [isCatalogLoaded, setIsCatalogLoaded] = useState(false);
+  const [isBuildingSearchIndex, setIsBuildingSearchIndex] = useState(false);
+  const [searchIndexProgress, setSearchIndexProgress] = useState({ completed: 0, total: 0 });
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [trendingProductId, setTrendingProductId] = useState('');
@@ -170,6 +173,34 @@ export const AdminDashboardPage: React.FC = () => {
       isCurrent = false;
     };
   }, [loadAllProducts, showToast]);
+
+  const handleBuildSearchIndex = async () => {
+    if (!isCatalogLoaded || isBuildingSearchIndex) return;
+    const confirmed = window.confirm(
+      `Build keyword search data for all ${products.length.toLocaleString()} catalog products? This adds a searchKeywords field and writes every product document.`
+    );
+    if (!confirmed) return;
+
+    setIsBuildingSearchIndex(true);
+    setSearchIndexProgress({ completed: 0, total: products.length });
+    let completedProducts = 0;
+    try {
+      const indexedCount = await backfillProductSearchKeywords(products, (completed, total) => {
+        completedProducts = completed;
+        setSearchIndexProgress({ completed, total });
+      });
+      showToast('Search Index Ready', `Built keyword search data for ${indexedCount.toLocaleString()} products.`, 'success');
+    } catch (error) {
+      console.error('[Admin] Could not build the product search index:', error);
+      showToast(
+        'Search Index Failed',
+        `Search indexing stopped after ${completedProducts.toLocaleString()} of ${products.length.toLocaleString()} products. Retry to rebuild the index.`,
+        'error'
+      );
+    } finally {
+      setIsBuildingSearchIndex(false);
+    }
+  };
 
   const handleSaveNewProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -778,7 +809,7 @@ export const AdminDashboardPage: React.FC = () => {
               <p className="text-xs text-slate-500">Edit prices, update tiered discounts, or remove discontinued parts</p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="relative w-64">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -798,6 +829,20 @@ export const AdminDashboardPage: React.FC = () => {
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isProductSyncing ? 'animate-spin' : ''}`} />
                 <span>{isProductSyncing ? 'Syncing...' : 'Sync to Firebase'}</span>
+              </button>
+
+              <button
+                onClick={() => void handleBuildSearchIndex()}
+                disabled={!isCatalogLoaded || isBuildingSearchIndex}
+                className="bg-violet-700 hover:bg-violet-800 disabled:opacity-60 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Add searchable keywords to existing product records"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isBuildingSearchIndex ? 'animate-spin' : ''}`} />
+                <span>
+                  {isBuildingSearchIndex
+                    ? `Indexing ${searchIndexProgress.completed.toLocaleString()}/${searchIndexProgress.total.toLocaleString()}`
+                    : 'Build Search Index'}
+                </span>
               </button>
 
               <button
