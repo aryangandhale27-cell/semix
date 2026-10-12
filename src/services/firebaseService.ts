@@ -243,7 +243,7 @@ export async function fetchProductsPageFromFirestore({
   sortBy = 'featured',
 }: ProductPageOptions = {}): Promise<ProductPage> {
   const productsRef = collection(db, 'products');
-  const pageLimit = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  const pageLimit = Math.max(1, Math.min(500, Math.floor(pageSize)));
   const constraints: QueryConstraint[] = [];
 
   if (category && category !== 'All' && category !== 'all') {

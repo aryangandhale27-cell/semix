@@ -75,6 +75,7 @@ export const TeamPortalPage: React.FC = () => {
       } catch (error) {
         console.warn('[Team] Could not preload the first catalog page:', error);
       }
+      if (!isCurrent) return;
 
       try {
         await loadAllProducts();
