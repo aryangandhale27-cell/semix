@@ -434,7 +434,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           pageNumber += 1;
 
           if (!isMounted) return;
-          if (pageNumber === 1 || pageNumber % 2 === 0 || !hasMore) {
+          if (pageNumber === 1 || !hasMore) {
             const mergedProducts = new Map(catalogById);
             productsRef.current.forEach((product) => mergedProducts.set(product.id, product));
             readQueuedProductWrites().forEach((product) => mergedProducts.set(product.id, product));
