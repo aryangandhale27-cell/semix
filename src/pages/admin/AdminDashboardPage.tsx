@@ -82,6 +82,7 @@ export const AdminDashboardPage: React.FC = () => {
   });
   const [productSearch, setProductSearch] = useState('');
   const [visibleProductCount, setVisibleProductCount] = useState(ADMIN_PRODUCT_BATCH_SIZE);
+  const [isCatalogLoaded, setIsCatalogLoaded] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [trendingProductId, setTrendingProductId] = useState('');
@@ -131,7 +132,7 @@ export const AdminDashboardPage: React.FC = () => {
   });
 
   // Real-time Firestore Admin KPIs
-  const firestoreKPIs = useFirestoreAdminKPIs(orders, products);
+  const firestoreKPIs = useFirestoreAdminKPIs(orders, products, isCatalogLoaded);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [adminSectionsOpen, setAdminSectionsOpen] = useState(false);
   const sentEmailsList = getLocalSentEmails();
@@ -156,10 +157,18 @@ export const AdminDashboardPage: React.FC = () => {
   const topProductContributor = productAttribution[0];
 
   useEffect(() => {
-    void loadAllProducts().catch((error) => {
-      console.error('[Admin] Could not load the product catalog:', error);
-      showToast('Catalog Load Failed', 'The product catalog could not be loaded. Please retry.', 'error');
-    });
+    let isCurrent = true;
+    loadAllProducts()
+      .then(() => {
+        if (isCurrent) setIsCatalogLoaded(true);
+      })
+      .catch((error) => {
+        console.error('[Admin] Could not load the product catalog:', error);
+        showToast('Catalog Load Failed', 'The product catalog could not be loaded. Please retry.', 'error');
+      });
+    return () => {
+      isCurrent = false;
+    };
   }, [loadAllProducts, showToast]);
 
   const handleSaveNewProduct = async (e: React.FormEvent) => {
@@ -711,10 +720,14 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
               <div className="mb-3">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Lifetime Product Adds</p>
-                <h3 className="mt-1 text-lg font-black text-slate-900">{products.length} products attributed</h3>
+                <h3 className="mt-1 text-lg font-black text-slate-900">
+                  {isCatalogLoaded ? `${products.length} products attributed` : 'Loading full catalog…'}
+                </h3>
               </div>
               <div className="space-y-2">
-                {productAttribution.length === 0 ? (
+                {!isCatalogLoaded ? (
+                  <p className="text-xs text-slate-500">Loading complete product attribution data…</p>
+                ) : productAttribution.length === 0 ? (
                   <p className="text-xs text-slate-500">No product attribution data is available yet.</p>
                 ) : productAttribution.map((member) => (
                   <div

@@ -361,9 +361,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isProductsLoading, setIsProductsLoading] = useState(true);
 
   const productsRef = useRef(products);
-  const fullCatalogLoaderRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const fullCatalogLoaderRef = useRef<(() => Promise<void>) | null>(null);
 
-  const loadAllProducts = React.useCallback(() => fullCatalogLoaderRef.current(), []);
+  const loadAllProducts = React.useCallback(() => new Promise<void>((resolve, reject) => {
+    window.setTimeout(() => {
+      const loadCatalog = fullCatalogLoaderRef.current;
+      if (!loadCatalog) {
+        reject(new Error('The full product catalog loader is not ready.'));
+        return;
+      }
+      loadCatalog().then(resolve, reject);
+    }, 0);
+  }), []);
   const loadProductsByIds = React.useCallback(async (productIds: string[]) => {
     const missingIds = productIds.filter((id) => !productsRef.current.some((product) => product.id === id));
     if (missingIds.length === 0) return;
@@ -435,8 +444,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const startFullCatalogSync = (): Promise<void> => {
-      if (fullCatalogUnsubscribe) return Promise.resolve();
       if (fullCatalogPromise) return fullCatalogPromise;
+      if (fullCatalogUnsubscribe) return Promise.resolve();
 
       fullCatalogPromise = new Promise<void>((resolve, reject) => {
         fullCatalogUnsubscribe = subscribeToProducts(
@@ -464,7 +473,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       isMounted = false;
       fullCatalogUnsubscribe?.();
-      fullCatalogLoaderRef.current = () => Promise.resolve();
+      fullCatalogLoaderRef.current = null;
     };
   }, []);
 
