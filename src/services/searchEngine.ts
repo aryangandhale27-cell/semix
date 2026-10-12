@@ -170,6 +170,17 @@ export function extractCatalogDictionary(products: Product[]): string[] {
   return Array.from(vocab);
 }
 
+const catalogDictionaries = new WeakMap<Product[], string[]>();
+
+function getCatalogDictionary(products: Product[]): string[] {
+  let dictionary = catalogDictionaries.get(products);
+  if (!dictionary) {
+    dictionary = extractCatalogDictionary(products);
+    catalogDictionaries.set(products, dictionary);
+  }
+  return dictionary;
+}
+
 /**
  * Finds the closest matching canonical term if user made a spelling mistake
  */
@@ -514,10 +525,10 @@ export function searchProducts(
 
   // Check if fuzzy spelling correction should be considered
   let didYouMean: string | null = null;
-  const dictionary = extractCatalogDictionary(products);
 
   // If 0 results or very low results, check if spelling suggestion exists
   if (hits.length < 2) {
+    const dictionary = getCatalogDictionary(products);
     const suggestion = getSpellingSuggestion(rawClean, dictionary);
     if (suggestion && normalizeSearchText(suggestion) !== normalizedQuery) {
       didYouMean = suggestion;

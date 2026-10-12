@@ -23,12 +23,14 @@ interface ProductCardProps {
   product: Product;
   onQuickView?: (product: Product) => void;
   compact?: boolean;
+  priority?: boolean;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ 
   product, 
   onQuickView, 
-  compact = false
+  compact = false,
+  priority = false,
 }) => {
   const { 
     addToCart, 
@@ -39,6 +41,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   } = useApp();
 
   const [quantity, setQuantity] = useState(1);
+  const [imageFailed, setImageFailed] = useState(false);
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [cartBurst, setCartBurst] = useState<{ x: number; y: number; endX: number; endY: number } | null>(null);
 
@@ -182,14 +185,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         onFocus={prefetchProductDetailPage}
         className="block bg-slate-50 relative p-2 sm:p-4 pt-3.5 sm:pt-6 overflow-hidden border-b border-slate-100 aspect-square sm:aspect-4/3 flex items-center justify-center"
       >
-        {productImage ? (
+        {productImage && !imageFailed ? (
           <img
             src={productImage}
             alt={product.name}
-            loading="lazy"
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : 'auto'}
             width={480}
             height={360}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            decoding="async"
+            onError={() => setImageFailed(true)}
             className="w-full h-full max-h-[90%] object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
           />
         ) : (

@@ -27,8 +27,17 @@ import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
 
 export const CustomerDashboardPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { orders, wishlist, products, addToCart, toggleWishlist, reportEscalation, showToast, bulkEnquiries } = useApp();
+  const { orders, wishlist, products, addToCart, toggleWishlist, reportEscalation, showToast, bulkEnquiries, loadProductsByIds } = useApp();
   const { user } = useAuth();
+  const wishlistProductIds = wishlist.join('|');
+
+  useEffect(() => {
+    if (!wishlistProductIds) return;
+    void loadProductsByIds(wishlist).catch((error) => {
+      console.error('[Customer] Could not load saved products:', error);
+      showToast('Saved Products Unavailable', 'Some saved products could not be loaded.', 'error');
+    });
+  }, [loadProductsByIds, showToast, wishlist, wishlistProductIds]);
 
   const customerOrders = user
     ? orders.filter((order) => {

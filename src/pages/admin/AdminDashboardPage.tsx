@@ -60,6 +60,7 @@ export const AdminDashboardPage: React.FC = () => {
     updateProduct, 
     deleteProduct, 
     isProductSyncing,
+    loadAllProducts,
     syncAllProductsToFirebase,
     addStaff, 
     toggleStaffStatus, 
@@ -153,6 +154,13 @@ export const AdminDashboardPage: React.FC = () => {
   }, [products]);
 
   const topProductContributor = productAttribution[0];
+
+  useEffect(() => {
+    void loadAllProducts().catch((error) => {
+      console.error('[Admin] Could not load the product catalog:', error);
+      showToast('Catalog Load Failed', 'The product catalog could not be loaded. Please retry.', 'error');
+    });
+  }, [loadAllProducts, showToast]);
 
   const handleSaveNewProduct = async (e: React.FormEvent) => {
     e.preventDefault();

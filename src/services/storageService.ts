@@ -32,6 +32,7 @@ export async function uploadImageDataUrl(
 
   await uploadBytes(imageRef, blob, {
     contentType: blob.type,
+    cacheControl: 'public, max-age=31536000, immutable',
     customMetadata: {
       uploadedBy: auth.currentUser.uid,
       resourceId: options.resourceId,

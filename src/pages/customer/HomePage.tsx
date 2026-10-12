@@ -5,6 +5,7 @@ import { ProductCard } from '../../components/common/ProductCard';
 import { ExploreCategories } from '../../components/home/ExploreCategories';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { Product, HomepageBanner } from '../../types';
+import { fetchFlaggedProductsFromFirestore } from '../../services/firebaseService';
 import { 
   ArrowRight, 
   Sparkles, 
@@ -22,12 +23,33 @@ import {
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { products, categories, banners, addToCart } = useApp();
+  const { categories, banners, addToCart } = useApp();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [bestSellers, setBestSellers] = useState<Product[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const isSwiping = useRef(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      fetchFlaggedProductsFromFirestore('isBestSeller', 8),
+      fetchFlaggedProductsFromFirestore('isNew', 4),
+    ])
+      .then(([bestSellerProducts, newProducts]) => {
+        if (!isMounted) return;
+        setBestSellers(bestSellerProducts);
+        setNewArrivals(newProducts);
+      })
+      .catch((error) => {
+        console.error('[Home] Could not load featured products:', error);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Active banners from AppContext (synced with Firestore & local persistence)
   const activeBanners: HomepageBanner[] = (banners || []).filter(
@@ -66,9 +88,6 @@ export const HomePage: React.FC = () => {
     }, 6500);
     return () => clearInterval(timer);
   }, [activeBanners.length, isHovered]);
-
-  const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 8);
-  const newArrivals = products.filter((p) => p.isNew).slice(0, 4);
 
   const handleHeroTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     const touch = event.touches[0];
@@ -241,16 +260,17 @@ export const HomePage: React.FC = () => {
             to="/shop"
             className="text-[11px] sm:text-xs font-bold text-[#561269] hover:text-[#FF6B00] flex items-center gap-0.5 sm:gap-1 shrink-0 ml-2"
           >
-            <span>Catalog ({products.length})</span>
+            <span>Browse all products</span>
             <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </Link>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-          {bestSellers.map((product) => (
+          {bestSellers.map((product, index) => (
             <ProductCard
               key={product.id}
               product={product}
+              priority={index < 4}
               onQuickView={(p) => setQuickViewProduct(p)}
             />
           ))}
@@ -280,10 +300,11 @@ export const HomePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
-          {newArrivals.map((product) => (
+          {newArrivals.map((product, index) => (
             <ProductCard
               key={product.id}
               product={product}
+              priority={index < 2}
               onQuickView={(p) => setQuickViewProduct(p)}
             />
           ))}

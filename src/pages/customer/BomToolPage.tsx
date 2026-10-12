@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product } from '../../types';
 import { 
@@ -24,8 +24,15 @@ interface MatchedBomItem {
 }
 
 export const BomToolPage: React.FC = () => {
-  const { products, addToCart, showToast, calculateAppliedPrice } = useApp();
+  const { products, addToCart, showToast, calculateAppliedPrice, loadAllProducts } = useApp();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    void loadAllProducts().catch((error) => {
+      console.error('[BOM] Could not load the product catalog:', error);
+      showToast('Catalog Load Failed', 'The product catalog could not be loaded. Please retry.', 'error');
+    });
+  }, [loadAllProducts, showToast]);
 
   const [rawInput, setRawInput] = useState(`Raspberry Pi 5 x 2
 ESP32-S3 AI x 5

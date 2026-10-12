@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { GitCompare, X, Trash2, ArrowRight, CheckCircle2, Star, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const CompareDrawer: React.FC = () => {
-  const { compareList, removeFromCompare, clearCompare, products, addToCart } = useApp();
+  const { compareList, removeFromCompare, clearCompare, products, addToCart, loadProductsByIds, showToast } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (compareList.length === 0) return;
+    void loadProductsByIds(compareList).catch((error) => {
+      console.error('[Compare] Could not load selected products:', error);
+      showToast('Compare Products Unavailable', 'Some selected products could not be loaded.', 'error');
+    });
+  }, [compareList, loadProductsByIds, showToast]);
 
   const comparedProducts = products.filter((p) => compareList.includes(p.id));
 

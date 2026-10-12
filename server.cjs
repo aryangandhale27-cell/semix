@@ -6,7 +6,16 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 const distPath = path.join(__dirname, 'dist');
-app.use(express.static(distPath, { index: false }));
+app.use(express.static(distPath, {
+  index: false,
+  setHeaders: (res, filePath) => {
+    const isHashedAsset = /-[A-Za-z0-9_-]{8,}\.(?:js|css|png|jpe?g|webp|svg|woff2?)$/i.test(filePath);
+    res.setHeader(
+      'Cache-Control',
+      isHashedAsset ? 'public, max-age=31536000, immutable' : 'public, max-age=0, must-revalidate'
+    );
+  },
+}));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

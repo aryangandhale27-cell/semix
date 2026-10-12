@@ -4,7 +4,12 @@ import { useApp } from '../../context/AppContext';
 import { ProductCard } from '../../components/common/ProductCard';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { Product } from '../../types';
-import { searchProducts } from '../../services/searchEngine';
+import {
+  fetchProductsPageFromFirestore,
+  searchProductsPageFromFirestore,
+  ProductPageCursor,
+  ProductSearchCursor,
+} from '../../services/firebaseService';
 import { 
   Filter, 
   SlidersHorizontal, 
@@ -16,13 +21,11 @@ import {
   Check, 
   Search, 
   RotateCcw,
-  Sparkles,
   Zap,
   ImageOff
 } from 'lucide-react';
 
-const PRODUCTS_PER_PAGE = 24;
-const SEARCH_RESULTS_PER_PAGE = 100;
+const PAGE_SIZE = 24;
 
 const parsePriceParam = (value: string | null): number | null => {
   if (value === null || value === '') {
@@ -33,7 +36,7 @@ const parsePriceParam = (value: string | null): number | null => {
 };
 
 export const ShopPage: React.FC = () => {
-  const { products, categories, searchQuery, setSearchQuery, isProductsLoading } = useApp();
+  const { products, categories, searchQuery, setSearchQuery } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Filters state
@@ -53,6 +56,13 @@ export const ShopPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [productPages, setProductPages] = useState<Product[][]>([]);
+  const [pageCursors, setPageCursors] = useState<Array<ProductPageCursor | ProductSearchCursor | null>>([]);
+  const [hasMoreProducts, setHasMoreProducts] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const pageRequestId = React.useRef(0);
+  const pageProducts = productPages[currentPage - 1] || [];
 
   // Sync URL search params
   useEffect(() => {
@@ -107,17 +117,17 @@ export const ShopPage: React.FC = () => {
   ]);
 
   const allBrands = useMemo(() => {
-    return Array.from(new Set(products.map((p) => p.brand))).filter(Boolean);
-  }, [products]);
+    return Array.from(new Set(pageProducts.map((p) => p.brand))).filter(Boolean);
+  }, [pageProducts]);
 
   const allVoltages = useMemo(() => {
-    return Array.from(new Set(products.map((p) => p.voltage))).filter(Boolean) as string[];
-  }, [products]);
+    return Array.from(new Set(pageProducts.map((p) => p.voltage))).filter(Boolean) as string[];
+  }, [pageProducts]);
 
   const maxPriceLimit = useMemo(() => {
-    const highestPrice = products.reduce((highest, product) => Math.max(highest, product.price), 0);
+    const highestPrice = pageProducts.reduce((highest, product) => Math.max(highest, product.price), 0);
     return Math.max(10000, Math.ceil(highestPrice / 1000) * 1000);
-  }, [products]);
+  }, [pageProducts]);
 
   const applyMinPrice = () => {
     if (!minPriceDraft.trim()) {
@@ -179,34 +189,65 @@ export const ShopPage: React.FC = () => {
     setSearchParams({});
   };
 
-  const searchEngineResult = useMemo(() => {
-    if (!searchQuery.trim()) return null;
-    return searchProducts(products, searchQuery, {
-      category: selectedCategory !== 'All' ? selectedCategory : undefined,
-      limit: null,
-    });
-  }, [products, searchQuery, selectedCategory]);
+  useEffect(() => {
+    const requestId = ++pageRequestId.current;
+    let isCurrent = true;
+    setIsPageLoading(true);
+    setPageError(null);
+    setCurrentPage(1);
+
+    const loadFirstPage = async () => {
+      try {
+        if (searchQuery.trim()) {
+          const result = await searchProductsPageFromFirestore(searchQuery, null, PAGE_SIZE);
+          if (!isCurrent) return;
+          const matchingProducts = result.products.filter((product) =>
+            selectedCategory === 'All' || product.category === selectedCategory
+          );
+          setProductPages([matchingProducts]);
+          setPageCursors([null, result.nextCursor]);
+          setHasMoreProducts(result.hasMore);
+        } else if (selectedCategory === 'All' && sortBy === 'featured' && products.length > 0) {
+          const firstPage = products.slice(0, PAGE_SIZE);
+          const last = firstPage[firstPage.length - 1];
+          setProductPages([firstPage]);
+          setPageCursors([
+            null,
+            last?.createdAt ? { id: last.id, value: last.createdAt } : null,
+          ]);
+          setHasMoreProducts(products.length > PAGE_SIZE || firstPage.length === PAGE_SIZE);
+        } else {
+          const result = await fetchProductsPageFromFirestore({
+            category: selectedCategory,
+            pageSize: PAGE_SIZE,
+            sortBy: sortBy as 'featured' | 'price-low' | 'price-high' | 'rating' | 'newest',
+          });
+          if (!isCurrent) return;
+          setProductPages([result.products]);
+          setPageCursors([null, result.nextCursor]);
+          setHasMoreProducts(result.hasMore);
+        }
+      } catch (error) {
+        if (!isCurrent) return;
+        console.error('[Shop] Could not load product page:', error);
+        setPageError('Products could not be loaded. Please try again.');
+        setProductPages([[]]);
+        setPageCursors([null, null]);
+        setHasMoreProducts(false);
+      } finally {
+        if (isCurrent) setIsPageLoading(false);
+      }
+    };
+
+    void loadFirstPage();
+    return () => {
+      isCurrent = false;
+      if (pageRequestId.current === requestId) pageRequestId.current += 1;
+    };
+  }, [products, searchQuery, selectedCategory, sortBy]);
 
   const filteredProducts = useMemo(() => {
-    let candidateList: { product: Product; searchScore: number }[] = [];
-
-    if (searchEngineResult) {
-      candidateList = searchEngineResult.results.map((hit) => ({
-        product: hit.product,
-        searchScore: hit.score,
-      }));
-    } else {
-      candidateList = products
-        .filter((product) => {
-          if (selectedCategory !== 'All' && product.category !== selectedCategory) {
-            return false;
-          }
-          return true;
-        })
-        .map((p) => ({ product: p, searchScore: 0 }));
-    }
-
-    const filtered = candidateList.filter(({ product }) => {
+    const filtered = pageProducts.filter((product) => {
       if (inStockOnly && (!product.inStock || product.stockCount <= 0)) {
         return false;
       }
@@ -226,22 +267,16 @@ export const ShopPage: React.FC = () => {
     });
 
     filtered.sort((a, b) => {
-      if (sortBy === 'price-low') return a.product.price - b.product.price;
-      if (sortBy === 'price-high') return b.product.price - a.product.price;
-      if (sortBy === 'rating') return b.product.rating - a.product.rating;
-      if (sortBy === 'newest') return (b.product.isNew ? 1 : 0) - (a.product.isNew ? 1 : 0);
-      
-      if (searchEngineResult) {
-        return b.searchScore - a.searchScore;
-      }
+      if (sortBy === 'price-low') return a.price - b.price;
+      if (sortBy === 'price-high') return b.price - a.price;
+      if (sortBy === 'rating') return b.rating - a.rating;
+      if (sortBy === 'newest') return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
       return 0;
     });
 
-    return filtered.map((item) => item.product);
+    return filtered;
   }, [
-    products,
-    searchEngineResult,
-    selectedCategory,
+    pageProducts,
     inStockOnly,
     selectedBrands,
     selectedVoltages,
@@ -250,14 +285,11 @@ export const ShopPage: React.FC = () => {
     sortBy,
   ]);
 
-  const productsPerPage = searchQuery.trim() ? SEARCH_RESULTS_PER_PAGE : PRODUCTS_PER_PAGE;
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage));
-  const activePage = Math.min(currentPage, totalPages);
-  const firstVisibleProduct = filteredProducts.length === 0
-    ? 0
-    : (activePage - 1) * productsPerPage + 1;
-  const lastVisibleProduct = Math.min(activePage * productsPerPage, filteredProducts.length);
-  const visibleProducts = filteredProducts.slice(firstVisibleProduct - 1, lastVisibleProduct);
+  const productsPerPage = PAGE_SIZE;
+  const activePage = currentPage;
+  const firstVisibleProduct = filteredProducts.length === 0 ? 0 : (activePage - 1) * productsPerPage + 1;
+  const lastVisibleProduct = firstVisibleProduct === 0 ? 0 : firstVisibleProduct + filteredProducts.length - 1;
+  const visibleProducts = filteredProducts;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -271,6 +303,64 @@ export const ShopPage: React.FC = () => {
     maxPrice,
     sortBy,
   ]);
+
+  const changePage = async (direction: -1 | 1) => {
+    if (direction === -1) {
+      setCurrentPage((page) => Math.max(1, page - 1));
+      setHasMoreProducts(Boolean(pageCursors[currentPage - 1]));
+      return;
+    }
+
+    if (!hasMoreProducts || isPageLoading) return;
+    const nextPageNumber = currentPage + 1;
+    const cachedPage = productPages[nextPageNumber - 1];
+    if (cachedPage) {
+      setCurrentPage(nextPageNumber);
+      setHasMoreProducts(Boolean(pageCursors[nextPageNumber]));
+      return;
+    }
+
+    const cursor = pageCursors[currentPage];
+    if (!cursor) return;
+
+    const requestId = ++pageRequestId.current;
+    setIsPageLoading(true);
+    setPageError(null);
+    try {
+      if (searchQuery.trim()) {
+        const result = await searchProductsPageFromFirestore(
+          searchQuery,
+          cursor as ProductSearchCursor,
+          PAGE_SIZE
+        );
+        if (requestId !== pageRequestId.current) return;
+        const matchingProducts = result.products.filter((product) =>
+          selectedCategory === 'All' || product.category === selectedCategory
+        );
+        setProductPages((pages) => [...pages, matchingProducts]);
+        setPageCursors((cursors) => [...cursors, result.nextCursor]);
+        setHasMoreProducts(result.hasMore);
+      } else {
+        const result = await fetchProductsPageFromFirestore({
+          after: cursor as ProductPageCursor,
+          category: selectedCategory,
+          pageSize: PAGE_SIZE,
+          sortBy: sortBy as 'featured' | 'price-low' | 'price-high' | 'rating' | 'newest',
+        });
+        if (requestId !== pageRequestId.current) return;
+        setProductPages((pages) => [...pages, result.products]);
+        setPageCursors((cursors) => [...cursors, result.nextCursor]);
+        setHasMoreProducts(result.hasMore);
+      }
+      setCurrentPage(nextPageNumber);
+    } catch (error) {
+      if (requestId !== pageRequestId.current) return;
+      console.error('[Shop] Could not load the next product page:', error);
+      setPageError('The next product page could not be loaded. Please retry.');
+    } finally {
+      if (requestId === pageRequestId.current) setIsPageLoading(false);
+    }
+  };
 
   const activeFilterCount =
     (selectedCategory !== 'All' ? 1 : 0) +
@@ -299,8 +389,9 @@ export const ShopPage: React.FC = () => {
             {selectedCategory === 'All' ? 'Complete Electronics Catalog' : selectedCategory}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length}{' '}
-            {isProductsLoading ? 'loaded products · Syncing full catalog...' : 'verified electronic parts & compute modules'}
+            {filteredProducts.length > 0
+              ? `Showing ${firstVisibleProduct}-${lastVisibleProduct} loaded results · 24 products per page`
+              : 'Browse verified electronic parts and compute modules'}
           </p>
         </div>
 
@@ -386,7 +477,7 @@ export const ShopPage: React.FC = () => {
                 }`}
               >
                 <span>All Categories</span>
-                <span className="text-[10px] opacity-80">{products.length}</span>
+                <span className="text-[10px] opacity-80">{pageProducts.length}</span>
               </button>
               {categories.map((cat) => (
                 <button
@@ -400,7 +491,7 @@ export const ShopPage: React.FC = () => {
                 >
                   <span className="truncate">{cat.name}</span>
                   <span className="text-[10px] opacity-80">
-                    {products.filter((p) => p.category === cat.name).length}
+                    {pageProducts.filter((p) => p.category === cat.name).length}
                   </span>
                 </button>
               ))}
@@ -533,24 +624,6 @@ export const ShopPage: React.FC = () => {
         </aside>
 
         <main className="lg:col-span-9">
-          {searchEngineResult?.didYouMean && (
-            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-amber-900">
-                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>
-                  Showing verified catalog results. Did you mean{' '}
-                  <button
-                    onClick={() => setSearchQuery(searchEngineResult.didYouMean!)}
-                    className="font-bold underline text-[#561269] hover:text-[#FF6B00] cursor-pointer"
-                  >
-                    {searchEngineResult.didYouMean}
-                  </button>
-                  ?
-                </span>
-              </div>
-            </div>
-          )}
-
           {activeFilterCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               <span className="text-[11px] font-bold text-slate-500">Active Filters:</span>
@@ -601,7 +674,7 @@ export const ShopPage: React.FC = () => {
           )}
 
           {/* SKELETON LOADER WHEN FETCHING FROM FIREBASE */}
-          {isProductsLoading && filteredProducts.length === 0 ? (
+          {isPageLoading && filteredProducts.length === 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-4">
@@ -616,6 +689,10 @@ export const ShopPage: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : pageError ? (
+            <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center text-sm font-semibold text-rose-700">
+              {pageError}
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="bg-slate-50 rounded-2xl border border-slate-200 p-12 text-center max-w-md mx-auto my-8">
@@ -635,10 +712,11 @@ export const ShopPage: React.FC = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
-              {visibleProducts.map((product) => (
+              {visibleProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
+                  priority={activePage === 1 && index < 4}
                   onQuickView={(p) => setQuickViewProduct(p)}
                 />
               ))}
@@ -696,15 +774,15 @@ export const ShopPage: React.FC = () => {
             </div>
           )}
 
-          {!isProductsLoading && filteredProducts.length > productsPerPage && (
+          {!isPageLoading && (activePage > 1 || hasMoreProducts) && (
             <nav aria-label="Product result pages" className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
               <p className="text-xs font-medium text-slate-500">
-                Showing {firstVisibleProduct}-{lastVisibleProduct} of {filteredProducts.length}
+                Showing {firstVisibleProduct}-{lastVisibleProduct} loaded results
               </p>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  onClick={() => void changePage(-1)}
                   disabled={activePage === 1}
                   className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-[#561269] hover:text-[#561269] disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -712,12 +790,12 @@ export const ShopPage: React.FC = () => {
                   Previous
                 </button>
                 <span aria-live="polite" className="min-w-20 text-center text-xs font-bold text-slate-600">
-                  Page {activePage} of {totalPages}
+                  Page {activePage}
                 </span>
                 <button
                   type="button"
-                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                  disabled={activePage === totalPages}
+                  onClick={() => void changePage(1)}
+                  disabled={!hasMoreProducts || isPageLoading}
                   className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-[#561269] hover:text-[#561269] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next

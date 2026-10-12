@@ -49,6 +49,7 @@ export const TeamPortalPage: React.FC = () => {
     addProduct,
     deleteProduct,
     isProductSyncing,
+    loadAllProducts,
     syncAllProductsToFirebase,
     reportEscalation,
     resolveEscalation, 
@@ -58,6 +59,13 @@ export const TeamPortalPage: React.FC = () => {
 
   const location = useLocation();
   const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    void loadAllProducts().catch((error) => {
+      console.error('[Team] Could not load the product catalog:', error);
+      showToast('Catalog Load Failed', 'The product catalog could not be loaded. Please retry.', 'error');
+    });
+  }, [loadAllProducts, showToast]);
 
   // Active Main Tab: 'stock' | 'fulfillment' | 'issues'
   const [activeTab, setActiveTab] = useState<'stock' | 'fulfillment' | 'issues'>(() => {

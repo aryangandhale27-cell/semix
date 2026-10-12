@@ -2,14 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import nodemailer from 'nodemailer';
-import Razorpay from 'razorpay';
 import crypto from 'crypto';
-import { Resend } from 'resend';
-import { GoogleGenAI } from '@google/genai';
-import { createServer as createViteServer } from 'vite';
-import { INITIAL_PRODUCTS } from './src/mockData/products';
-import { searchProducts } from './src/services/searchEngine';
 
 dotenv.config();
 
@@ -54,6 +47,7 @@ app.post('/api/ai/product-description', async (req, res) => {
   }
 
   try {
+    const { GoogleGenAI } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey });
     const result = await ai.models.generateContent({
       model: 'gemini-3.6-flash',
@@ -82,11 +76,12 @@ app.post('/api/ai/product-description', async (req, res) => {
   }
 });
 
-function getRazorpayClient() {
+async function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!keyId || !keySecret) return null;
+  const { default: Razorpay } = await import('razorpay');
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
@@ -98,7 +93,13 @@ app.post('/api/payments/razorpay/order', async (req, res) => {
     return res.status(400).json({ success: false, error: 'A valid amount and receipt are required.' });
   }
 
-  const razorpay = getRazorpayClient();
+  let razorpay;
+  try {
+    razorpay = await getRazorpayClient();
+  } catch (err) {
+    console.error('[Razorpay] Could not initialize the payment client:', err);
+    return res.status(502).json({ success: false, error: 'Unable to initialize Razorpay checkout.' });
+  }
   if (!razorpay) {
     return res.status(503).json({ success: false, error: 'Razorpay is not configured on the server.' });
   }
@@ -159,7 +160,7 @@ if (!fs.existsSync(uploadsDir)) {
 app.use('/uploads', express.static(uploadsDir));
 
 // Helper to get lazy nodemailer transporter
-function getTransporter() {
+async function getTransporter() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -170,6 +171,7 @@ function getTransporter() {
     return null;
   }
 
+  const { default: nodemailer } = await import('nodemailer');
   return nodemailer.createTransport({
     host,
     port,
@@ -181,11 +183,12 @@ function getTransporter() {
   });
 }
 
-function getResendClient() {
+async function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     return null;
   }
+  const { Resend } = await import('resend');
   return new Resend(apiKey);
 }
 
@@ -341,6 +344,7 @@ async function sendResendOrderConfirmationEmail(order: any): Promise<{ sent: boo
   }
 
   try {
+    const { Resend } = await import('resend');
     const resend = new Resend(apiKey);
     const html = buildResendOrderConfirmationHtml(order);
     const text = buildOrderConfirmationText(order);
@@ -428,7 +432,7 @@ app.post('/api/send-email', async (req, res) => {
     console.log('[Email Dispatcher] SKIP_RESEND_EMAIL enabled; customer Resend dispatch skipped.');
   }
 
-  const transporter = getTransporter();
+  const transporter = await getTransporter();
 
   if (!transporter) {
     console.log(
@@ -487,22 +491,31 @@ app.get('/api/health', (req, res) => {
 });
 
 // Intelligent Product Search & Autocomplete API
-app.get('/api/products/search', (req, res) => {
+app.get('/api/products/search', async (req, res) => {
   const query = (req.query.q as string) || '';
   const category = (req.query.category as string) || undefined;
   const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
   const inStockOnly = req.query.inStock === 'true';
 
-  const results = searchProducts(INITIAL_PRODUCTS, query, {
-    category,
-    limit,
-    inStockOnly,
-  });
+  try {
+    const [{ INITIAL_PRODUCTS }, { searchProducts }] = await Promise.all([
+      import('./src/mockData/products'),
+      import('./src/services/searchEngine'),
+    ]);
+    const results = searchProducts(INITIAL_PRODUCTS, query, {
+      category,
+      limit,
+      inStockOnly,
+    });
 
-  res.json({
-    success: true,
-    data: results,
-  });
+    return res.json({
+      success: true,
+      data: results,
+    });
+  } catch (error) {
+    console.error('[Search] Legacy server search failed:', error);
+    return res.status(500).json({ success: false, error: 'Product search is unavailable.' });
+  }
 });
 
 // Image Upload API for Banners & Category Images
@@ -1053,6 +1066,7 @@ app.post('/api/admin/audit-logs', (req, res) => {
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -1060,7 +1074,16 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath, { index: false }));
+    app.use(express.static(distPath, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        const isHashedAsset = /-[A-Za-z0-9_-]{8,}\.(?:js|css|png|jpe?g|webp|svg|woff2?)$/i.test(filePath);
+        res.setHeader(
+          'Cache-Control',
+          isHashedAsset ? 'public, max-age=31536000, immutable' : 'public, max-age=0, must-revalidate'
+        );
+      },
+    }));
 
     app.get('*', (req, res) => {
       try {
