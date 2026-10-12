@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { 
@@ -10,13 +10,13 @@ import {
   Layers, 
   CheckCircle2, 
   AlertCircle,
-  Sparkles,
   ArrowRight,
   TrendingUp
 } from 'lucide-react';
-import { searchProducts, SearchHit } from '../../services/searchEngine';
+import { searchProductsPageFromFirestore, type ProductSearchPage } from '../../services/firebaseService';
 import { recordSearchQuery } from '../../services/searchConfig';
 import { Product } from '../../types';
+import { SearchResult } from '../../services/searchEngine';
 
 interface SearchAutocompleteProps {
   isMobile?: boolean;
@@ -35,13 +35,16 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   placeholder,
   className = '',
 }) => {
-  const { products, categories, searchQuery, setSearchQuery, isProductsLoading } = useApp();
+  const { categories, searchQuery, setSearchQuery } = useApp();
   const navigate = useNavigate();
 
   const [inputValue, setInputValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,16 +63,50 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     return () => clearTimeout(handler);
   }, [inputValue]);
 
-  // Execute intelligent search on actual catalog products
-  const searchResult = useMemo(() => {
+  useEffect(() => {
+    let isCurrent = true;
+
     if (!debouncedQuery) {
-      return null;
+      setSearchResult(null);
+      setSearchError(null);
+      setIsSearchLoading(false);
+      return () => {
+        isCurrent = false;
+      };
     }
-    return searchProducts(products, debouncedQuery, {
-      category: selectedCategory !== 'all' ? selectedCategory : undefined,
-      limit: isMobile ? 5 : 8,
-    });
-  }, [products, debouncedQuery, selectedCategory, isMobile]);
+
+    setIsSearchLoading(true);
+    setSearchError(null);
+    searchProductsPageFromFirestore(debouncedQuery, null, isMobile ? 5 : 8)
+      .then((page: ProductSearchPage) => {
+        if (!isCurrent) return;
+        const products = page.products.filter((product) =>
+          selectedCategory === 'all' || product.category === selectedCategory
+        );
+        setSearchResult({
+          query: debouncedQuery,
+          normalizedQuery: debouncedQuery.toLowerCase(),
+          total: products.length,
+          results: products.map((product) => ({ product, score: 0, matchedFields: ['name', 'sku'] })),
+          didYouMean: null,
+          matchingCategories: Array.from(new Set(products.map((product) => product.category).filter(Boolean))),
+          matchingBrands: Array.from(new Set(products.map((product) => product.brand).filter(Boolean))),
+        });
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent) return;
+        console.error('[Search] Firestore prefix search failed:', error);
+        setSearchResult(null);
+        setSearchError('Product search is temporarily unavailable. Please try again.');
+      })
+      .finally(() => {
+        if (isCurrent) setIsSearchLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [debouncedQuery, selectedCategory, isMobile]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -341,61 +378,35 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
       )}
 
       {/* Autocomplete Dropdown Panel */}
-      {isOpen && inputValue.trim().length > 0 && searchResult && (
+      {isOpen && inputValue.trim().length > 0 && (searchResult || isSearchLoading || searchError) && (
         <div
           id="search-autocomplete-dropdown"
           className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden text-left animate-in fade-in slide-in-from-top-1 duration-150"
         >
-          {isProductsLoading && (
+          {isSearchLoading && (
             <div className="border-b border-slate-100 bg-slate-50 px-3 sm:px-4 py-2 text-[11px] text-slate-600">
-              Loading the full catalog; search suggestions may update.
+              Searching product names, SKUs, brands, and keywords...
             </div>
           )}
 
-          {/* Typo Correction / "Did you mean?" Banner */}
-          {searchResult.didYouMean && (
-            <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 py-2.5 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-amber-900">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>
-                  Did you mean:{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInputValue(searchResult.didYouMean!);
-                      executeSearch(searchResult.didYouMean!);
-                    }}
-                    className="font-bold underline text-[#561269] hover:text-[#FF6B00] cursor-pointer"
-                  >
-                    {searchResult.didYouMean}
-                  </button>
-                  ?
-                </span>
-              </div>
-              <span className="text-[11px] text-amber-700/80 hidden sm:inline">
-                Showing best matching components
-              </span>
-            </div>
-          )}
-
-          {/* If 0 products found */}
-          {searchResult.results.length === 0 && isProductsLoading ? (
+          {searchError ? (
+            <div role="alert" className="p-6 text-center text-xs font-semibold text-rose-700">{searchError}</div>
+          ) : isSearchLoading && !searchResult ? (
             <div className="p-6 text-center">
               <div className="w-6 h-6 border-2 border-[#561269]/20 border-t-[#561269] rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs sm:text-sm font-semibold text-slate-800">Searching the full catalog...</p>
+              <p className="text-xs sm:text-sm font-semibold text-slate-800">Searching product names, SKUs, brands, and keywords...</p>
             </div>
-          ) : searchResult.results.length === 0 ? (
+          ) : searchResult && searchResult.results.length === 0 ? (
             <div className="p-6 text-center">
               <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="text-xs sm:text-sm font-semibold text-slate-800">
                 No matching components found for &ldquo;{inputValue}&rdquo;
               </p>
               <p className="text-[11px] text-slate-500 mt-1 max-w-sm mx-auto">
-                Only components actually in the verified catalog are suggested. Try checking for
-                typos or searching by generic keyword (e.g. <span className="font-mono text-slate-700">relay</span>, <span className="font-mono text-slate-700">microcontroller</span>, <span className="font-mono text-slate-700">32-bit</span>).
+                Try a product name, SKU, brand, or keyword. Full-catalog fuzzy search requires a configured search service.
               </p>
             </div>
-          ) : (
+          ) : searchResult ? (
             <div>
               {/* Matching Categories & Brands Quick Chips */}
               {(searchResult.matchingCategories.length > 0 || searchResult.matchingBrands.length > 0) && (
@@ -518,7 +529,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                 </span>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </div>

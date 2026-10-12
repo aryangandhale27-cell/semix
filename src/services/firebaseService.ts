@@ -11,8 +11,11 @@ import {
   where,
   orderBy, 
   limit,
+  startAfter,
+  documentId,
   onSnapshot,
-  Unsubscribe
+  Unsubscribe,
+  QueryConstraint
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
@@ -122,11 +125,273 @@ export async function fetchProductsFromFirestore(): Promise<Product[]> {
     const snapshot = await getDocs(q);
     const items: Product[] = [];
     snapshot.forEach((docSnap) => {
-      items.push(docSnap.data() as Product);
+      items.push({ ...docSnap.data(), id: docSnap.id } as Product);
     });
     return items;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
+  }
+}
+
+export async function fetchProductsByIdsFromFirestore(productIds: string[]): Promise<Product[]> {
+  const uniqueIds = Array.from(new Set(productIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return [];
+
+  try {
+    const batches: string[][] = [];
+    for (let index = 0; index < uniqueIds.length; index += 30) {
+      batches.push(uniqueIds.slice(index, index + 30));
+    }
+
+    const snapshots = await Promise.all(batches.map((ids) => getDocs(query(
+      collection(db, 'products'),
+      where(documentId(), 'in', ids)
+    ))));
+    return snapshots.flatMap((snapshot) =>
+      snapshot.docs.map((item) => ({ ...item.data(), id: item.id }) as Product)
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'products');
+  }
+}
+
+export interface ProductPageCursor {
+  id: string;
+  value: string | number;
+}
+
+export interface ProductPageOptions {
+  after?: ProductPageCursor | null;
+  category?: string;
+  pageSize?: number;
+  sortBy?: 'featured' | 'price-low' | 'price-high' | 'rating' | 'newest';
+}
+
+export interface ProductPage {
+  products: Product[];
+  nextCursor: ProductPageCursor | null;
+  hasMore: boolean;
+}
+
+export async function fetchProductsPageFromFirestore({
+  after,
+  category,
+  pageSize = 24,
+  sortBy = 'featured',
+}: ProductPageOptions = {}): Promise<ProductPage> {
+  const productsRef = collection(db, 'products');
+  const pageLimit = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  const constraints: QueryConstraint[] = [];
+
+  if (category && category !== 'All' && category !== 'all') {
+    constraints.push(where('category', '==', category));
+    constraints.push(orderBy(documentId(), 'asc'));
+    if (after) constraints.push(startAfter(after.id));
+  } else {
+    const sortField = sortBy === 'price-low' || sortBy === 'price-high'
+      ? 'price'
+      : sortBy === 'rating'
+        ? 'rating'
+        : 'createdAt';
+    const direction = sortBy === 'price-high' || sortBy === 'rating' ? 'desc' : 'asc';
+    constraints.push(orderBy(sortField, sortField === 'createdAt' ? 'desc' : direction));
+    constraints.push(orderBy(documentId(), sortField === 'createdAt' || direction === 'desc' ? 'desc' : 'asc'));
+    if (after) constraints.push(startAfter(after.value, after.id));
+  }
+
+  constraints.push(limit(pageLimit + 1));
+
+  try {
+    const snapshot = await getDocs(query(productsRef, ...constraints));
+    const docs = snapshot.docs.slice(0, pageLimit);
+    const products = docs.map((item) => ({ ...item.data(), id: item.id }) as Product);
+    const last = docs[docs.length - 1];
+    const lastProduct = products[products.length - 1];
+    const hasMore = snapshot.docs.length > pageLimit;
+    const cursorValue = category && category !== 'All' && category !== 'all'
+      ? last?.id
+      : sortBy === 'price-low' || sortBy === 'price-high'
+        ? lastProduct?.price
+        : sortBy === 'rating'
+          ? lastProduct?.rating
+          : lastProduct?.createdAt;
+
+    return {
+      products,
+      hasMore,
+      nextCursor: hasMore && last && lastProduct && cursorValue !== undefined
+        ? { id: last.id, value: cursorValue }
+        : null,
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'products');
+  }
+}
+
+export async function fetchFlaggedProductsFromFirestore(
+  flag: 'isBestSeller' | 'isNew',
+  pageSize: number
+): Promise<Product[]> {
+  const boundedPageSize = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'products'),
+      where(flag, '==', true),
+      limit(boundedPageSize)
+    ));
+    return snapshot.docs.map((item) => ({ ...item.data(), id: item.id }) as Product);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `products.${flag}`);
+  }
+}
+
+export interface ProductSearchCursor {
+  field: 'name' | 'sku';
+  value: string;
+  id: string;
+}
+
+export interface ProductSearchPage {
+  products: Product[];
+  nextCursor: ProductSearchCursor | null;
+  hasMore: boolean;
+}
+
+export async function searchProductsPageFromFirestore(
+  rawQuery: string,
+  after?: ProductSearchCursor | null,
+  pageSize = 24
+): Promise<ProductSearchPage> {
+  const trimmedQuery = rawQuery.trim();
+  if (!trimmedQuery) return { products: [], nextCursor: null, hasMore: false };
+
+  const pageLimit = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  try {
+    const normalizeSearchText = (value: string) =>
+      value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
+    const normalizedQuery = normalizeSearchText(trimmedQuery);
+    const queryTokens = trimmedQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    const prefixQuery = trimmedQuery.split(/\s+/)[0];
+    const searchFields: Array<'name' | 'sku'> = after ? [after.field] : ['name', 'sku'];
+    const rawPrefixes = new Set([
+      prefixQuery,
+      prefixQuery.toLowerCase(),
+      prefixQuery.toUpperCase(),
+      `${prefixQuery.charAt(0).toUpperCase()}${prefixQuery.slice(1)}`,
+    ]);
+    const searchablePrefixes = Array.from(rawPrefixes);
+    const prefixQueries = searchFields.flatMap((field) => searchablePrefixes.map((prefix) => {
+      const constraints: QueryConstraint[] = [
+        where(field, '>=', prefix),
+        where(field, '<=', `${prefix}\uf8ff`),
+        orderBy(field),
+        orderBy(documentId()),
+      ];
+      if (after?.field === field && after.value.toLowerCase().startsWith(prefix.toLowerCase())) {
+        constraints.push(startAfter(after.value, after.id));
+      }
+      constraints.push(limit(pageLimit + 1));
+      return { field, prefix, request: getDocs(query(collection(db, 'products'), ...constraints)) };
+    }));
+    const queryResults = await Promise.all(prefixQueries.map(({ request }) => request));
+    const snapshotsByField = new Map(searchFields.map((field) => [
+      field,
+      queryResults.filter((_, index) => prefixQueries[index].field === field),
+    ]));
+    const docs = queryResults.flatMap((snapshot) => snapshot.docs);
+    const matched = new Map<string, Product>();
+    docs.forEach((item) => {
+      const product = { ...item.data(), id: item.id } as Product;
+      const fields = [
+        product.name,
+        product.sku,
+        product.brand,
+        product.category,
+        product.subcategory,
+        product.shortDescription,
+        product.description,
+        product.voltage,
+        product.protocol,
+        ...(product.tags || []),
+        ...(product.specifications || []).flatMap((specification) => [specification.name, specification.value]),
+      ].filter((value): value is string => typeof value === 'string');
+      const searchableText = normalizeSearchText(fields.join(' '));
+      const matches = Boolean(normalizedQuery) &&
+        (searchableText.includes(normalizedQuery) ||
+          queryTokens.every((token) => searchableText.includes(normalizeSearchText(token))));
+      if (matches) matched.set(product.id, product);
+    });
+
+    if (!after) {
+      const [tagSnapshots, brandSnapshots] = await Promise.all([
+        Promise.all(searchablePrefixes.map((prefix) => getDocs(query(
+          collection(db, 'products'),
+          where('tags', 'array-contains', prefix),
+          limit(pageLimit + 1)
+        )))),
+        Promise.all(searchablePrefixes.map((prefix) => getDocs(query(
+          collection(db, 'products'),
+          where('brand', '>=', prefix),
+          where('brand', '<=', `${prefix}\uf8ff`),
+          limit(pageLimit + 1)
+        )))),
+      ]);
+      [...tagSnapshots, ...brandSnapshots].flatMap((snapshot) => snapshot.docs).forEach((item) => {
+        const product = { ...item.data(), id: item.id } as Product;
+        const values = [
+          product.brand,
+          ...(product.tags || []),
+          product.name,
+          product.sku,
+          product.category,
+          product.subcategory,
+          product.shortDescription,
+          product.description,
+          product.voltage,
+          product.protocol,
+          ...(product.specifications || []).flatMap((specification) => [specification.name, specification.value]),
+        ].filter((value): value is string => typeof value === 'string');
+        const searchableText = normalizeSearchText(values.join(' '));
+        if (searchableText.includes(normalizedQuery) ||
+          queryTokens.every((token) => searchableText.includes(normalizeSearchText(token)))) {
+          matched.set(product.id, product);
+        }
+      });
+    }
+
+    const products = Array.from(matched.values())
+      .sort((left, right) => {
+        const score = (product: Product) => {
+          const name = normalizeSearchText(product.name);
+          const sku = normalizeSearchText(product.sku);
+          const brand = normalizeSearchText(product.brand);
+          const tags = normalizeSearchText((product.tags || []).join(' '));
+          if (name.startsWith(normalizedQuery)) return 4;
+          if (sku.startsWith(normalizedQuery)) return 3;
+          if (brand.includes(normalizedQuery) || tags.includes(normalizedQuery)) return 2;
+          return 1;
+        };
+        return score(right) - score(left) || left.name.localeCompare(right.name);
+      })
+      .slice(0, pageLimit);
+    const nextField = searchFields.find((field) =>
+      (snapshotsByField.get(field) || []).some((snapshot) => snapshot.docs.length > pageLimit)
+    );
+    const nextSnapshot = nextField
+      ? (snapshotsByField.get(nextField) || []).find((snapshot) => snapshot.docs.length > pageLimit)
+      : undefined;
+    const last = nextSnapshot?.docs.at(-1);
+    return {
+      products,
+      hasMore: searchFields.some((field) =>
+        (snapshotsByField.get(field) || []).some((snapshot) => snapshot.docs.length > pageLimit)
+      ),
+      nextCursor: nextField && last
+        ? { field: nextField, value: String(last.get(nextField) || ''), id: last.id }
+        : null,
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'products.search');
   }
 }
 
@@ -138,9 +403,13 @@ export interface ProductSnapshotChange {
 export function subscribeToProducts(
   onData: (products: Product[], fromCache: boolean) => void,
   onError?: (err: any) => void,
-  onChanges?: (changes: ProductSnapshotChange[], fromCache: boolean) => void
+  onChanges?: (changes: ProductSnapshotChange[], fromCache: boolean) => void,
+  options: { pageSize?: number; category?: string } = {}
 ): Unsubscribe {
-  const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+  const constraints = options.category
+    ? [where('category', '==', options.category), orderBy(documentId(), 'asc'), limit(options.pageSize || 24)]
+    : [orderBy('createdAt', 'desc'), orderBy(documentId(), 'desc'), ...(options.pageSize ? [limit(options.pageSize)] : [])];
+  const q = query(collection(db, 'products'), ...constraints);
   let hasInitialSnapshot = false;
   let hasInitialServerSnapshot = false;
 
@@ -150,7 +419,7 @@ export function subscribeToProducts(
     (snapshot) => {
       if (!hasInitialSnapshot) {
         const items: Product[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
+        snapshot.forEach((docSnap) => items.push({ ...docSnap.data(), id: docSnap.id } as Product));
         hasInitialSnapshot = true;
         hasInitialServerSnapshot = !snapshot.metadata.fromCache;
         onData(items, snapshot.metadata.fromCache);
@@ -159,7 +428,7 @@ export function subscribeToProducts(
 
       if (!snapshot.metadata.fromCache && !hasInitialServerSnapshot) {
         const items: Product[] = [];
-        snapshot.forEach((docSnap) => items.push(docSnap.data() as Product));
+        snapshot.forEach((docSnap) => items.push({ ...docSnap.data(), id: docSnap.id } as Product));
         hasInitialServerSnapshot = true;
         onData(items, false);
         return;
