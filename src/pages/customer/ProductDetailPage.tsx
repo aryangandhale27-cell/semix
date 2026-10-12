@@ -353,7 +353,7 @@ export const ProductDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start">
         {/* Left Image Gallery */}
         <div className="lg:col-span-5 space-y-3 sm:space-y-4">
-          <div className="group bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 relative overflow-hidden aspect-square flex items-center justify-center lg:max-w-[420px] lg:mx-auto">
+          <div className="group bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 relative overflow-hidden aspect-[4/3] sm:aspect-square flex items-center justify-center lg:max-w-[420px] lg:mx-auto">
             {product.isNew && (
               <span className="absolute top-4 left-4 bg-cyan-600 text-white text-xs font-extrabold uppercase px-2.5 py-1 rounded-md shadow-xs z-10">
                 New Arrival
