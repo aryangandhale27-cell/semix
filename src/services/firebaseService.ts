@@ -4,6 +4,9 @@ import {
   writeBatch,
   getDoc,
   getDocs, 
+  getAggregateFromServer,
+  count,
+  sum,
   setDoc, 
   addDoc,
   updateDoc,
@@ -537,6 +540,35 @@ async function fetchProductsSearchPageFromFirestore(
 export interface ProductSnapshotChange {
   type: 'added' | 'modified' | 'removed';
   product: Product;
+}
+
+export interface ProductInventorySummary {
+  totalSkusCount: number;
+  totalStockUnits: number;
+  lowStockSkusCount: number;
+}
+
+export async function fetchProductInventorySummaryFromFirestore(): Promise<ProductInventorySummary> {
+  try {
+    const productsQuery = query(collection(db, 'products'));
+    const lowStockQuery = query(collection(db, 'products'), where('stockCount', '<=', 10));
+    const [inventorySnapshot, lowStockSnapshot] = await Promise.all([
+      getAggregateFromServer(productsQuery, {
+        totalSkusCount: count(),
+        totalStockUnits: sum('stockCount'),
+      }),
+      getAggregateFromServer(lowStockQuery, { lowStockSkusCount: count() }),
+    ]);
+
+    const inventory = inventorySnapshot.data();
+    return {
+      totalSkusCount: inventory.totalSkusCount,
+      totalStockUnits: inventory.totalStockUnits,
+      lowStockSkusCount: lowStockSnapshot.data().lowStockSkusCount,
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'products/aggregate-summary');
+  }
 }
 
 export function subscribeToProducts(

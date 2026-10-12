@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Order, Product } from '../types';
+import {
+  fetchProductInventorySummaryFromFirestore,
+  ProductInventorySummary,
+} from '../services/firebaseService';
 
 export interface FirestoreAdminKPIs {
   // 1. Gross Sales Revenue
@@ -68,6 +72,32 @@ export function useFirestoreAdminKPIs(
   productsLoaded = true
 ): FirestoreAdminKPIs {
   const [kpis, setKpis] = useState<FirestoreAdminKPIs>(DEFAULT_KPIS);
+  const [aggregateProductSummary, setAggregateProductSummary] = useState<ProductInventorySummary | null>(null);
+  const [aggregateProductSummaryError, setAggregateProductSummaryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (productsLoaded) return;
+
+    let isCurrent = true;
+    fetchProductInventorySummaryFromFirestore()
+      .then((summary) => {
+        if (isCurrent) {
+          setAggregateProductSummary(summary);
+          setAggregateProductSummaryError(null);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('[Admin KPIs] Could not load product inventory summary:', error);
+        if (isCurrent) {
+          setAggregateProductSummaryError('Product inventory summary could not be loaded.');
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [productsLoaded]);
+
   // Compute metrics from the existing AppContext snapshots instead of opening duplicate listeners.
   useEffect(() => {
     const currentOrders = orders;
@@ -156,24 +186,30 @@ export function useFirestoreAdminKPIs(
     })}`;
 
     // --- Product Calculations ---
-    const totalSkusCount = currentProducts.length;
+    const productSummary = productsLoaded
+      ? {
+          totalSkusCount: currentProducts.length,
+          totalStockUnits: currentProducts.reduce((sum, p) => {
+            const stock = Number((p as any).stockQuantity ?? p.stockCount ?? (p as any).stock ?? 0);
+            return sum + (isNaN(stock) ? 0 : stock);
+          }, 0),
+          lowStockSkusCount: currentProducts.filter((p) => {
+            const stock = Number((p as any).stockQuantity ?? p.stockCount ?? (p as any).stock ?? 0);
+            return stock <= 10;
+          }).length,
+        }
+      : aggregateProductSummary;
+
+    const totalSkusCount = productSummary?.totalSkusCount ?? 0;
 
     // Sum of stockQuantity (or stockCount, or stock)
-    const totalStockUnits = currentProducts.reduce((sum, p) => {
-      const stock = Number((p as any).stockQuantity ?? p.stockCount ?? (p as any).stock ?? 0);
-      return sum + (isNaN(stock) ? 0 : stock);
-    }, 0);
-
-    // Low stock items: stock <= 10
-    const lowStockSkusCount = currentProducts.filter((p) => {
-      const stock = Number((p as any).stockQuantity ?? p.stockCount ?? (p as any).stock ?? 0);
-      return stock <= 10;
-    }).length;
+    const totalStockUnits = productSummary?.totalStockUnits ?? 0;
+    const lowStockSkusCount = productSummary?.lowStockSkusCount ?? 0;
 
     const isLowStockWarning = lowStockSkusCount > 0;
 
     const isOrdersLoaded = true;
-    const isProductsLoaded = productsLoaded;
+    const isProductsLoaded = productsLoaded || aggregateProductSummary !== null;
     const isLoading = false;
 
     setKpis({
@@ -195,10 +231,10 @@ export function useFirestoreAdminKPIs(
       isLoading,
       isOrdersLoaded,
       isProductsLoaded,
-      error: null,
+      error: aggregateProductSummaryError,
       lastUpdated: new Date(),
     });
-  }, [orders, products, productsLoaded]);
+  }, [orders, products, productsLoaded, aggregateProductSummary, aggregateProductSummaryError]);
 
   return kpis;
 }

@@ -160,6 +160,8 @@ export const AdminDashboardPage: React.FC = () => {
   const topProductContributor = productAttribution[0];
 
   useEffect(() => {
+    if (activeTab !== 'catalog' || isCatalogLoaded) return;
+
     let isCurrent = true;
     loadAllProducts()
       .then(() => {
@@ -172,7 +174,7 @@ export const AdminDashboardPage: React.FC = () => {
     return () => {
       isCurrent = false;
     };
-  }, [loadAllProducts, showToast]);
+  }, [activeTab, isCatalogLoaded, loadAllProducts, showToast]);
 
   const handleBuildSearchIndex = async () => {
     if (!isCatalogLoaded || isBuildingSearchIndex) return;
