@@ -403,7 +403,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                 No matching components found for &ldquo;{inputValue}&rdquo;
               </p>
               <p className="text-[11px] text-slate-500 mt-1 max-w-sm mx-auto">
-                Try a product name, SKU, brand, or keyword. Full-catalog fuzzy search requires a configured search service.
+                Try another product name, SKU, brand, or keyword, or search with a more specific phrase.
               </p>
             </div>
           ) : searchResult ? (
