@@ -321,28 +321,29 @@ export const AdminDashboardPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#561269] via-[#380847] to-slate-900 rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg border border-[#561269]/30">
-        <div className="flex items-center gap-4">
+      <div className="bg-gradient-to-r from-[#561269] via-[#380847] to-slate-900 rounded-xl sm:rounded-2xl p-3 sm:p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-2 sm:gap-4 shadow-lg border border-[#561269]/30">
+        <div className="flex items-center gap-2 sm:gap-4">
           <SemixLabsLogo
             variant="full"
             size="md"
-            className="!h-12 !w-40 !min-w-0 shrink-0 rounded-xl border border-white/20 bg-white px-2 py-1 object-cover"
+            className="!h-8 !w-20 sm:!h-12 sm:!w-40 !min-w-0 shrink-0 rounded-lg sm:rounded-xl border border-white/20 bg-white px-1 sm:px-2 py-1 object-cover"
           />
-          <div>
-            <div className="inline-flex items-center gap-1.5 bg-[#FF6B00] text-white text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full mb-1.5">
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Master Administration Console</span>
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-1 sm:gap-1.5 bg-[#FF6B00] text-white text-[8px] sm:text-[10px] leading-tight font-extrabold uppercase px-1.5 sm:px-2.5 py-0.5 sm:py-0.5 rounded-full mb-0.5 sm:mb-1.5">
+              <Sliders className="hidden sm:block w-3.5 h-3.5" />
+              <span className="sm:hidden">Admin Console</span>
+              <span className="hidden sm:inline">Master Administration Console</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white">
+            <h1 className="text-base sm:text-2xl leading-tight font-extrabold text-white">
               SEMIX LABS Platform Controller
             </h1>
-            <p className="text-xs text-purple-200 mt-0.5">
+            <p className="hidden sm:block text-xs text-purple-200 mt-0.5">
               Full control over silicon catalogs, revenue analytics, staff RBAC permissions, and store config
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-white/10 rounded-xl border border-white/15 text-xs text-white/90">
             <Cloud className={`w-4 h-4 ${isFirebaseLive ? 'text-emerald-400' : 'text-amber-400'}`} />
             <span className="font-semibold">{isFirebaseLive ? 'Cloud Firestore Live' : 'Offline State'}</span>
@@ -350,7 +351,7 @@ export const AdminDashboardPage: React.FC = () => {
 
           <button
             onClick={() => setIsEmailModalOpen(true)}
-            className="bg-white/15 hover:bg-white/25 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border border-white/20 shadow-xs cursor-pointer transition-all"
+            className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1.5 border border-white/20 shadow-xs cursor-pointer transition-all"
             title="View Automated Customer, Seller & Admin Transactional Emails"
           >
             <Mail className="w-4 h-4 text-purple-200" />
@@ -362,10 +363,11 @@ export const AdminDashboardPage: React.FC = () => {
 
           <button
             onClick={() => setIsAddProductOpen(true)}
-            className="bg-[#FF6B00] hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all hover:scale-105"
+            className="bg-[#FF6B00] hover:bg-orange-600 text-white px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all hover:scale-105"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New Component</span>
+            <span className="sm:hidden">Add Component</span>
+            <span className="hidden sm:inline">Add New Component</span>
           </button>
         </div>
       </div>
