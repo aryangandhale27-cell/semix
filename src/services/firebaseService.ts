@@ -371,6 +371,19 @@ async function fetchProductsSearchPageFromFirestore(
     const queryTokens = Array.from(new Set(
       trimmedQuery.toLowerCase().split(/\s+/).map(normalizeSearchText).filter((token) => token.length >= 2)
     ));
+    const searchTokenVariants = (token: string): string[] => {
+      let singular = token;
+      if (token.length > 4) {
+        if (token.endsWith('ies')) {
+          singular = `${token.slice(0, -3)}y`;
+        } else if (/(ches|shes|xes|zes|sses)$/.test(token)) {
+          singular = token.slice(0, -2);
+        } else if (token.endsWith('s') && !token.endsWith('ss')) {
+          singular = token.slice(0, -1);
+        }
+      }
+      return singular === token ? [token] : [token, singular];
+    };
     const namePrefixes = new Set([
       trimmedQuery,
       trimmedQuery.toLowerCase(),
@@ -432,7 +445,7 @@ async function fetchProductsSearchPageFromFirestore(
 
     const keywordConstraintsFor = (token: string): QueryConstraint[] => {
       const constraints: QueryConstraint[] = [
-        where('searchKeywords', 'array-contains', token),
+        where('searchKeywords', 'array-contains-any', searchTokenVariants(token)),
         orderBy(documentId()),
       ];
       if (after?.field === 'searchKeywords') constraints.push(startAfter(after.id));
