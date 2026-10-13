@@ -371,6 +371,65 @@ async function fetchProductsSearchPageFromFirestore(
     const queryTokens = Array.from(new Set(
       trimmedQuery.toLowerCase().split(/\s+/).map(normalizeSearchText).filter((token) => token.length >= 2)
     ));
+    const namePrefixes = new Set([
+      trimmedQuery,
+      trimmedQuery.toLowerCase(),
+      trimmedQuery.toUpperCase(),
+      `${trimmedQuery.charAt(0).toUpperCase()}${trimmedQuery.slice(1)}`,
+    ]);
+    const namePrefixSnapshots = await Promise.all(Array.from(namePrefixes).map((prefix) => {
+      const constraints: QueryConstraint[] = [
+        where('name', '>=', prefix),
+        where('name', '<=', `${prefix}\uf8ff`),
+        orderBy('name'),
+        orderBy(documentId()),
+      ];
+      if (after?.field === 'name') constraints.push(startAfter(after.value, after.id));
+      constraints.push(limit(pageLimit + 1));
+      return getDocs(query(collection(db, 'products'), ...constraints));
+    }));
+    const namePrefixProducts = new Map<string, Product>();
+    namePrefixSnapshots.flatMap((snapshot) => snapshot.docs).forEach((item) => {
+      const product = { ...item.data(), id: item.id } as Product;
+      const searchableText = normalizeSearchText([
+        product.name,
+        product.sku,
+        product.brand,
+        product.category,
+        product.subcategory,
+        product.shortDescription,
+        product.description,
+        product.voltage,
+        product.protocol,
+        ...(product.tags || []),
+        ...(product.specifications || []).flatMap((specification) => [specification.name, specification.value]),
+      ].filter((value): value is string => typeof value === 'string').join(' '));
+      if (searchableText.includes(normalizedQuery) ||
+        queryTokens.every((token) => searchableText.includes(normalizeSearchText(token)))) {
+        namePrefixProducts.set(product.id, product);
+      }
+    });
+
+    if (namePrefixProducts.size > 0) {
+      const products = Array.from(namePrefixProducts.values())
+        .sort((left, right) => left.name.localeCompare(right.name))
+        .slice(0, pageLimit);
+      const hasMore = namePrefixSnapshots.some((snapshot) => snapshot.docs.length > pageLimit);
+      const cursorSnapshot = namePrefixSnapshots.find((snapshot) => snapshot.docs.length > pageLimit);
+      const cursorProduct = cursorSnapshot?.docs[Math.min(pageLimit - 1, cursorSnapshot.docs.length - 1)];
+      return {
+        products,
+        hasMore,
+        nextCursor: cursorProduct
+          ? { field: 'name', value: String(cursorProduct.get('name') || ''), id: cursorProduct.id }
+          : null,
+      };
+    }
+
+    if (after?.field === 'name') {
+      return { products: [], nextCursor: null, hasMore: false };
+    }
+
     const keywordConstraintsFor = (token: string): QueryConstraint[] => {
       const constraints: QueryConstraint[] = [
         where('searchKeywords', 'array-contains', token),
