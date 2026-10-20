@@ -493,8 +493,8 @@ export const ContactPage: React.FC = () => {
                 </div>
                 <div className="text-xs text-slate-600 space-y-1">
                   <p className="font-semibold text-slate-800">SEMIX LABS Electronics HQ</p>
-                  <p>Crystal Towers, Govind Nagar,</p>
-                  <p>Pune Solapur Road, Pune, Maharashtra - 411028</p>
+                  <p>G35 TOWERS, PCMC CHOWK,</p>
+                  <p>PIMPRI CHINCHWAD, PUNE</p>
                 </div>
               </div>
             </div>
