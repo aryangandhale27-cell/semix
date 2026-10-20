@@ -54,6 +54,7 @@ function loadRazorpayCheckout(): Promise<void> {
 export const CheckoutPage: React.FC = () => {
   const { 
     cart, 
+    products,
     cartSubtotal, 
     appliedCoupon, 
     couponDiscount, 
@@ -100,8 +101,15 @@ export const CheckoutPage: React.FC = () => {
   const tax = 0;
   const totalAmount = Math.max(0, taxableAmount + shippingFee);
 
-  // COD Availability Condition: strictly Order Subtotal > ₹300
-  const isCodAvailable = taxableAmount > 300;
+  // COD remains available for legacy products without a setting; an explicit opt-out requires prepaid payment.
+  const hasCodRestrictedProduct = cart.some((item) => {
+    const currentProduct = products.find((product) => product.id === item.product.id) || item.product;
+    return currentProduct.codEnabled === false;
+  });
+  const isCodAvailable = taxableAmount > 300 && !hasCodRestrictedProduct;
+  const codUnavailableMessage = hasCodRestrictedProduct
+    ? 'Cash on Delivery is unavailable because your cart contains a product that requires prepaid payment.'
+    : `Cash on Delivery is only available for orders above ₹300 (current subtotal: ₹${cartSubtotal.toFixed(0)}).`;
   const amountNeededForFreeShipping = Math.max(0, 500 - taxableAmount);
 
   useEffect(() => {
@@ -125,17 +133,17 @@ export const CheckoutPage: React.FC = () => {
     return firebaseUserId;
   };
 
-  // Automatic Reversion: If taxable amount drops to <= 300 while COD was selected, revert to default 'UPI'
+  // Automatically revert to prepaid if the order no longer qualifies for COD.
   useEffect(() => {
     if (!isCodAvailable && paymentMethod === 'COD') {
       setPaymentMethod('UPI');
       showToast(
         'Payment Method Reverted',
-        'Cash on Delivery is only available for orders above ₹300. Switched to Instant UPI.',
+        `${codUnavailableMessage} Switched to Instant UPI.`,
         'info'
       );
     }
-  }, [isCodAvailable, paymentMethod, showToast]);
+  }, [codUnavailableMessage, isCodAvailable, paymentMethod, showToast]);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,7 +183,7 @@ export const CheckoutPage: React.FC = () => {
     if (!firebaseUserId) return;
 
     if (paymentMethod === 'COD' && !isCodAvailable) {
-      showToast('COD Not Allowed', 'Cash on Delivery is only available for orders above ₹300.', 'error');
+      showToast('COD Not Allowed', codUnavailableMessage, 'error');
       return;
     }
 
@@ -643,7 +651,7 @@ export const CheckoutPage: React.FC = () => {
                   } else {
                     showToast(
                       'COD Unavailable',
-                      `Cash on Delivery is only available for orders above ₹300 (current subtotal: ₹${cartSubtotal.toFixed(0)}).`,
+                      codUnavailableMessage,
                       'warning'
                     );
                   }
@@ -679,7 +687,7 @@ export const CheckoutPage: React.FC = () => {
                       </span>
                     ) : (
                       <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">
-                        Subtotal &gt; ₹300
+                        {hasCodRestrictedProduct ? 'Prepaid only' : 'Subtotal > ₹300'}
                       </span>
                     )}
                   </div>
@@ -691,7 +699,7 @@ export const CheckoutPage: React.FC = () => {
                   {!isCodAvailable && (
                     <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-1.5 text-[11px] text-amber-900 font-medium leading-tight">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                      <span>Cash on Delivery is only available for orders above ₹300.</span>
+                      <span>{codUnavailableMessage}</span>
                     </div>
                   )}
                 </div>
@@ -1002,4 +1010,3 @@ export const CheckoutPage: React.FC = () => {
     </div>
   );
 };
-

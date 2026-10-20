@@ -94,6 +94,7 @@ export interface Product {
   isNew?: boolean;
   isFeatured?: boolean;
   isBestSeller?: boolean;
+  codEnabled?: boolean;
   voltage?: string;
   protocol?: string;
   addedBy?: string;

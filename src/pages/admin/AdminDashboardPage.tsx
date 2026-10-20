@@ -1303,6 +1303,21 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
               </div>
 
+              <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editingProduct.codEnabled !== false}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, codEnabled: e.target.checked })}
+                  className="mt-0.5 accent-[#561269]"
+                />
+                <span>
+                  <span className="block font-bold text-slate-700">Allow Cash on Delivery for this product</span>
+                  <span className="mt-0.5 block text-[11px] text-slate-500">
+                    If disabled, customers must prepay when this product is in their cart.
+                  </span>
+                </span>
+              </label>
+
               <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
