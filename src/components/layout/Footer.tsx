@@ -54,10 +54,10 @@ export const Footer: React.FC = () => {
                   <Phone className="w-3 h-3 sm:w-4 sm:h-4" strokeWidth={1.75} />
                 </div>
                 <a 
-                  href="tel:+917666601086" 
+                  href="tel:+917602003432"
                   className="text-xs sm:text-sm font-mono text-slate-200 hover:text-white transition-colors"
                 >
-                  +91 7666601086
+                  +91 7602003432
                 </a>
               </div>
 
@@ -166,10 +166,10 @@ export const Footer: React.FC = () => {
                   Phone
                 </span>
                 <a 
-                  href="tel:+917666601086"
+                  href="tel:+917602003432"
                   className="text-xs sm:text-sm font-mono text-slate-300 hover:text-[#c084fc] transition-colors block"
                 >
-                  +91 7666601086
+                  +91 7602003432
                 </a>
               </li>
               <li>

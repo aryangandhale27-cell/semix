@@ -441,13 +441,13 @@ export const ContactPage: React.FC = () => {
                   <p className="text-xs text-slate-500 mt-0.5">Mon - Sat: 9:00 AM – 7:30 PM IST</p>
                 </div>
                 <div className="space-y-1 text-xs font-semibold text-slate-700">
-                  <a href="tel:+917666601086" className="text-[#561269] font-bold text-base hover:underline block font-mono">
-                    +91 7666601086
+                  <a href="tel:+917602003432" className="text-[#561269] font-bold text-base hover:underline block font-mono">
+                    +91 7602003432
                   </a>
                   <p className="text-slate-500">Toll-Free Hardware Helpline</p>
                 </div>
                 <a
-                  href="https://wa.me/917666601086"
+                  href="https://wa.me/917602003432"
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 pt-1"

@@ -86,8 +86,8 @@ export const TopUtilityBar: React.FC = () => {
           <div className="flex items-center gap-1.5 rounded-full border border-[#edd6f3] bg-[#fbf5fc] px-2.5 py-1 font-medium text-[#561269]">
             <Phone className="w-3.5 h-3.5 text-[#FF6B00]" />
             <span className="hidden sm:inline text-[#762f8e]">Customer Support:</span>
-            <a href="tel:+917666601086" className="font-semibold text-[#561269] transition-colors hover:text-[#FF6B00]">
-              +91 7666601086
+            <a href="tel:+917602003432" className="font-semibold text-[#561269] transition-colors hover:text-[#FF6B00]">
+              +91 7602003432
             </a>
           </div>
           <div className="hidden md:flex items-center gap-1.5 rounded-full border border-[#edd6f3] bg-[#fbf5fc] px-2.5 py-1 text-[#561269]">

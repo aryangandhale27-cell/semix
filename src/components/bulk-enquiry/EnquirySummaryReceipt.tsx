@@ -282,7 +282,7 @@ export const EnquirySummaryReceipt: React.FC<EnquirySummaryReceiptProps> = ({
             <Phone className="w-4 h-4 text-[#561269] shrink-0 mt-0.5" />
             <div>
               <p className="font-bold text-slate-800">B2B Helpdesk</p>
-              <p className="text-[11px]">Support hotline: +91 7666601086 / office@semixlabs.com</p>
+              <p className="text-[11px]">Support hotline: +91 7602003432 / office@semixlabs.com</p>
             </div>
           </div>
         </div>
