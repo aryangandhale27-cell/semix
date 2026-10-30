@@ -791,7 +791,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       unsubscribeOrders = subscribeToOrders((remoteOrders) => {
         if (!isMounted) return;
-        const nextOrders = (remoteOrders || []).map(normalizeOrder);
+        const ordersById = new Map<string, Order>();
+        (remoteOrders || []).forEach((remoteOrder) => {
+          const normalizedOrder = normalizeOrder(remoteOrder);
+          ordersById.set(normalizedOrder.id, normalizedOrder);
+        });
+        const nextOrders = Array.from(ordersById.values());
         setOrders(nextOrders);
       }, (err) => {
         console.warn('[Firestore] Orders live listener notice:', err?.message || err);
@@ -1234,7 +1239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]
     };
 
-    setOrders((prev) => [newOrder, ...prev]);
+    setOrders((prev) => [newOrder, ...prev.filter((order) => order.id !== newOrder.id)]);
 
     syncOrderToFirestore(newOrder).catch((err) => {
       console.warn('Firestore Order sync deferred:', err);
@@ -1303,7 +1308,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     await syncOrderToFirestore(newOrder);
-    setOrders((prev) => [newOrder, ...prev]);
+    setOrders((prev) => [newOrder, ...prev.filter((order) => order.id !== newOrder.id)]);
     sendOrderPlacedEmails(newOrder).catch((error) =>
       console.warn('[EmailService] Offline order notification deferred:', error)
     );
@@ -1428,7 +1433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userId: userId || orderData.customer.email,
     };
 
-    setOrders((prev) => [finalizedOrder, ...prev]);
+    setOrders((prev) => [finalizedOrder, ...prev.filter((order) => order.id !== finalizedOrder.id)]);
 
     orderData.items.forEach((item) => {
       setProducts((prev) =>

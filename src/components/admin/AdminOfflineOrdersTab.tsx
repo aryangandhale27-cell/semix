@@ -176,7 +176,7 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
             <div className="space-y-3">
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#561269]">Customer component list</h3>
               <label className="block">
-                <span className={labelClass}>List details for the fulfillment seller *</span>
+                <span className={labelClass}>List details for the fulfillment seller</span>
                 <textarea required rows={4} className={`${inputClass} resize-y`} placeholder="Part names, SKUs, quantities, or handling instructions" value={form.componentList} onChange={(event) => setForm({ ...form, componentList: event.target.value })} />
               </label>
               <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-4 text-center hover:border-violet-400">
