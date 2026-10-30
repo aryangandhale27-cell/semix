@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, FileImage, IndianRupee, Upload } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { optimizeAndProcessImage, validateImageFile, type OptimizedImageResult } from '../../utils/imageOptimizer';
@@ -28,6 +28,7 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
   const [isPreparingImage, setIsPreparingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const isSubmissionInProgress = useRef(false);
   const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -78,6 +79,8 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
       return;
     }
 
+    if (isSubmissionInProgress.current) return;
+    isSubmissionInProgress.current = true;
     setIsSubmitting(true);
     try {
       const order = await createOfflineOrder({
@@ -120,6 +123,7 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
       console.error('[AdminOfflineOrders] Could not create offline order:', error);
       showToast('Offline Order Failed', error instanceof Error ? error.message : 'The order could not be saved.', 'error');
     } finally {
+      isSubmissionInProgress.current = false;
       setIsSubmitting(false);
     }
   };
