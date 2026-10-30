@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { AlertCircle, CheckCircle2, FileImage, IndianRupee, Upload } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { optimizeAndProcessImage, validateImageFile, type OptimizedImageResult } from '../../utils/imageOptimizer';
@@ -22,17 +22,12 @@ const initialForm = {
 };
 
 export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ onViewOrders }) => {
-  const { orders, createOfflineOrder, showToast } = useApp();
+  const { createOfflineOrder, showToast } = useApp();
   const [form, setForm] = useState(initialForm);
   const [attachment, setAttachment] = useState<OptimizedImageResult | null>(null);
   const [isPreparingImage, setIsPreparingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const offlineOrders = useMemo(
-    () => orders.filter((order) => order.isOfflineOrder).slice(0, 10),
-    [orders]
-  );
-
   const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -224,30 +219,6 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
         </form>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-extrabold text-slate-900">Recent Offline Orders</h3>
-            <p className="mt-1 text-xs text-slate-500">These orders also appear in Orders &amp; Seller Assignment.</p>
-          </div>
-          <button type="button" onClick={onViewOrders} className="rounded-lg border border-violet-200 px-3 py-2 text-xs font-bold text-[#561269] hover:bg-violet-50">Open all orders</button>
-        </div>
-        {offlineOrders.length === 0 ? (
-          <p className="rounded-xl bg-slate-50 p-5 text-center text-xs text-slate-500">No offline orders have been created yet.</p>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {offlineOrders.map((order) => (
-              <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="font-mono text-xs font-black text-[#561269]">{order.id} <span className="font-sans font-medium text-slate-400">· {order.customer.fullName}</span></p>
-                  <p className="mt-1 text-[11px] text-slate-500">₹{order.totalAmount.toLocaleString('en-IN')} total · ₹{(order.balanceDue || 0).toLocaleString('en-IN')} due · {order.status.replace('_', ' ')}</p>
-                </div>
-                {order.componentListImageUrl && <a href={order.componentListImageUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-violet-700 underline">View list image</a>}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 };

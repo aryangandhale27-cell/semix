@@ -28,7 +28,6 @@ import {
 
 import { CustomProjectsManager } from '../../components/admin/CustomProjectsManager';
 import { AdminOrdersTab } from '../../components/admin/AdminOrdersTab';
-import { AdminOfflineOrdersTab } from '../../components/admin/AdminOfflineOrdersTab';
 import { AdminUserManagementTab } from '../../components/admin/AdminUserManagementTab';
 import { AdminCouponManagementTab } from '../../components/admin/AdminCouponManagementTab';
 import { AdminKpiCardsRow } from '../../components/admin/AdminKpiCardsRow';
@@ -79,7 +78,7 @@ export const AdminDashboardPage: React.FC = () => {
     (o) => !o.assignedSellerId || o.status === 'pending_assignment'
   ).length;
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'offline_orders' | 'coupons' | 'users' | 'bonuses' | 'banners' | 'categories' | 'audit_logs' | 'analytics' | 'catalog' | 'staff' | 'custom_projects' | 'collect_payment'>(() => {
+  const [activeTab, setActiveTab] = useState<'orders' | 'coupons' | 'users' | 'bonuses' | 'banners' | 'categories' | 'audit_logs' | 'analytics' | 'catalog' | 'staff' | 'custom_projects' | 'collect_payment'>(() => {
     return pendingOrdersCount > 0 ? 'orders' : 'orders';
   });
   const [productSearch, setProductSearch] = useState('');
@@ -419,7 +418,6 @@ export const AdminDashboardPage: React.FC = () => {
           <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-violet-500">Admin Sections</p>
           <p className="truncate text-sm font-black text-slate-800">
             {activeTab === 'orders' ? 'Orders & Seller Assignment' :
-              activeTab === 'offline_orders' ? 'Offline Orders' :
               activeTab === 'coupons' ? 'Coupons & Discounts' :
               activeTab === 'users' ? 'User Management' :
               activeTab === 'bonuses' ? 'Sellers → Bonuses' :
@@ -443,7 +441,6 @@ export const AdminDashboardPage: React.FC = () => {
             <span>Open Section</span>
             <span className="rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-extrabold">
               {activeTab === 'orders' ? 'Orders' :
-                activeTab === 'offline_orders' ? 'Offline Orders' :
                 activeTab === 'coupons' ? 'Coupons' :
                 activeTab === 'users' ? 'Users' :
                 activeTab === 'bonuses' ? 'Bonuses' :
@@ -462,7 +459,6 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-violet-200 bg-white p-1.5 shadow-xl shadow-violet-950/20">
               {[
                 ['orders', 'Orders & Seller Assignment'],
-                ['offline_orders', 'Offline Orders'],
                 ['coupons', 'Coupons & Discounts'],
                 ['users', 'User Management'],
                 ['bonuses', 'Sellers → Bonuses'],
@@ -664,10 +660,6 @@ export const AdminDashboardPage: React.FC = () => {
       )}
 
       {/* Tab 1: User Management & Accounts */}
-      {activeTab === 'offline_orders' && (
-        <AdminOfflineOrdersTab onViewOrders={() => setActiveTab('orders')} />
-      )}
-
       {activeTab === 'users' && (
         <AdminUserManagementTab />
       )}

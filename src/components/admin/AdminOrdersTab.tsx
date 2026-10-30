@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Order, OrderStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { AdminOrderAssignmentModal } from './AdminOrderAssignmentModal';
+import { AdminOfflineOrdersTab } from './AdminOfflineOrdersTab';
 import { 
   Store, 
   Search, 
@@ -28,7 +29,9 @@ import {
   Tag,
   Mail,
   Phone,
-  Trash2
+  Trash2,
+  Plus,
+  X
 } from 'lucide-react';
 import { EmailPreviewModal } from '../common/EmailPreviewModal';
 import { 
@@ -54,6 +57,7 @@ export const AdminOrdersTab: React.FC = () => {
   const [paymentCollectionOrder, setPaymentCollectionOrder] = useState<Order | null>(null);
   const [deliveryPaymentAmount, setDeliveryPaymentAmount] = useState('');
   const [isRecordingDeliveryPayment, setIsRecordingDeliveryPayment] = useState(false);
+  const [isOfflineOrderFormOpen, setIsOfflineOrderFormOpen] = useState(false);
 
   useEffect(() => {
     if (!orderPendingDeletion) return;
@@ -365,6 +369,27 @@ export const AdminOrdersTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {isOfflineOrderFormOpen && (
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-label="Create offline order">
+          <div className="mx-auto my-6 max-w-4xl">
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsOfflineOrderFormOpen(false)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow hover:bg-slate-100"
+              >
+                <X className="h-4 w-4" />
+                Close
+              </button>
+            </div>
+            <AdminOfflineOrdersTab onViewOrders={() => {
+              setIsOfflineOrderFormOpen(false);
+              setViewMode('orders');
+              setFilter('all');
+            }} />
+          </div>
+        </div>
+      )}
       {paymentCollectionOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
           <form onSubmit={handleRecordDeliveryPayment} className="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
@@ -467,6 +492,17 @@ export const AdminOrdersTab: React.FC = () => {
             Source: <code className="font-mono text-slate-800 font-semibold">orders/{'{id}'}/items</code> in <strong className="text-[#561269]">semix-ai-stdio</strong>
           </span>
         </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setIsOfflineOrderFormOpen(true)}
+          className="inline-flex items-center gap-2 rounded-xl bg-[#561269] px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition-colors hover:bg-[#460e56]"
+        >
+          <Plus className="h-4 w-4" />
+          Add Order
+        </button>
       </div>
 
       {viewMode === 'ordered_products' ? (
