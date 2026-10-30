@@ -59,6 +59,7 @@ export const ShopPage: React.FC = () => {
   const [productPages, setProductPages] = useState<Product[][]>([]);
   const [pageCursors, setPageCursors] = useState<Array<ProductPageCursor | ProductSearchCursor | null>>([]);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
+  const [totalSearchResults, setTotalSearchResults] = useState<number | null>(null);
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const pageRequestId = React.useRef(0);
@@ -195,6 +196,7 @@ export const ShopPage: React.FC = () => {
     let isCurrent = true;
     setIsPageLoading(true);
     setPageError(null);
+    setTotalSearchResults(null);
     setCurrentPage(1);
 
     const loadFirstPage = async () => {
@@ -208,10 +210,12 @@ export const ShopPage: React.FC = () => {
           setProductPages([matchingProducts]);
           setPageCursors([null, result.nextCursor]);
           setHasMoreProducts(result.hasMore);
+          setTotalSearchResults(selectedCategory === 'All' ? result.total : null);
         } else if (selectedCategory === 'All' && sortBy === 'featured' && featuredProducts && featuredProducts.length > 0) {
           const firstPage = featuredProducts.slice(0, PAGE_SIZE);
           const last = firstPage[firstPage.length - 1];
           setProductPages([firstPage]);
+          setTotalSearchResults(null);
           setPageCursors([
             null,
             last?.createdAt ? { id: last.id, value: last.createdAt } : null,
@@ -225,6 +229,7 @@ export const ShopPage: React.FC = () => {
           });
           if (!isCurrent) return;
           setProductPages([result.products]);
+          setTotalSearchResults(null);
           setPageCursors([null, result.nextCursor]);
           setHasMoreProducts(result.hasMore);
         }
@@ -235,6 +240,7 @@ export const ShopPage: React.FC = () => {
         setProductPages([[]]);
         setPageCursors([null, null]);
         setHasMoreProducts(false);
+        setTotalSearchResults(null);
       } finally {
         if (isCurrent) setIsPageLoading(false);
       }
@@ -390,7 +396,9 @@ export const ShopPage: React.FC = () => {
             {selectedCategory === 'All' ? 'Complete Electronics Catalog' : selectedCategory}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            {filteredProducts.length > 0
+            {searchQuery.trim() && totalSearchResults !== null
+              ? `${totalSearchResults.toLocaleString()} matching products`
+              : filteredProducts.length > 0
               ? `Showing ${firstVisibleProduct}-${lastVisibleProduct} loaded results · 24 products per page`
               : 'Browse verified electronic parts and compute modules'}
           </p>
@@ -778,7 +786,9 @@ export const ShopPage: React.FC = () => {
           {!isPageLoading && (activePage > 1 || hasMoreProducts) && (
             <nav aria-label="Product result pages" className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
               <p className="text-xs font-medium text-slate-500">
-                Showing {firstVisibleProduct}-{lastVisibleProduct} loaded results
+                {totalSearchResults !== null
+                  ? `Showing ${firstVisibleProduct}-${lastVisibleProduct} of ${totalSearchResults.toLocaleString()} matching products`
+                  : `Showing ${firstVisibleProduct}-${lastVisibleProduct} matching results`}
               </p>
               <div className="flex items-center gap-3">
                 <button

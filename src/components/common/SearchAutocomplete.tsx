@@ -86,7 +86,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         setSearchResult({
           query: debouncedQuery,
           normalizedQuery: debouncedQuery.toLowerCase(),
-          total: products.length,
+          total: page.total ?? products.length,
           results: products.map((product) => ({ product, score: 0, matchedFields: ['name', 'sku'] })),
           didYouMean: null,
           matchingCategories: Array.from(new Set(products.map((product) => product.category).filter(Boolean))),
@@ -521,7 +521,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                   onClick={() => executeSearch(inputValue)}
                   className="font-semibold text-[#561269] hover:text-[#FF6B00] flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <span>View all {searchResult.total} verified results for &ldquo;{inputValue}&rdquo;</span>
+                  <span>View all matching results for &ldquo;{inputValue}&rdquo;</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
                 <span className="text-[11px] text-slate-400 hidden sm:inline">

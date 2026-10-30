@@ -309,20 +309,23 @@ export async function fetchFlaggedProductsFromFirestore(
 }
 
 export interface ProductSearchCursor {
-  field: 'name' | 'sku' | 'searchKeywords';
+  field: 'name' | 'sku' | 'searchKeywords' | 'ranked';
   value: string;
   id: string;
+  offset?: number;
 }
 
 export interface ProductSearchPage {
   products: Product[];
   nextCursor: ProductSearchCursor | null;
   hasMore: boolean;
+  total: number | null;
 }
 
 // Reuse autocomplete results briefly when the same query is submitted or revisited.
 const productSearchCache = new Map<string, { expiresAt: number; page: ProductSearchPage }>();
 const productSearchRequests = new Map<string, Promise<ProductSearchPage>>();
+const rankedProductSearchCache = new Map<string, { expiresAt: number; products: Product[] }>();
 const PRODUCT_SEARCH_CACHE_TTL_MS = 10_000;
 const PRODUCT_SEARCH_CACHE_LIMIT = 50;
 
@@ -332,10 +335,10 @@ export async function searchProductsPageFromFirestore(
   pageSize = 24
 ): Promise<ProductSearchPage> {
   const trimmedQuery = rawQuery.trim();
-  if (!trimmedQuery) return { products: [], nextCursor: null, hasMore: false };
+  if (!trimmedQuery) return { products: [], nextCursor: null, hasMore: false, total: 0 };
 
   const pageLimit = Math.max(1, Math.min(100, Math.floor(pageSize)));
-  const cursorKey = after ? `${after.field}:${after.value}:${after.id}` : '';
+  const cursorKey = after ? `${after.field}:${after.value}:${after.id}:${after.offset ?? ''}` : '';
   const cacheKey = `${trimmedQuery}|${cursorKey}|${pageLimit}`;
   const cached = productSearchCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.page;
@@ -384,109 +387,119 @@ async function fetchProductsSearchPageFromFirestore(
       }
       return singular === token ? [token] : [token, singular];
     };
-    const namePrefixes = new Set([
-      trimmedQuery,
-      trimmedQuery.toLowerCase(),
-      trimmedQuery.toUpperCase(),
-      `${trimmedQuery.charAt(0).toUpperCase()}${trimmedQuery.slice(1)}`,
-    ]);
-    const namePrefixSnapshots = await Promise.all(Array.from(namePrefixes).map((prefix) => {
-      const constraints: QueryConstraint[] = [
-        where('name', '>=', prefix),
-        where('name', '<=', `${prefix}\uf8ff`),
-        orderBy('name'),
-        orderBy(documentId()),
-      ];
-      if (after?.field === 'name') constraints.push(startAfter(after.value, after.id));
-      constraints.push(limit(pageLimit + 1));
-      return getDocs(query(collection(db, 'products'), ...constraints));
-    }));
-    const namePrefixProducts = new Map<string, Product>();
-    namePrefixSnapshots.flatMap((snapshot) => snapshot.docs).forEach((item) => {
-      const product = { ...item.data(), id: item.id } as Product;
-      const searchableText = normalizeSearchText([
-        product.name,
-        product.sku,
-        product.brand,
-        product.category,
-        product.subcategory,
-        product.shortDescription,
-        product.description,
-        product.voltage,
-        product.protocol,
-        ...(product.tags || []),
-        ...(product.specifications || []).flatMap((specification) => [specification.name, specification.value]),
-      ].filter((value): value is string => typeof value === 'string').join(' '));
-      if (searchableText.includes(normalizedQuery) ||
-        queryTokens.every((token) => searchableText.includes(normalizeSearchText(token)))) {
-        namePrefixProducts.set(product.id, product);
-      }
-    });
-
-    if (namePrefixProducts.size > 0) {
-      const products = Array.from(namePrefixProducts.values())
-        .sort((left, right) => left.name.localeCompare(right.name))
-        .slice(0, pageLimit);
-      const hasMore = namePrefixSnapshots.some((snapshot) => snapshot.docs.length > pageLimit);
-      const cursorSnapshot = namePrefixSnapshots.find((snapshot) => snapshot.docs.length > pageLimit);
-      const cursorProduct = cursorSnapshot?.docs[Math.min(pageLimit - 1, cursorSnapshot.docs.length - 1)];
-      return {
-        products,
-        hasMore,
-        nextCursor: cursorProduct
-          ? { field: 'name', value: String(cursorProduct.get('name') || ''), id: cursorProduct.id }
-          : null,
-      };
-    }
-
-    if (after?.field === 'name') {
-      return { products: [], nextCursor: null, hasMore: false };
-    }
-
-    const keywordConstraintsFor = (token: string): QueryConstraint[] => {
-      const constraints: QueryConstraint[] = [
-        where('searchKeywords', 'array-contains-any', searchTokenVariants(token)),
-        orderBy(documentId()),
-      ];
-      if (after?.field === 'searchKeywords') constraints.push(startAfter(after.id));
-      constraints.push(limit(pageLimit + 1));
-      return constraints;
-    };
-    const keywordSnapshots = await Promise.all(queryTokens.map((token) =>
-      getDocs(query(collection(db, 'products'), ...keywordConstraintsFor(token)))
-    ));
-    const matchedKeywordIds = keywordSnapshots.length === 0
-      ? new Set<string>()
-      : keywordSnapshots.slice(1).reduce(
-        (ids, snapshot) => {
-          const snapshotIds = new Set(snapshot.docs.map((product) => product.id));
-          return new Set(Array.from(ids).filter((id) => snapshotIds.has(id)));
-        },
-        new Set(keywordSnapshots[0].docs.map((product) => product.id))
-      );
-    const keywordProducts = keywordSnapshots.length > 0
-      ? keywordSnapshots[0].docs
-        .filter((item) => matchedKeywordIds.has(item.id))
-        .map((item) => ({ ...item.data(), id: item.id } as Product))
-      : [];
-
-    if (after?.field === 'searchKeywords' || keywordProducts.length > 0) {
-      const hasMore = keywordSnapshots.some((snapshot) => snapshot.docs.length > pageLimit);
-      const pageProducts = keywordProducts.slice(0, pageLimit);
-      const cursorProduct = hasMore
-        ? keywordSnapshots[0]?.docs[Math.min(pageLimit - 1, (keywordSnapshots[0]?.docs.length || 1) - 1)]
+    const keywordVariants = Array.from(new Set(queryTokens.flatMap(searchTokenVariants))).slice(0, 30);
+    if (queryTokens.length > 0 && keywordVariants.length > 0) {
+      const batchSize = Math.max(100, pageLimit + 1);
+      const rankedCacheKey = `${normalizedQuery}|${queryTokens.join('|')}`;
+      const cachedRankedMatches = rankedProductSearchCache.get(rankedCacheKey);
+      let rankedMatches = cachedRankedMatches?.expiresAt && cachedRankedMatches.expiresAt > Date.now()
+        ? cachedRankedMatches.products
         : undefined;
-      return {
-        products: pageProducts,
-        hasMore,
-        nextCursor: cursorProduct
-          ? { field: 'searchKeywords', value: queryTokens[0], id: cursorProduct.id }
-          : null,
-      };
+      if (!rankedMatches) {
+        const allMatches = new Map<string, Product>();
+        let scanAfterId: string | undefined;
+        let reachedEnd = false;
+
+        while (!reachedEnd) {
+          const constraints: QueryConstraint[] = [
+            where('searchKeywords', 'array-contains-any', keywordVariants),
+            orderBy(documentId()),
+          ];
+          if (scanAfterId) constraints.push(startAfter(scanAfterId));
+          constraints.push(limit(batchSize));
+
+          const snapshot = await getDocs(query(collection(db, 'products'), ...constraints));
+          snapshot.docs.forEach((item) => {
+            const product = { ...item.data(), id: item.id } as Product;
+            const keywords = Array.isArray(product.searchKeywords) ? product.searchKeywords : [];
+            if (queryTokens.every((token) =>
+              searchTokenVariants(token).some((variant) => keywords.includes(variant))
+            )) {
+              allMatches.set(product.id, product);
+            }
+          });
+
+          scanAfterId = snapshot.docs[snapshot.docs.length - 1]?.id;
+          reachedEnd = snapshot.docs.length < batchSize;
+        }
+
+        const phrase = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        const queryPhrase = phrase(trimmedQuery);
+        const scoreProduct = (product: Product): number => {
+          const name = phrase(product.name);
+          const sku = phrase(product.sku);
+          const brand = phrase(product.brand);
+          const category = phrase(`${product.category} ${product.subcategory}`);
+          const tags = phrase((product.tags || []).join(' '));
+          const description = phrase([
+            product.shortDescription,
+            product.description,
+            product.protocol,
+            product.voltage,
+            ...(product.specifications || []).flatMap((specification) => [specification.name, specification.value]),
+          ].filter((value): value is string => typeof value === 'string').join(' '));
+          const nameHasAllTokens = queryTokens.every((token) => name.split(' ').includes(token));
+          const accessoryPenalty = /\b(kit|starter|learning|expansion|expension|shield|sensor|cable|connector|case|adapter|extension|accessories|bundle|workshop|robotics|carrier board|hub|power supply)\b/.test(name)
+            ? 250
+            : 0;
+
+          if (name === queryPhrase) return 1000;
+          if (name.startsWith(queryPhrase)) return 900 - accessoryPenalty;
+          if (sku === queryPhrase || sku.startsWith(queryPhrase)) return 800;
+          if (nameHasAllTokens) return 700 - accessoryPenalty;
+          if (name.includes(queryPhrase)) return 650 - accessoryPenalty;
+          if (brand === queryPhrase || brand.startsWith(queryPhrase)) return 600;
+          if (tags.includes(queryPhrase)) return 500;
+          if (category.includes(queryPhrase)) return 400;
+          if (description.includes(queryPhrase)) return 300;
+          return 100;
+        };
+
+        rankedMatches = Array.from(allMatches.values()).sort((left, right) =>
+          scoreProduct(right) - scoreProduct(left) ||
+          left.name.length - right.name.length ||
+          left.name.localeCompare(right.name)
+        );
+        rankedProductSearchCache.set(rankedCacheKey, {
+          expiresAt: Date.now() + PRODUCT_SEARCH_CACHE_TTL_MS,
+          products: rankedMatches,
+        });
+        if (rankedProductSearchCache.size > PRODUCT_SEARCH_CACHE_LIMIT) {
+          const now = Date.now();
+          for (const [key, entry] of rankedProductSearchCache) {
+            if (entry.expiresAt <= now) rankedProductSearchCache.delete(key);
+          }
+          while (rankedProductSearchCache.size > PRODUCT_SEARCH_CACHE_LIMIT) {
+            const oldestKey = rankedProductSearchCache.keys().next().value;
+            if (!oldestKey) break;
+            rankedProductSearchCache.delete(oldestKey);
+          }
+        }
+    }
+
+      if (rankedMatches.length > 0 || after?.field === 'ranked') {
+        const offset = after?.field === 'ranked' ? after.offset || 0 : 0;
+        const products = rankedMatches.slice(offset, offset + pageLimit);
+        const hasMore = offset + pageLimit < rankedMatches.length;
+        return {
+          products,
+          hasMore,
+          nextCursor: hasMore
+            ? {
+              field: 'ranked',
+              value: normalizedQuery,
+              id: String(offset + pageLimit),
+              offset: offset + pageLimit,
+            }
+            : null,
+          total: rankedMatches.length,
+        };
+      }
     }
 
     const prefixQuery = trimmedQuery.split(/\s+/)[0];
-    const searchFields: Array<'name' | 'sku'> = after ? [after.field] : ['name', 'sku'];
+    const searchFields: Array<'name' | 'sku'> =
+      after?.field === 'name' || after?.field === 'sku' ? [after.field] : ['name', 'sku'];
     const rawPrefixes = new Set([
       prefixQuery,
       prefixQuery.toLowerCase(),
@@ -603,6 +616,7 @@ async function fetchProductsSearchPageFromFirestore(
       nextCursor: nextField && last
         ? { field: nextField, value: String(last.get(nextField) || ''), id: last.id }
         : null,
+      total: null,
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, 'products.search');
