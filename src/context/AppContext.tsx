@@ -68,6 +68,7 @@ import {
 import { logActivity, recordActivityLog } from '../services/auditService';
 import { auth, onAuthStateChanged, testFirestoreConnection } from '../lib/firebase';
 import { saveUserAppState, subscribeToUserAppState } from '../services/userStateService';
+import { uploadImageDataUrl } from '../services/storageService';
 
 const APP_DATA_CACHE_KEYS = {
   categories: 'semix-cache-categories-v1',
@@ -193,6 +194,12 @@ interface AppContextType {
   updateAvailableSeller: (id: string, updates: Partial<AvailableSeller>) => void;
   removeAvailableSeller: (id: string) => void;
   createOrder: (orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>) => Order;
+  createOfflineOrder: (
+    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl'>,
+    componentListDataUrl: string,
+    attachmentFilename: string
+  ) => Promise<Order>;
+  collectOfflineOrderPayment: (orderId: string, amount: number, deliverAfterPayment?: boolean) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   assignSellerToOrder: (orderId: string, sellerId: string, sellerName: string, notes?: string) => Promise<void>;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, note?: string, updatedBy?: string, courierInfo?: { courier?: string; courierTrackingId?: string; packedBy?: string }) => void;
@@ -296,6 +303,7 @@ export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order =
   const status: OrderStatus = !isAssigned && (computedStatus === 'placed' || !computedStatus)
     ? 'pending_assignment'
     : computedStatus;
+  const amountPaid = o.amountPaid ?? (o.paymentStatus === 'Paid' ? o.totalAmount || 0 : 0);
 
   return {
     id: o.id || `ORD-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -320,6 +328,10 @@ export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order =
     createdAt: o.createdAt || new Date().toISOString(),
     paymentMethod: o.paymentMethod || 'UPI',
     paymentStatus: o.paymentStatus || 'Paid',
+    amountPaid,
+    balanceDue: o.balanceDue ?? Math.max(0, (o.totalAmount || 0) - amountPaid),
+    isOfflineOrder: Boolean(o.isOfflineOrder),
+    componentListImageUrl: o.componentListImageUrl,
     packingNotes: o.packingNotes,
     courier: o.courier,
     courierTrackingId: o.courierTrackingId,
@@ -1244,6 +1256,121 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newOrder;
   };
 
+  const createOfflineOrder = async (
+    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl'>,
+    componentListDataUrl: string,
+    attachmentFilename: string
+  ): Promise<Order> => {
+    if (!auth.currentUser) {
+      throw new Error('An admin must be signed in to create an offline order.');
+    }
+
+    const orderNum = Math.floor(10000 + Math.random() * 90000);
+    const id = `ORD-${orderNum}`;
+    const trackingNumber = `RTZ-IN-${orderNum}${Math.floor(10 + Math.random() * 90)}`;
+    const now = new Date();
+    const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const imageUrl = await uploadImageDataUrl(componentListDataUrl, {
+      folder: 'orders',
+      resourceId: id,
+      filename: attachmentFilename,
+    });
+    const amountPaid = Math.min(orderData.totalAmount, Math.max(0, orderData.amountPaid || 0));
+    const balanceDue = Math.max(0, orderData.totalAmount - amountPaid);
+    const initialStatus: OrderStatus = 'pending_assignment';
+    const newOrder: Order = {
+      ...orderData,
+      id,
+      trackingNumber,
+      status: initialStatus,
+      isOfflineOrder: true,
+      componentListImageUrl: imageUrl,
+      amountPaid,
+      balanceDue,
+      paymentStatus: balanceDue === 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : 'Pending',
+      assignedSellerId: null,
+      assignedSellerName: null,
+      assignedAt: null,
+      userId: auth.currentUser.uid,
+      createdAt: now.toISOString(),
+      confirmationEmailSent: false,
+      statusTimeline: [{
+        status: initialStatus,
+        timestamp: formattedDate,
+        note: `Offline order created. ₹${amountPaid.toLocaleString('en-IN')} collected; ₹${balanceDue.toLocaleString('en-IN')} remaining. Awaiting Admin seller allocation.`,
+        updatedBy: 'Admin',
+      }],
+    };
+
+    await syncOrderToFirestore(newOrder);
+    setOrders((prev) => [newOrder, ...prev]);
+    sendOrderPlacedEmails(newOrder).catch((error) =>
+      console.warn('[EmailService] Offline order notification deferred:', error)
+    );
+    showToast('Offline Order Created', `${id} is ready for seller assignment.`, 'success');
+    return newOrder;
+  };
+
+  const collectOfflineOrderPayment = async (
+    orderId: string,
+    amount: number,
+    deliverAfterPayment = false
+  ): Promise<void> => {
+    const currentOrder = orders.find((order) => order.id === orderId);
+    if (!currentOrder || !currentOrder.isOfflineOrder) {
+      throw new Error(`Offline order ${orderId} could not be found.`);
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Enter a payment amount greater than zero.');
+    }
+
+    const currentBalance = currentOrder.balanceDue ?? Math.max(
+      0,
+      currentOrder.totalAmount - (currentOrder.amountPaid || 0)
+    );
+    if (amount > currentBalance) {
+      throw new Error(`The collected amount cannot exceed the remaining balance of ₹${currentBalance.toLocaleString('en-IN')}.`);
+    }
+
+    const amountPaid = (currentOrder.amountPaid || 0) + amount;
+    const balanceDue = Math.max(0, currentOrder.totalAmount - amountPaid);
+    if (deliverAfterPayment && balanceDue > 0) {
+      throw new Error(`Please collect the remaining ₹${balanceDue.toLocaleString('en-IN')} before completing delivery.`);
+    }
+
+    const now = new Date();
+    const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const status = deliverAfterPayment ? 'delivered' : currentOrder.status;
+    const updatedOrder: Order = {
+      ...currentOrder,
+      amountPaid,
+      balanceDue,
+      paymentStatus: balanceDue === 0 ? 'Paid' : 'Partially Paid',
+      status,
+      statusTimeline: [
+        ...currentOrder.statusTimeline,
+        {
+          status,
+          timestamp: formattedDate,
+          note: deliverAfterPayment
+            ? `Collected final payment of ₹${amount.toLocaleString('en-IN')}. Order delivered and fully paid.`
+            : `Collected offline payment of ₹${amount.toLocaleString('en-IN')}. ₹${balanceDue.toLocaleString('en-IN')} remains due.`,
+          updatedBy: 'Admin',
+        },
+      ],
+    };
+
+    await syncOrderToFirestore(updatedOrder);
+    setOrders((prev) => prev.map((order) => order.id === orderId ? updatedOrder : order));
+    showToast(
+      deliverAfterPayment ? 'Order Delivered' : 'Payment Recorded',
+      deliverAfterPayment
+        ? `${orderId} is fully paid and delivered.`
+        : `₹${amount.toLocaleString('en-IN')} recorded; ₹${balanceDue.toLocaleString('en-IN')} remains due.`,
+      'success'
+    );
+  };
+
   const deleteOrder = async (orderId: string) => {
     await deleteOrderFromFirestore(orderId);
     setOrders((prev) => prev.filter((order) => order.id !== orderId));
@@ -1376,6 +1503,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updatedBy?: string,
     courierInfo?: { courier?: string; courierTrackingId?: string; packedBy?: string }
   ) => {
+    const orderBeingUpdated = orders.find((order) => order.id === orderId);
+    const unpaidBalance = orderBeingUpdated?.balanceDue ?? 0;
+    if (
+      newStatus === 'delivered' &&
+      orderBeingUpdated?.isOfflineOrder &&
+      unpaidBalance > 0
+    ) {
+      showToast(
+        'Payment Collection Required',
+        `Please collect ₹${unpaidBalance.toLocaleString('en-IN')} to complete order delivery.`,
+        'warning'
+      );
+      return;
+    }
+
     const now = new Date();
     const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
@@ -1574,6 +1716,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateSellerBonus,
     getSellerBonus,
     createOrder,
+    createOfflineOrder,
+    collectOfflineOrderPayment,
     deleteOrder,
     assignSellerToOrder,
     updateOrderStatus,
@@ -1660,6 +1804,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateSellerBonus,
     getSellerBonus,
     createOrder,
+    createOfflineOrder,
+    collectOfflineOrderPayment,
     assignSellerToOrder,
     updateOrderStatus,
     adminOverrideOrder,

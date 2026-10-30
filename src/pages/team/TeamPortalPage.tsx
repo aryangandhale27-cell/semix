@@ -1214,6 +1214,17 @@ export const TeamPortalPage: React.FC = () => {
                       </div>
                     </div>
                   )}
+                  {selectedOrder.isOfflineOrder && selectedOrder.componentListImageUrl && (
+                    <a
+                      href={selectedOrder.componentListImageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs font-bold text-violet-900 hover:bg-violet-100"
+                    >
+                      <img src={selectedOrder.componentListImageUrl} alt="Customer component list" className="h-12 w-12 rounded-lg border border-violet-200 bg-white object-cover" />
+                      <span>Review the customer’s uploaded component list before picking</span>
+                    </a>
+                  )}
 
                   {/* COMPONENT CHECKLIST (Requirement #8) */}
                   <div className="space-y-3">

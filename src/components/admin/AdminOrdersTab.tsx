@@ -38,7 +38,7 @@ import {
 } from '../../services/emailService';
 
 export const AdminOrdersTab: React.FC = () => {
-  const { orders, availableSellers, products, deleteOrder, updateOrderStatus } = useApp();
+  const { orders, availableSellers, products, deleteOrder, updateOrderStatus, collectOfflineOrderPayment, showToast } = useApp();
   const [viewMode, setViewMode] = useState<'orders' | 'ordered_products'>('orders');
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'delivered'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -51,6 +51,9 @@ export const AdminOrdersTab: React.FC = () => {
   const [deleteCountdown, setDeleteCountdown] = useState(0);
   const [deliveryConfirmationOrderId, setDeliveryConfirmationOrderId] = useState<string | null>(null);
   const [deliveryCountdown, setDeliveryCountdown] = useState(0);
+  const [paymentCollectionOrder, setPaymentCollectionOrder] = useState<Order | null>(null);
+  const [deliveryPaymentAmount, setDeliveryPaymentAmount] = useState('');
+  const [isRecordingDeliveryPayment, setIsRecordingDeliveryPayment] = useState(false);
 
   useEffect(() => {
     if (!orderPendingDeletion) return;
@@ -273,8 +276,39 @@ export const AdminOrdersTab: React.FC = () => {
 
   const confirmOrderDelivered = (orderId: string) => {
     if (deliveryConfirmationOrderId !== orderId || deliveryCountdown > 0) return;
+    const order = orders.find((item) => item.id === orderId);
+    if (order?.isOfflineOrder && (order.balanceDue || 0) > 0) {
+      setPaymentCollectionOrder(order);
+      setDeliveryPaymentAmount(String(order.balanceDue));
+      setDeliveryConfirmationOrderId(null);
+      return;
+    }
     updateOrderStatus(orderId, 'delivered', 'Delivery confirmed by admin.', 'Admin');
     setDeliveryConfirmationOrderId(null);
+  };
+
+  const handleRecordDeliveryPayment = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!paymentCollectionOrder) return;
+    const amount = Number(deliveryPaymentAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showToast('Invalid Payment', 'Enter an amount greater than zero.', 'error');
+      return;
+    }
+
+    setIsRecordingDeliveryPayment(true);
+    try {
+      const currentBalance = paymentCollectionOrder.balanceDue ?? 0;
+      const willCompleteDelivery = amount >= currentBalance - 0.005;
+      await collectOfflineOrderPayment(paymentCollectionOrder.id, amount, willCompleteDelivery);
+      setPaymentCollectionOrder(null);
+      setDeliveryPaymentAmount('');
+    } catch (error) {
+      console.error('[AdminOrders] Could not collect offline order balance:', error);
+      showToast('Payment Collection Failed', error instanceof Error ? error.message : 'The payment could not be recorded.', 'error');
+    } finally {
+      setIsRecordingDeliveryPayment(false);
+    }
   };
 
   const renderStatusBadge = (order: Order) => {
@@ -331,6 +365,39 @@ export const AdminOrdersTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {paymentCollectionOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <form onSubmit={handleRecordDeliveryPayment} className="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#561269]">Payment required before delivery</p>
+              <h3 className="mt-1 text-lg font-black text-slate-900">{paymentCollectionOrder.id}</h3>
+              <p className="mt-1 text-xs text-slate-600">{paymentCollectionOrder.customer.fullName} · {paymentCollectionOrder.customer.phone}</p>
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">
+              Please collect ₹{(paymentCollectionOrder.balanceDue || 0).toLocaleString('en-IN')} to complete the order delivery.
+            </div>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700">Amount collected now (₹)</span>
+              <input
+                autoFocus
+                required
+                min="0.01"
+                max={paymentCollectionOrder.balanceDue || 0}
+                step="0.01"
+                type="number"
+                value={deliveryPaymentAmount}
+                onChange={(event) => setDeliveryPaymentAmount(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/15"
+              />
+            </label>
+            <p className="text-[11px] text-slate-500">The order is marked delivered only when the full remaining balance is recorded. A smaller collection is saved as a part payment.</p>
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={isRecordingDeliveryPayment} onClick={() => setPaymentCollectionOrder(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
+              <button type="submit" disabled={isRecordingDeliveryPayment} className="rounded-lg bg-[#561269] px-4 py-2 text-xs font-bold text-white hover:bg-[#460e56] disabled:opacity-50">{isRecordingDeliveryPayment ? 'Saving…' : 'Record Payment'}</button>
+            </div>
+          </form>
+        </div>
+      )}
       {orderPendingDeletion && (
         <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 shadow-lg sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
@@ -862,9 +929,19 @@ export const AdminOrdersTab: React.FC = () => {
                       <span className="font-mono font-semibold text-slate-900">
                         ₹{order.totalAmount.toLocaleString('en-IN')}
                       </span>
+                      {order.isOfflineOrder && (
+                        <span className={`text-[10px] font-bold ${order.balanceDue ? 'text-amber-700' : 'text-emerald-700'}`}>
+                          {order.balanceDue
+                            ? `₹${order.balanceDue.toLocaleString('en-IN')} due`
+                            : 'Fully paid'}
+                        </span>
+                      )}
                       <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600">
                         {order.paymentMethod}
                       </span>
+                      {order.isOfflineOrder && (
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-violet-100 text-violet-800">Offline</span>
+                      )}
                     </div>
                   </div>
 
@@ -1031,6 +1108,24 @@ export const AdminOrdersTab: React.FC = () => {
                         ))}
                       </div>
                     </div>
+
+                    {order.isOfflineOrder && (
+                      <section className="rounded-xl border border-violet-200 bg-white p-4">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-violet-900">Offline order payment &amp; component list</h4>
+                        <p className="mt-2 text-xs text-slate-700">
+                          Collected: <strong>₹{(order.amountPaid || 0).toLocaleString('en-IN')}</strong>
+                          {' · '}Remaining: <strong className={order.balanceDue ? 'text-amber-700' : 'text-emerald-700'}>₹{(order.balanceDue || 0).toLocaleString('en-IN')}</strong>
+                          {' · '}{order.paymentStatus}
+                        </p>
+                        {order.componentListImageUrl && (
+                          <a href={order.componentListImageUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-[#561269] underline">
+                            <img src={order.componentListImageUrl} alt="Customer component list" className="h-12 w-12 rounded-lg border border-slate-200 object-cover" />
+                            View customer component list
+                          </a>
+                        )}
+                        {order.packingNotes && <p className="mt-2 whitespace-pre-wrap text-xs text-slate-600">{order.packingNotes}</p>}
+                      </section>
+                    )}
 
                     {/* Delivery & Packing Notes */}
                     {order.packingNotes && (

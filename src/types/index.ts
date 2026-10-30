@@ -213,7 +213,11 @@ export interface Order {
   statusTimeline: StatusTimelineEntry[];
   createdAt: string;
   paymentMethod: 'UPI' | 'Card' | 'NetBanking' | 'COD' | 'MakersCredit';
-  paymentStatus: 'Paid' | 'Pending';
+  paymentStatus: 'Paid' | 'Partially Paid' | 'Pending';
+  amountPaid?: number;
+  balanceDue?: number;
+  isOfflineOrder?: boolean;
+  componentListImageUrl?: string;
   packingNotes?: string;
   courier?: string;
   courierTrackingId?: string;
