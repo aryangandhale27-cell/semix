@@ -73,7 +73,7 @@ export const Header: React.FC = () => {
 
   return (
     <header id="main-header" className="bg-white border-b border-slate-200 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3.5">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3.5">
         <div className="flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center py-1" title="SEMIX LABS">
@@ -82,7 +82,7 @@ export const Header: React.FC = () => {
           </Link>
 
           {/* Search Bar - Wide with Deep Violet CTA & Intelligent Autocomplete */}
-          <div className="flex-1 max-w-2xl hidden xl:flex items-center">
+          <div className="flex-1 max-w-3xl hidden xl:flex items-center">
             <SearchAutocomplete 
               selectedCategory={selectedCategory} 
               onCategoryChange={setSelectedCategory} 

@@ -315,11 +315,12 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           </button>
         </div>
       ) : (
-        <form onSubmit={handleFormSubmit} className="flex w-full items-center">
-          <div className="flex w-full rounded-xl border-2 border-[#561269]/20 focus-within:border-[#561269] bg-slate-50/50 hover:bg-white focus-within:bg-white transition-all overflow-hidden shadow-xs">
+        <div className="w-full space-y-2">
+          <form onSubmit={handleFormSubmit} className="flex w-full items-center">
+            <div className="flex w-full rounded-xl border-2 border-[#561269]/20 focus-within:border-[#561269] bg-slate-50/50 hover:bg-white focus-within:bg-white transition-all overflow-hidden shadow-xs">
             {/* Category Dropdown Filter */}
             {onCategoryChange && (
-              <div className="relative border-r border-slate-200 bg-slate-100/70 hidden sm:flex items-center px-3 w-[30%] max-w-[220px] shrink-0">
+              <div className="relative border-r border-slate-200 bg-slate-100/70 hidden sm:flex items-center px-2.5 w-[120px] shrink-0">
                 <select
                   id="search-category-filter"
                   value={selectedCategory}
@@ -356,7 +357,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                 onKeyDown={handleKeyDown}
                 placeholder={
                   placeholder ||
-                  'Search 1,000+ components, ICs, sensors (e.g. Arduino, ESP32, 5V relay, 8 ohm)...'
+                  'Search components, ICs, sensors...'
                 }
                 className="w-full pl-10 pr-8 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden"
                 autoComplete="off"
@@ -374,23 +375,19 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             </div>
 
             <button
-              type="button"
-              onClick={() => navigate('/upload-electronics-list')}
-              className="flex shrink-0 items-center gap-1.5 border-l border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-[#561269] transition-colors hover:bg-purple-50"
-            >
-              <Upload className="h-4 w-4" />
-              <span>Upload Electronics Component List</span>
-            </button>
-
-            <button
               id="search-submit-btn"
               type="submit"
               className="bg-[#561269] hover:bg-[#460e56] text-white font-semibold text-xs sm:text-sm px-5 sm:px-6 py-2.5 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 w-[120px] justify-center"
             >
               <span>Search</span>
             </button>
-          </div>
-        </form>
+            </div>
+          </form>
+          <button type="button" onClick={() => navigate('/upload-electronics-list')} className="flex w-full items-center justify-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 text-xs font-extrabold text-[#561269] transition-colors hover:bg-violet-100">
+            <Upload className="h-4 w-4" />
+            <span>Upload Electronics Component List</span>
+          </button>
+        </div>
       )}
 
       {/* Autocomplete Dropdown Panel */}
