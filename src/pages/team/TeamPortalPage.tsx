@@ -33,7 +33,8 @@ import {
   ShieldCheck,
   Building2,
   RefreshCw,
-  Star
+  Star,
+  FileText
 } from 'lucide-react';
 
 const INVENTORY_BATCH_SIZE = 50;
@@ -1221,8 +1222,8 @@ export const TeamPortalPage: React.FC = () => {
                       rel="noreferrer"
                       className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs font-bold text-violet-900 hover:bg-violet-100"
                     >
-                      <img src={selectedOrder.componentListImageUrl} alt="Customer component list" className="h-12 w-12 rounded-lg border border-violet-200 bg-white object-cover" />
-                      <span>Review the customer’s uploaded component list before picking</span>
+                      <FileText className="h-5 w-5 shrink-0" />
+                      <span>Review customer list: {selectedOrder.componentListFilename || 'open attachment'} before picking</span>
                     </a>
                   )}
 

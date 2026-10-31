@@ -108,6 +108,37 @@ service cloud.firestore {
       allow delete: if isStaff();
     }
 
+    match /uploaded_list_requests/{requestId} {
+      allow create: if request.resource.data.keys().hasOnly([
+          'id', 'customerName', 'phone', 'fileName', 'fileType', 'fileSize',
+          'fileUrl', 'storagePath', 'createdAt', 'status'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'id', 'customerName', 'phone', 'fileName', 'fileType', 'fileSize',
+          'fileUrl', 'storagePath', 'createdAt', 'status'
+        ]) &&
+        request.resource.data.id == requestId &&
+        request.resource.data.customerName is string &&
+        request.resource.data.customerName.size() > 0 &&
+        request.resource.data.customerName.size() <= 120 &&
+        request.resource.data.phone is string &&
+        request.resource.data.phone.size() >= 7 &&
+        request.resource.data.phone.size() <= 24 &&
+        request.resource.data.fileName is string &&
+        request.resource.data.fileName.size() > 0 &&
+        request.resource.data.fileName.size() <= 255 &&
+        request.resource.data.fileType is string &&
+        request.resource.data.fileSize is int &&
+        request.resource.data.fileSize > 0 &&
+        request.resource.data.fileSize <= 15 * 1024 * 1024 &&
+        request.resource.data.fileUrl is string &&
+        request.resource.data.storagePath is string &&
+        request.resource.data.storagePath.matches('^customer-list-uploads/' + requestId + '/.+$') &&
+        request.resource.data.createdAt is string &&
+        request.resource.data.status == 'submitted';
+      allow read, update, delete: if isAdmin();
+    }
+
     match /staff/{staffId} {
       allow read: if isStaff();
       allow write: if isAdmin();

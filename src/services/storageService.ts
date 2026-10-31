@@ -41,3 +41,31 @@ export async function uploadImageDataUrl(
 
   return getDownloadURL(imageRef);
 }
+
+export async function uploadCustomerListFile(file: File, requestId: string): Promise<{ fileUrl: string; storagePath: string }> {
+  const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const storagePath = `customer-list-uploads/${requestId}/${safeFilename}`;
+  const fileRef = ref(storage, storagePath);
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  const mimeTypeByExtension: Record<string, string> = {
+    csv: 'text/csv',
+    tsv: 'text/tab-separated-values',
+    txt: 'text/plain',
+    pdf: 'application/pdf',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    odt: 'application/vnd.oasis.opendocument.text',
+    ods: 'application/vnd.oasis.opendocument.spreadsheet',
+    heic: 'image/heic',
+  };
+  const contentType = file.type || mimeTypeByExtension[extension || ''] || 'application/octet-stream';
+
+  await uploadBytes(fileRef, file, {
+    contentType,
+    customMetadata: { requestId },
+  });
+
+  return { fileUrl: await getDownloadURL(fileRef), storagePath };
+}

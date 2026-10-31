@@ -218,6 +218,7 @@ export interface Order {
   balanceDue?: number;
   isOfflineOrder?: boolean;
   componentListImageUrl?: string;
+  componentListFilename?: string;
   packingNotes?: string;
   courier?: string;
   courierTrackingId?: string;
@@ -232,6 +233,23 @@ export interface Order {
   finalTotal?: number;
   userId?: string;
   confirmationEmailSent?: boolean;
+}
+
+export type UploadedListRequestStatus = 'submitted' | 'converting' | 'converted';
+
+export interface UploadedListRequest {
+  id: string;
+  customerName: string;
+  phone: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  fileUrl: string;
+  storagePath: string;
+  createdAt: string;
+  status: UploadedListRequestStatus;
+  convertedOrderId?: string;
+  quoteAmount?: number;
 }
 
 export type CouponDiscountType = 'percentage' | 'fixed';

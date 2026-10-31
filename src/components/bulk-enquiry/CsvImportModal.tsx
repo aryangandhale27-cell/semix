@@ -147,7 +147,7 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({ isOpen, onClose,
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">Import BOM / Component List</h3>
-                <p className="text-xs text-purple-200">Paste tabular data from Excel/Google Sheets or upload CSV/TXT</p>
+                <p className="text-xs text-purple-200">Upload a CSV/TXT/TSV file or paste rows from a spreadsheet</p>
               </div>
             </div>
             <button
@@ -207,7 +207,7 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({ isOpen, onClose,
             {/* Direct Paste Text Area */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Or Paste Raw CSV / Excel Tab-Delimited Data
+                Or paste CSV / spreadsheet rows
               </label>
               <textarea
                 value={pastedText}

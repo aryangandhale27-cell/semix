@@ -32,6 +32,7 @@ import { CsvImportModal } from '../../components/bulk-enquiry/CsvImportModal';
 import { EnquirySummaryReceipt } from '../../components/bulk-enquiry/EnquirySummaryReceipt';
 import { CustomProjectForm } from '../../components/bulk-enquiry/CustomProjectForm';
 import { CustomProjectReceipt } from '../../components/bulk-enquiry/CustomProjectReceipt';
+import { CustomerListUploadModal } from '../../components/bulk-enquiry/CustomerListUploadModal';
 
 const CATEGORY_OPTIONS = [
   'Electronic Components',
@@ -66,6 +67,7 @@ export const BulkEnquiryPage: React.FC = () => {
   const { submitBulkEnquiry, showToast, products } = useApp();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const isUploadListRequest = searchParams.get('upload-list') === 'true';
 
   // Form State: Customer & Company Details
   const [fullName, setFullName] = useState(user?.name || '');
@@ -77,27 +79,38 @@ export const BulkEnquiryPage: React.FC = () => {
   const [projectNotes, setProjectNotes] = useState('');
 
   // Form State: Component Item Rows
-  const [items, setItems] = useState<BulkEnquiryComponentItem[]>([
-    {
-      id: 'row-1',
-      partNumber: 'ESP32-WROOM-32D',
-      category: 'Microcontroller & SoC',
-      quantity: 250,
-      targetPrice: '₹240',
-      notes: ''
-    },
-    {
-      id: 'row-2',
-      partNumber: 'AMS1117-3.3V SOT-223',
-      category: 'Power & Voltage Regulators',
-      quantity: 1000,
-      targetPrice: '₹4.50',
-      notes: ''
-    }
-  ]);
+  const [items, setItems] = useState<BulkEnquiryComponentItem[]>(() =>
+    isUploadListRequest
+      ? [{
+          id: 'row-1',
+          partNumber: '',
+          category: 'Electronic Components',
+          quantity: 1,
+          targetPrice: '',
+          notes: ''
+        }]
+      : [
+          {
+            id: 'row-1',
+            partNumber: 'ESP32-WROOM-32D',
+            category: 'Microcontroller & SoC',
+            quantity: 250,
+            targetPrice: '₹240',
+            notes: ''
+          },
+          {
+            id: 'row-2',
+            partNumber: 'AMS1117-3.3V SOT-223',
+            category: 'Power & Voltage Regulators',
+            quantity: 1000,
+            targetPrice: '₹4.50',
+            notes: ''
+          }
+        ]
+  );
 
   // Modal & Flow State
-  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(isUploadListRequest);
   const [submittedEnquiry, setSubmittedEnquiry] = useState<BulkEnquirySubmission | null>(null);
   const [deskMode, setDeskMode] = useState<'bom' | 'custom_project'>(() =>
     searchParams.get('mode') === 'custom-project' ? 'custom_project' : 'bom'
@@ -639,7 +652,7 @@ export const BulkEnquiryPage: React.FC = () => {
                       className="flex items-center gap-1.5 px-3.5 py-2 bg-[#561269]/5 hover:bg-[#561269]/10 text-[#561269] rounded-xl text-xs font-bold border border-[#561269]/20 transition-colors cursor-pointer shadow-2xs"
                     >
                       <Upload className="w-3.5 h-3.5 text-[#561269]" />
-                      <span>Import CSV / Excel</span>
+                      <span>Import Component List</span>
                     </button>
 
                     <button
@@ -842,11 +855,15 @@ export const BulkEnquiryPage: React.FC = () => {
         )}
 
         {/* CSV Import Modal */}
-        <CsvImportModal
-          isOpen={isCsvModalOpen}
-          onClose={() => setIsCsvModalOpen(false)}
-          onImport={handleCsvImport}
-        />
+        {isUploadListRequest ? (
+          <CustomerListUploadModal isOpen={isCsvModalOpen} onClose={() => setIsCsvModalOpen(false)} />
+        ) : (
+          <CsvImportModal
+            isOpen={isCsvModalOpen}
+            onClose={() => setIsCsvModalOpen(false)}
+            onImport={handleCsvImport}
+          />
+        )}
       </div>
     </div>
   );

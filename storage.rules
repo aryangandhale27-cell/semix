@@ -60,6 +60,26 @@ service firebase.storage {
       allow update, delete: if isAdmin();
     }
 
+    match /customer-list-uploads/{requestId}/{fileName} {
+      allow read: if isCatalogManager();
+      allow create: if request.resource.size > 0 &&
+        request.resource.size <= 15 * 1024 * 1024 &&
+        (request.resource.contentType.matches('image/.*') ||
+         request.resource.contentType in [
+           'application/pdf',
+           'application/msword',
+           'application/vnd.ms-excel',
+           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+           'application/vnd.oasis.opendocument.text',
+           'application/vnd.oasis.opendocument.spreadsheet',
+           'text/csv',
+           'text/plain',
+           'text/tab-separated-values'
+         ]);
+      allow update, delete: if isAdmin();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

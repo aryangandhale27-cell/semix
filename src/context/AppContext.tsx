@@ -195,9 +195,10 @@ interface AppContextType {
   removeAvailableSeller: (id: string) => void;
   createOrder: (orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>) => Order;
   createOfflineOrder: (
-    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl'>,
+    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl' | 'componentListFilename'>,
     componentListDataUrl: string,
-    attachmentFilename: string
+    attachmentFilename: string,
+    existingAttachmentUrl?: string
   ) => Promise<Order>;
   collectOfflineOrderPayment: (orderId: string, amount: number, deliverAfterPayment?: boolean) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
@@ -332,6 +333,7 @@ export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order =
     balanceDue: o.balanceDue ?? Math.max(0, (o.totalAmount || 0) - amountPaid),
     isOfflineOrder: Boolean(o.isOfflineOrder),
     componentListImageUrl: o.componentListImageUrl,
+    componentListFilename: o.componentListFilename,
     packingNotes: o.packingNotes,
     courier: o.courier,
     courierTrackingId: o.courierTrackingId,
@@ -1262,9 +1264,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const createOfflineOrder = async (
-    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl'>,
+    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl' | 'componentListFilename'>,
     componentListDataUrl: string,
-    attachmentFilename: string
+    attachmentFilename: string,
+    existingAttachmentUrl?: string
   ): Promise<Order> => {
     if (!auth.currentUser) {
       throw new Error('An admin must be signed in to create an offline order.');
@@ -1275,7 +1278,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const trackingNumber = `RTZ-IN-${orderNum}${Math.floor(10 + Math.random() * 90)}`;
     const now = new Date();
     const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    const imageUrl = await uploadImageDataUrl(componentListDataUrl, {
+    const imageUrl = existingAttachmentUrl || await uploadImageDataUrl(componentListDataUrl, {
       folder: 'orders',
       resourceId: id,
       filename: attachmentFilename,
@@ -1290,6 +1293,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: initialStatus,
       isOfflineOrder: true,
       componentListImageUrl: imageUrl,
+      componentListFilename: attachmentFilename,
       amountPaid,
       balanceDue,
       paymentStatus: balanceDue === 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : 'Pending',

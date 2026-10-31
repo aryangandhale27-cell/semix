@@ -31,7 +31,8 @@ import {
   Phone,
   Trash2,
   Plus,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 import { EmailPreviewModal } from '../common/EmailPreviewModal';
 import { 
@@ -1155,8 +1156,8 @@ export const AdminOrdersTab: React.FC = () => {
                         </p>
                         {order.componentListImageUrl && (
                           <a href={order.componentListImageUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-[#561269] underline">
-                            <img src={order.componentListImageUrl} alt="Customer component list" className="h-12 w-12 rounded-lg border border-slate-200 object-cover" />
-                            View customer component list
+                            <FileText className="h-4 w-4 shrink-0" />
+                            {order.componentListFilename || 'View customer component list'}
                           </a>
                         )}
                         {order.packingNotes && <p className="mt-2 whitespace-pre-wrap text-xs text-slate-600">{order.packingNotes}</p>}

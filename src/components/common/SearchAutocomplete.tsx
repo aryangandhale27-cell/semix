@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   AlertCircle,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  Upload
 } from 'lucide-react';
 import { searchProductsPageFromFirestore, type ProductSearchPage } from '../../services/firebaseService';
 import { recordSearchQuery } from '../../services/searchConfig';
@@ -244,8 +245,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     <div ref={containerRef} className={`relative w-full ${className}`}>
       {/* Mobile vs Desktop search container */}
       {isMobile ? (
-        <form onSubmit={handleFormSubmit} className="flex w-full items-center">
-          <div className="flex w-full rounded-lg border border-slate-200 bg-slate-50 focus-within:bg-white focus-within:border-[#561269] overflow-hidden shadow-2xs transition-colors">
+        <div className="w-full space-y-2">
+          <form onSubmit={handleFormSubmit} className="flex w-full items-center">
+            <div className="flex w-full rounded-lg border border-slate-200 bg-slate-50 focus-within:bg-white focus-within:border-[#561269] overflow-hidden shadow-2xs transition-colors">
             {onCategoryChange && (
               <div className="relative flex shrink-0 items-center border-r border-slate-200 bg-slate-100/70 px-2">
                 <select
@@ -305,8 +307,13 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             >
               <Search className="w-3.5 h-3.5" />
             </button>
-          </div>
-        </form>
+            </div>
+          </form>
+          <button type="button" onClick={() => navigate('/upload-electronics-list')} className="flex w-full items-center justify-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 text-xs font-extrabold text-[#561269] transition-colors hover:bg-violet-100">
+            <Upload className="h-4 w-4" />
+            <span>Upload Electronics Component List</span>
+          </button>
+        </div>
       ) : (
         <form onSubmit={handleFormSubmit} className="flex w-full items-center">
           <div className="flex w-full rounded-xl border-2 border-[#561269]/20 focus-within:border-[#561269] bg-slate-50/50 hover:bg-white focus-within:bg-white transition-all overflow-hidden shadow-xs">
@@ -365,6 +372,15 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                 </button>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/upload-electronics-list')}
+              className="flex shrink-0 items-center gap-1.5 border-l border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-[#561269] transition-colors hover:bg-purple-50"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Upload Electronics Component List</span>
+            </button>
 
             <button
               id="search-submit-btn"

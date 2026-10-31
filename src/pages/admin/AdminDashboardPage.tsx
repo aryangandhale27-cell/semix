@@ -37,6 +37,7 @@ import { AdminCategoryManagementTab } from '../../components/admin/AdminCategory
 import { AdminBonusManagementTab } from '../../components/admin/AdminBonusManagementTab';
 import { AdminAuditLogsTab } from '../../components/admin/AdminAuditLogsTab';
 import { AdminCollectPaymentTab } from '../../components/admin/AdminCollectPaymentTab';
+import { UploadedListRequestsTab } from '../../components/admin/UploadedListRequestsTab';
 import { useFirestoreAdminKPIs } from '../../hooks/useFirestoreAdminKPIs';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
@@ -78,7 +79,7 @@ export const AdminDashboardPage: React.FC = () => {
     (o) => !o.assignedSellerId || o.status === 'pending_assignment'
   ).length;
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'coupons' | 'users' | 'bonuses' | 'banners' | 'categories' | 'audit_logs' | 'analytics' | 'catalog' | 'staff' | 'custom_projects' | 'collect_payment'>(() => {
+  const [activeTab, setActiveTab] = useState<'orders' | 'coupons' | 'users' | 'bonuses' | 'banners' | 'categories' | 'audit_logs' | 'analytics' | 'catalog' | 'staff' | 'custom_projects' | 'collect_payment' | 'uploaded_lists'>(() => {
     return pendingOrdersCount > 0 ? 'orders' : 'orders';
   });
   const [productSearch, setProductSearch] = useState('');
@@ -427,7 +428,8 @@ export const AdminDashboardPage: React.FC = () => {
               activeTab === 'analytics' ? 'Analytics & Sales Breakdown' :
               activeTab === 'catalog' ? 'Catalog & Product Management' :
               activeTab === 'staff' ? 'Staff & Role Access' :
-              activeTab === 'collect_payment' ? 'Collect Payment' : 'Custom Project Requests'}
+              activeTab === 'collect_payment' ? 'Collect Payment' :
+              activeTab === 'uploaded_lists' ? 'Uploaded Electronics Lists' : 'Custom Project Requests'}
           </p>
         </div>
         <div className="relative shrink-0">
@@ -450,7 +452,8 @@ export const AdminDashboardPage: React.FC = () => {
                 activeTab === 'analytics' ? 'Analytics' :
                 activeTab === 'catalog' ? 'Catalog' :
                 activeTab === 'staff' ? 'Staff' :
-                activeTab === 'collect_payment' ? 'Payments' : 'Projects'}
+                activeTab === 'collect_payment' ? 'Payments' :
+                activeTab === 'uploaded_lists' ? 'Uploaded Lists' : 'Projects'}
             </span>
             <ChevronDown className={`h-3.5 w-3.5 text-violet-200 transition-transform ${adminSectionsOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -469,6 +472,7 @@ export const AdminDashboardPage: React.FC = () => {
                 ['catalog', 'Catalog & Product Management'],
                 ['staff', 'Staff & Role Access'],
                 ['collect_payment', 'Collect Payment'],
+                ['uploaded_lists', 'Uploaded Electronics Lists'],
                 ['custom_projects', 'Custom Project Requests'],
               ].map(([value, label]) => (
                 <button
@@ -686,6 +690,10 @@ export const AdminDashboardPage: React.FC = () => {
 
       {activeTab === 'collect_payment' && (
         <AdminCollectPaymentTab />
+      )}
+
+      {activeTab === 'uploaded_lists' && (
+        <UploadedListRequestsTab />
       )}
 
       {/* Tab 1: Analytics */}

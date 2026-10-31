@@ -22,6 +22,7 @@ const CheckoutPage = lazy(() => import('./pages/customer/CheckoutPage').then((mo
 const BomToolPage = lazy(() => import('./pages/customer/BomToolPage').then((module) => ({ default: module.BomToolPage })));
 const ServicesPage = lazy(() => import('./pages/customer/ServicesPage').then((module) => ({ default: module.ServicesPage })));
 const BulkEnquiryPage = lazy(() => import('./pages/customer/BulkEnquiryPage').then((module) => ({ default: module.BulkEnquiryPage })));
+const UploadElectronicsListPage = lazy(() => import('./pages/customer/UploadElectronicsListPage').then((module) => ({ default: module.UploadElectronicsListPage })));
 const ContactPage = lazy(() => import('./pages/customer/ContactPage').then((module) => ({ default: module.ContactPage })));
 const ReturnPolicyPage = lazy(() => import('./pages/customer/ReturnPolicyPage').then((module) => ({ default: module.ReturnPolicyPage })));
 const CustomerDashboardPage = lazy(() => import('./pages/customer/CustomerDashboardPage').then((module) => ({ default: module.CustomerDashboardPage })));
@@ -95,6 +96,7 @@ function AnimatedRoutes() {
             <Route path="/bom-tool" element={<BomToolPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/bulk-enquiry" element={<BulkEnquiryPage />} />
+            <Route path="/upload-electronics-list" element={<UploadElectronicsListPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/about" element={<ContactPage />} />
             <Route path="/return-policy" element={<ReturnPolicyPage />} />
