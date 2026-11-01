@@ -195,7 +195,7 @@ interface AppContextType {
   removeAvailableSeller: (id: string) => void;
   createOrder: (orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt'>) => Order;
   createOfflineOrder: (
-    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl' | 'componentListFilename'>,
+    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl' | 'componentListFilename'> & { createdAt?: string },
     componentListDataUrl: string,
     attachmentFilename: string,
     existingAttachmentUrl?: string
@@ -1264,7 +1264,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const createOfflineOrder = async (
-    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl' | 'componentListFilename'>,
+    orderData: Omit<Order, 'id' | 'trackingNumber' | 'statusTimeline' | 'createdAt' | 'userId' | 'componentListImageUrl' | 'componentListFilename'> & { createdAt?: string },
     componentListDataUrl: string,
     attachmentFilename: string,
     existingAttachmentUrl?: string
@@ -1277,7 +1277,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const id = `ORD-${orderNum}`;
     const trackingNumber = `RTZ-IN-${orderNum}${Math.floor(10 + Math.random() * 90)}`;
     const now = new Date();
-    const formattedDate = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const orderDate = orderData.createdAt ? new Date(orderData.createdAt) : now;
+    if (!Number.isFinite(orderDate.getTime())) {
+      throw new Error('Order creation date and time must be valid.');
+    }
+    const formattedDate = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}-${String(orderDate.getDate()).padStart(2, '0')} ${orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const imageUrl = existingAttachmentUrl || await uploadImageDataUrl(componentListDataUrl, {
       folder: 'orders',
       resourceId: id,
@@ -1301,7 +1305,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assignedSellerName: null,
       assignedAt: null,
       userId: auth.currentUser.uid,
-      createdAt: now.toISOString(),
+      createdAt: orderDate.toISOString(),
       confirmationEmailSent: false,
       statusTimeline: [{
         status: initialStatus,

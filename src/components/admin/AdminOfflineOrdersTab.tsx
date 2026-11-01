@@ -7,23 +7,29 @@ interface AdminOfflineOrdersTabProps {
   onViewOrders: () => void;
 }
 
-const initialForm = {
-  fullName: '',
-  phone: '',
-  email: '',
-  street: '',
-  city: '',
-  state: '',
-  pincode: '',
-  componentList: '',
-  totalAmount: '',
-  amountPaid: '0',
-  paymentMethod: 'UPI' as 'UPI' | 'COD',
+const getInitialForm = () => {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+
+  return {
+    fullName: '',
+    phone: '',
+    email: '',
+    street: '',
+    city: '',
+    state: '',
+    pincode: '',
+    componentList: '',
+    orderDateTime: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`,
+    totalAmount: '',
+    amountPaid: '0',
+    paymentMethod: 'UPI' as 'UPI' | 'COD',
+  };
 };
 
 export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ onViewOrders }) => {
   const { createOfflineOrder, showToast } = useApp();
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(getInitialForm);
   const [attachment, setAttachment] = useState<OptimizedImageResult | null>(null);
   const [isPreparingImage, setIsPreparingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,9 +67,14 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
     event.preventDefault();
     const totalAmount = Number(form.totalAmount);
     const amountPaid = Number(form.amountPaid);
+    const orderDateTime = new Date(form.orderDateTime);
 
     if (!form.fullName.trim() || !form.phone.trim() || !form.email.trim()) {
       showToast('Customer Details Required', 'Enter the customer name, mobile number, and email.', 'error');
+      return;
+    }
+    if (!form.orderDateTime || !Number.isFinite(orderDateTime.getTime())) {
+      showToast('Invalid Order Date and Time', 'Enter a valid order date and time.', 'error');
       return;
     }
     if (!form.componentList.trim() || !attachment) {
@@ -84,6 +95,7 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
     setIsSubmitting(true);
     try {
       const order = await createOfflineOrder({
+        createdAt: orderDateTime.toISOString(),
         customer: {
           fullName: form.fullName.trim(),
           phone: form.phone.trim(),
@@ -117,7 +129,7 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
         assignedAt: null,
       }, attachment.dataUrl, attachment.filename);
       setCreatedOrderId(order.id);
-      setForm(initialForm);
+      setForm(getInitialForm());
       setAttachment(null);
     } catch (error) {
       console.error('[AdminOfflineOrders] Could not create offline order:', error);
@@ -199,6 +211,10 @@ export const AdminOfflineOrdersTab: React.FC<AdminOfflineOrdersTabProps> = ({ on
 
             <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#561269]">Order total &amp; payment collection</h3>
+              <label className="block">
+                <span className={labelClass}>Order date and time *</span>
+                <input required type="datetime-local" className={inputClass} value={form.orderDateTime} onChange={(event) => setForm({ ...form, orderDateTime: event.target.value })} />
+              </label>
               <label className="block">
                 <span className={labelClass}>Total order amount (₹) *</span>
                 <span className="relative block"><IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required min="0.01" step="0.01" type="number" className={`${inputClass} pl-9`} value={form.totalAmount} onChange={(event) => setForm({ ...form, totalAmount: event.target.value })} /></span>
