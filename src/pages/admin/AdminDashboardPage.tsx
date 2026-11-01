@@ -38,6 +38,7 @@ import { AdminBonusManagementTab } from '../../components/admin/AdminBonusManage
 import { AdminAuditLogsTab } from '../../components/admin/AdminAuditLogsTab';
 import { AdminCollectPaymentTab } from '../../components/admin/AdminCollectPaymentTab';
 import { UploadedListRequestsTab } from '../../components/admin/UploadedListRequestsTab';
+import { AdminFinancialDashboard } from '../../components/admin/AdminFinancialDashboard';
 import { useFirestoreAdminKPIs } from '../../hooks/useFirestoreAdminKPIs';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
@@ -79,7 +80,7 @@ export const AdminDashboardPage: React.FC = () => {
     (o) => !o.assignedSellerId || o.status === 'pending_assignment'
   ).length;
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'coupons' | 'users' | 'bonuses' | 'banners' | 'categories' | 'audit_logs' | 'analytics' | 'catalog' | 'staff' | 'custom_projects' | 'collect_payment' | 'uploaded_lists'>(() => {
+  const [activeTab, setActiveTab] = useState<'orders' | 'coupons' | 'users' | 'bonuses' | 'banners' | 'categories' | 'audit_logs' | 'analytics' | 'financials' | 'catalog' | 'staff' | 'custom_projects' | 'collect_payment' | 'uploaded_lists'>(() => {
     return pendingOrdersCount > 0 ? 'orders' : 'orders';
   });
   const [productSearch, setProductSearch] = useState('');
@@ -426,6 +427,7 @@ export const AdminDashboardPage: React.FC = () => {
               activeTab === 'categories' ? 'Category Images' :
               activeTab === 'audit_logs' ? 'Audit & Activity Logs' :
               activeTab === 'analytics' ? 'Analytics & Sales Breakdown' :
+              activeTab === 'financials' ? 'Sales & Financials' :
               activeTab === 'catalog' ? 'Catalog & Product Management' :
               activeTab === 'staff' ? 'Staff & Role Access' :
               activeTab === 'collect_payment' ? 'Collect Payment' :
@@ -450,6 +452,7 @@ export const AdminDashboardPage: React.FC = () => {
                 activeTab === 'categories' ? 'Categories' :
                 activeTab === 'audit_logs' ? 'Audit' :
                 activeTab === 'analytics' ? 'Analytics' :
+                activeTab === 'financials' ? 'Financials' :
                 activeTab === 'catalog' ? 'Catalog' :
                 activeTab === 'staff' ? 'Staff' :
                 activeTab === 'collect_payment' ? 'Payments' :
@@ -468,6 +471,7 @@ export const AdminDashboardPage: React.FC = () => {
                 ['banners', 'Homepage Banners'],
                 ['categories', 'Category Images'],
                 ['audit_logs', 'Audit & Activity Logs'],
+                ['financials', 'Sales & Financials'],
                 ['analytics', 'Analytics & Sales Breakdown'],
                 ['catalog', 'Catalog & Product Management'],
                 ['staff', 'Staff & Role Access'],
@@ -694,6 +698,10 @@ export const AdminDashboardPage: React.FC = () => {
 
       {activeTab === 'uploaded_lists' && (
         <UploadedListRequestsTab />
+      )}
+
+      {activeTab === 'financials' && (
+        <AdminFinancialDashboard />
       )}
 
       {/* Tab 1: Analytics */}

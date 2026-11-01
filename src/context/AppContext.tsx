@@ -331,6 +331,7 @@ export const normalizeOrder = (o: Partial<Order> & Record<string, any>): Order =
     paymentStatus: o.paymentStatus || 'Paid',
     amountPaid,
     balanceDue: o.balanceDue ?? Math.max(0, (o.totalAmount || 0) - amountPaid),
+    paymentTransactions: Array.isArray(o.paymentTransactions) ? o.paymentTransactions : undefined,
     isOfflineOrder: Boolean(o.isOfflineOrder),
     componentListImageUrl: o.componentListImageUrl,
     componentListFilename: o.componentListFilename,
@@ -1230,6 +1231,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assignedAt: orderData.assignedAt ?? null,
       userId: auth.currentUser?.uid || orderData.customer.email,
       createdAt: now.toISOString(),
+      paymentTransactions: (orderData.amountPaid ?? (orderData.paymentStatus === 'Paid' ? orderData.totalAmount : 0)) > 0
+        ? [{
+            amount: Math.min(orderData.totalAmount, orderData.amountPaid ?? orderData.totalAmount),
+            recordedAt: now.toISOString(),
+            paymentMethod: orderData.paymentMethod,
+          }]
+        : [],
       confirmationEmailSent: false,
       statusTimeline: [
         {
@@ -1301,6 +1309,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       amountPaid,
       balanceDue,
       paymentStatus: balanceDue === 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : 'Pending',
+      paymentTransactions: amountPaid > 0 ? [{
+        amount: amountPaid,
+        recordedAt: now.toISOString(),
+        paymentMethod: orderData.paymentMethod,
+      }] : [],
       assignedSellerId: null,
       assignedSellerName: null,
       assignedAt: null,
@@ -1358,6 +1371,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...currentOrder,
       amountPaid,
       balanceDue,
+      paymentTransactions: [
+        ...(currentOrder.paymentTransactions || []),
+        {
+          amount,
+          recordedAt: now.toISOString(),
+          paymentMethod: currentOrder.paymentMethod,
+        },
+      ],
       paymentStatus: balanceDue === 0 ? 'Paid' : 'Partially Paid',
       status,
       statusTimeline: [
@@ -1411,6 +1432,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assignedSellerName: orderData.assignedSellerName ?? null,
       assignedAt: orderData.assignedAt ?? null,
       createdAt: now.toISOString(),
+      paymentTransactions: (orderData.amountPaid ?? (orderData.paymentStatus === 'Paid' ? orderData.totalAmount : 0)) > 0
+        ? [{
+            amount: Math.min(orderData.totalAmount, orderData.amountPaid ?? orderData.totalAmount),
+            recordedAt: now.toISOString(),
+            paymentMethod: orderData.paymentMethod,
+          }]
+        : [],
       confirmationEmailSent: false,
       statusTimeline: [
         {

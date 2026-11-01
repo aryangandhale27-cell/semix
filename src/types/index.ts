@@ -199,6 +199,14 @@ export interface CustomerAddress {
   isDefault?: boolean;
 }
 
+export type OrderPaymentMethod = 'UPI' | 'Card' | 'NetBanking' | 'COD' | 'MakersCredit';
+
+export interface PaymentTransaction {
+  amount: number;
+  recordedAt: string;
+  paymentMethod: OrderPaymentMethod;
+}
+
 export interface Order {
   id: string;
   trackingNumber: string;
@@ -212,10 +220,11 @@ export interface Order {
   status: OrderStatus;
   statusTimeline: StatusTimelineEntry[];
   createdAt: string;
-  paymentMethod: 'UPI' | 'Card' | 'NetBanking' | 'COD' | 'MakersCredit';
+  paymentMethod: OrderPaymentMethod;
   paymentStatus: 'Paid' | 'Partially Paid' | 'Pending';
   amountPaid?: number;
   balanceDue?: number;
+  paymentTransactions?: PaymentTransaction[];
   isOfflineOrder?: boolean;
   componentListImageUrl?: string;
   componentListFilename?: string;
