@@ -36,22 +36,19 @@ export interface TeamMember {
 
 export const leadershipTeam: TeamMember[] = [
   {
-    id: 'ritesh-shinde',
-    name: 'RS',
+    id: 'sushant-indure',
+    name: 'Sushant Indure',
     position: 'CEO',
     department: 'Executive Leadership',
-    description: "Founder and Chief Executive Officer, responsible for the company's overall vision, strategy, leadership, and growth.",
-    initials: 'RS',
+    description: "Chief Executive Officer, responsible for the company's overall vision, strategy, leadership, and growth.",
+    initials: 'SI',
     isCeo: true,
     avatarBg: 'bg-gradient-to-br from-[#561269] via-[#6d1a84] to-[#FF6B00]',
     avatarRing: 'ring-2 ring-purple-300 ring-offset-2 ring-offset-white',
     badgeBg: 'bg-purple-100/80 border-purple-200',
     badgeTextColor: 'text-[#561269]',
     icon: Crown,
-    socialLinks: {
-      linkedin: 'https://linkedin.com/in/ritesh-shinde-semix',
-      email: 'ritesh@semixlabs.com',
-    }
+    socialLinks: {},
   },
   {
     id: 'aryan-gandhale',
