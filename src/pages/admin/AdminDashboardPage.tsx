@@ -75,6 +75,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [selectedAnalyticsCategory, setSelectedAnalyticsCategory] = useState<string | null>(null);
 
   const pendingOrdersCount = orders.filter(
     (o) => !o.assignedSellerId || o.status === 'pending_assignment'
@@ -160,6 +161,21 @@ export const AdminDashboardPage: React.FC = () => {
   }, [products]);
 
   const topProductContributor = productAttribution[0];
+  const selectedAnalyticsProducts = useMemo(
+    () => products.filter((product) => product.category === selectedAnalyticsCategory),
+    [products, selectedAnalyticsCategory]
+  );
+  const minimumCatalogOrderValue = useMemo(
+    () =>
+      products
+        .filter((product) => product.inStock && Number(product.price) > 0)
+        .map((product) => ({
+          product,
+          value: Number(product.price) * Math.max(1, Number(product.minOrderQty) || 1),
+        }))
+        .sort((a, b) => a.value - b.value)[0],
+    [products]
+  );
 
   useEffect(() => {
     if (activeTab !== 'catalog' || isCatalogLoaded) return;
@@ -707,29 +723,78 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Tab 1: Analytics */}
       {activeTab === 'analytics' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Revenue by Category Chart Box */}
+          {/* Interactive catalog category analysis */}
           <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-sm text-[#561269]">Category Revenue Volume</h3>
+            <div>
+              <h3 className="font-bold text-sm text-[#561269]">Catalog by Category</h3>
+              <p className="mt-1 text-[11px] text-slate-500">Select a category bar to inspect product prices and minimum order values.</p>
+            </div>
             <div className="space-y-3 pt-2">
               {categories.map((cat) => {
                 const catProducts = products.filter((p) => p.category === cat.name);
-                const percent = Math.min(100, Math.max(15, (catProducts.length / products.length) * 100));
+                const percent = products.length ? (catProducts.length / products.length) * 100 : 0;
+                const isSelected = selectedAnalyticsCategory === cat.name;
                 return (
-                  <div key={cat.id} className="space-y-1">
+                  <button
+                    key={cat.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`${cat.name}: ${catProducts.length} components, ${Math.round(percent)} percent of catalog`}
+                    onClick={() => setSelectedAnalyticsCategory(isSelected ? null : cat.name)}
+                    className={`block w-full rounded-lg p-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a855f7] ${
+                      isSelected ? 'bg-violet-50 ring-1 ring-violet-200' : 'hover:bg-slate-50'
+                    }`}
+                  >
                     <div className="flex justify-between text-xs font-semibold text-slate-700">
                       <span>{cat.name}</span>
                       <span className="font-mono text-slate-900">{catProducts.length} components ({Math.round(percent)}%)</span>
                     </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="mt-1 w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-[#561269] to-[#FF6B00] h-full rounded-full transition-all duration-500"
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isSelected ? 'bg-gradient-to-r from-[#ff6b00] to-[#fbbf24]' : 'bg-gradient-to-r from-[#561269] to-[#a855f7]'
+                        }`}
                         style={{ width: `${percent}%` }}
                       ></div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
+            {selectedAnalyticsCategory && (
+              <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h4 className="text-xs font-extrabold text-slate-800">{selectedAnalyticsCategory} · product analysis</h4>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAnalyticsCategory(null)}
+                    className="text-[10px] font-bold text-violet-700 hover:text-violet-900"
+                  >
+                    Clear
+                  </button>
+                </div>
+                {selectedAnalyticsProducts.length ? (
+                  <div className="max-h-64 space-y-2 overflow-y-auto">
+                    {selectedAnalyticsProducts.map((product) => {
+                      const minimumOrderQty = Math.max(1, Number(product.minOrderQty) || 1);
+                      const minimumValue = Math.max(0, Number(product.price) || 0) * minimumOrderQty;
+                      return (
+                        <div key={product.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-violet-100 bg-white px-3 py-2 text-[11px]">
+                          <span className="min-w-0 flex-1 truncate font-semibold text-slate-800" title={product.name}>
+                            {product.name} <span className="font-mono text-slate-400">· {product.sku}</span>
+                          </span>
+                          <span className="shrink-0 text-right text-slate-600">
+                            {minimumOrderQty} min units × ₹{Number(product.price || 0).toLocaleString('en-IN')} = <strong className="text-[#561269]">₹{minimumValue.toLocaleString('en-IN')}</strong>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500">No catalog products are assigned to this category.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quick Stats Box */}
@@ -753,6 +818,19 @@ export const AdminDashboardPage: React.FC = () => {
               <div className="flex justify-between p-3 bg-white rounded-xl border border-slate-200">
                 <span>Physical Inventory in Bins:</span>
                 <span className="font-bold font-mono text-[#FF6B00]">{firestoreKPIs.totalStockUnits.toLocaleString()} units</span>
+              </div>
+              <div className="flex justify-between gap-3 p-3 bg-white rounded-xl border border-slate-200">
+                <span>Lowest in-stock minimum order value:</span>
+                <span className="shrink-0 text-right font-bold font-mono text-[#561269]">
+                  {minimumCatalogOrderValue
+                    ? `₹${minimumCatalogOrderValue.value.toLocaleString('en-IN')}`
+                    : '—'}
+                  {minimumCatalogOrderValue && (
+                    <span className="block max-w-36 truncate text-[10px] font-medium text-slate-500" title={minimumCatalogOrderValue.product.name}>
+                      {minimumCatalogOrderValue.product.name}
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
           </div>

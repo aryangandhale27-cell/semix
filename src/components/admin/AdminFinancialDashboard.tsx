@@ -79,6 +79,7 @@ export const AdminFinancialDashboard: React.FC = () => {
   const currentDate = new Date();
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [ledgerRange, setLedgerRange] = useState<LedgerRange>('All Time');
 
   const financialOrders = useMemo(
@@ -117,10 +118,41 @@ export const AdminFinancialDashboard: React.FC = () => {
   const selectedMonthOrders = activeOrders.filter((entry) =>
     entry.date.getFullYear() === selectedYear && entry.date.getMonth() === selectedMonth
   );
+  const selectedMonthAllOrders = financialOrders.filter((entry) =>
+    entry.date.getFullYear() === selectedYear && entry.date.getMonth() === selectedMonth
+  );
   const todayOrderCount = activeOrders.filter((entry) => isSameDay(entry.date, currentDate)).length;
   const monthAverageOrderValue = selectedMonthOrders.length
     ? selectedMonthOrders.reduce((sum, entry) => sum + entry.orderAmount, 0) / selectedMonthOrders.length
     : 0;
+  const monthAverageUnitsPerOrder = selectedMonthOrders.length
+    ? selectedMonthOrders.reduce(
+      (sum, { order }) => sum + order.items.reduce((itemTotal, item) => itemTotal + Math.max(0, Number(item.quantity) || 0), 0),
+      0
+    ) / selectedMonthOrders.length
+    : 0;
+  const monthDiscounts = selectedMonthOrders.reduce(
+    (sum, { order }) => sum + Math.max(0, Number(order.discount) || 0),
+    0
+  );
+  const cancelledMonthOrders = selectedMonthAllOrders.filter((entry) => entry.isCancelled).length;
+  const cancelledMonthRate = selectedMonthAllOrders.length
+    ? (cancelledMonthOrders / selectedMonthAllOrders.length) * 100
+    : 0;
+  const minimumOrderValueProduct = useMemo(
+    () =>
+      products
+        .filter((product) => product.inStock && Number(product.price) > 0)
+        .map((product) => ({
+          product,
+          value: Number(product.price) * Math.max(1, Number(product.minOrderQty) || 1),
+        }))
+        .sort((a, b) => a.value - b.value)[0],
+    [products]
+  );
+  const selectedDayOrders = selectedDay === null
+    ? []
+    : selectedMonthOrders.filter(({ date }) => date.getDate() === selectedDay);
   const periodOrders = selectedMonthOrders;
 
   const paymentMethods: PaymentMethodSummary[] = useMemo(() => {
@@ -285,7 +317,10 @@ export const AdminFinancialDashboard: React.FC = () => {
               aria-label="Select financial month"
               className="rounded-lg border border-white/20 bg-[#561269] px-2 py-1 text-white outline-none focus:ring-2 focus:ring-white/50"
               value={selectedMonth}
-              onChange={(event) => setSelectedMonth(Number(event.target.value))}
+              onChange={(event) => {
+                setSelectedMonth(Number(event.target.value));
+                setSelectedDay(null);
+              }}
             >
               {Array.from({ length: 12 }, (_, month) => (
                 <option key={month} value={month}>{new Date(2000, month, 1).toLocaleString('en-IN', { month: 'long' })}</option>
@@ -298,7 +333,10 @@ export const AdminFinancialDashboard: React.FC = () => {
               aria-label="Select financial year"
               className="rounded-lg border border-white/20 bg-[#561269] px-2 py-1 text-white outline-none focus:ring-2 focus:ring-white/50"
               value={selectedYear}
-              onChange={(event) => setSelectedYear(Number(event.target.value))}
+              onChange={(event) => {
+                setSelectedYear(Number(event.target.value));
+                setSelectedDay(null);
+              }}
             >
               {years.map((year) => <option key={year} value={year}>{year}</option>)}
             </select>
@@ -306,7 +344,7 @@ export const AdminFinancialDashboard: React.FC = () => {
         </div>
       </header>
 
-      <section aria-label="Financial summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <section aria-label="Financial summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         <article className={cardClass}>
           <p className="text-xs font-semibold text-slate-500">Today's sales</p>
           <p className="mt-2 text-2xl font-black text-slate-900">{currency(todaySales)}</p>
@@ -322,31 +360,81 @@ export const AdminFinancialDashboard: React.FC = () => {
           <p className="mt-2 text-2xl font-black text-[#561269]">{currency(yearSales)}</p>
           <p className="mt-1 text-[11px] text-slate-400">{yearOrders.length} active orders</p>
         </article>
+        <article className={cardClass}>
+          <p className="text-xs font-semibold text-slate-500">Minimum catalog order value</p>
+          <p className="mt-2 text-2xl font-black text-slate-900">
+            {minimumOrderValueProduct ? currency(minimumOrderValueProduct.value) : '—'}
+          </p>
+          <p className="mt-1 truncate text-[11px] text-slate-400" title={minimumOrderValueProduct?.product.name}>
+            {minimumOrderValueProduct
+              ? `${minimumOrderValueProduct.product.name} · ${Math.max(1, Number(minimumOrderValueProduct.product.minOrderQty) || 1)} min units`
+              : 'No in-stock priced products'}
+          </p>
+        </article>
+        <article className={cardClass}>
+          <p className="text-xs font-semibold text-slate-500">Average units per order</p>
+          <p className="mt-2 text-2xl font-black text-slate-900">{monthAverageUnitsPerOrder.toFixed(1)}</p>
+          <p className="mt-1 text-[11px] text-slate-400">Selected month · active orders</p>
+        </article>
+        <article className={cardClass}>
+          <p className="text-xs font-semibold text-slate-500">Discounts granted</p>
+          <p className="mt-2 text-2xl font-black text-slate-900">{currency(monthDiscounts)}</p>
+          <p className="mt-1 text-[11px] text-slate-400">Selected month · active orders</p>
+        </article>
+        <article className={cardClass}>
+          <p className="text-xs font-semibold text-slate-500">Cancelled orders</p>
+          <p className="mt-2 text-2xl font-black text-slate-900">{cancelledMonthOrders}</p>
+          <p className="mt-1 text-[11px] text-slate-400">{cancelledMonthRate.toFixed(1)}% of dated orders in selected month</p>
+        </article>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-sm font-extrabold text-slate-900">Monthly sales</h3>
-            <p className="mt-1 text-xs text-slate-500">Sales by order date for {selectedYear}.</p>
+            <p className="mt-1 text-xs text-slate-500">Select a month to inspect its daily sales and breakdowns for {selectedYear}.</p>
           </div>
         </div>
-        <div className="grid h-52 grid-cols-12 items-end gap-2 border-b border-slate-200 pb-2 sm:gap-4" role="img" aria-label={`Monthly sales bar chart for ${selectedYear}`}>
+        <div className="grid h-52 grid-cols-12 items-end gap-2 border-b border-slate-200 pb-2 sm:gap-4" role="group" aria-label={`Interactive monthly sales bar chart for ${selectedYear}`}>
           {monthlySummary.map((month) => (
             <div key={month.month} className="flex h-full min-w-0 flex-col items-center justify-end gap-2">
               <div className="flex h-full w-full items-end justify-center">
-                <div
-                  title={`${month.label} sales: ${currency(month.sales)}`}
-                  aria-label={`${month.label} sales ${currency(month.sales)}`}
-                  className="w-3/5 max-w-8 rounded-t bg-gradient-to-t from-[#561269] to-[#a855f7] transition-all"
-                  style={{ height: `${Math.max(month.sales ? 4 : 0, (month.sales / maxMonthlySales) * 100)}%` }}
-                />
+                <button
+                  type="button"
+                  title={`${month.label}: ${currency(month.sales)} sales · ${month.orderCount} orders. Click to select.`}
+                  aria-label={`${month.label} sales ${currency(month.sales)}, ${month.orderCount} orders`}
+                  aria-pressed={selectedMonth === month.month}
+                  onClick={() => {
+                    setSelectedMonth(month.month);
+                    setSelectedDay(null);
+                  }}
+                  className="flex h-full w-full items-end justify-center rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a855f7] focus-visible:ring-offset-2"
+                >
+                  <span
+                    className={`w-3/5 max-w-8 rounded-t transition-all hover:brightness-110 ${
+                      selectedMonth === month.month
+                        ? 'bg-gradient-to-t from-[#ff6b00] to-[#ffb15e] shadow-[0_0_12px_rgba(255,107,0,0.3)]'
+                        : 'bg-gradient-to-t from-[#561269] to-[#a855f7]'
+                    }`}
+                    style={{ height: `${Math.max(month.sales ? 4 : 0, (month.sales / maxMonthlySales) * 100)}%` }}
+                  />
+                </button>
               </div>
-              <span className="text-[10px] font-semibold text-slate-500">{month.label}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMonth(month.month);
+                  setSelectedDay(null);
+                }}
+                className={`text-[10px] font-semibold ${selectedMonth === month.month ? 'text-[#c2410c]' : 'text-slate-500'}`}
+                aria-pressed={selectedMonth === month.month}
+              >
+                {month.label}
+              </button>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[10px] text-slate-400">Cancelled orders are excluded from sales totals.</p>
+        <p className="mt-3 text-[10px] text-slate-400">Hover or focus a bar for sales and order count. Cancelled orders are excluded from sales totals.</p>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -357,22 +445,76 @@ export const AdminFinancialDashboard: React.FC = () => {
           </p>
         </div>
         <div className="overflow-x-auto pb-2">
-          <div className="grid h-44 min-w-[700px] items-end gap-1 border-b border-slate-200 px-1 pb-2" style={{ gridTemplateColumns: `repeat(${dailySummary.length}, minmax(16px, 1fr))` }} role="img" aria-label="Daily sales bar chart">
+          <div className="grid h-44 min-w-[700px] items-end gap-1 border-b border-slate-200 px-1 pb-2" style={{ gridTemplateColumns: `repeat(${dailySummary.length}, minmax(16px, 1fr))` }} role="group" aria-label="Interactive daily sales bar chart">
             {dailySummary.map((day) => (
               <div key={day.day} className="flex h-full flex-col items-center justify-end gap-1">
                 <div className="flex h-full w-full items-end justify-center">
-                  <div
-                    title={`${day.day}: sales ${currency(day.sales)}`}
-                    className="w-3/5 rounded-t-sm bg-[#561269]"
-                    style={{ height: `${day.sales ? Math.max(3, (day.sales / maxDailySales) * 100) : 0}%` }}
-                  />
+                  <button
+                    type="button"
+                    title={`${new Date(selectedYear, selectedMonth, day.day).toLocaleDateString('en-IN')}: ${currency(day.sales)} sales. Click for order details.`}
+                    aria-label={`Day ${day.day}: sales ${currency(day.sales)}${selectedDay === day.day ? ', selected' : ''}`}
+                    aria-pressed={selectedDay === day.day}
+                    onClick={() => setSelectedDay(selectedDay === day.day ? null : day.day)}
+                    className="flex h-full w-full items-end justify-center rounded-t-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a855f7]"
+                  >
+                    <span
+                      className={`w-3/5 rounded-t-sm transition-colors hover:bg-orange-500 ${
+                        selectedDay === day.day ? 'bg-[#ff6b00]' : 'bg-[#561269]'
+                      }`}
+                      style={{ height: `${day.sales ? Math.max(3, (day.sales / maxDailySales) * 100) : 0}%` }}
+                    />
+                  </button>
                 </div>
-                <span className="text-[9px] text-slate-500">{day.day}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDay(selectedDay === day.day ? null : day.day)}
+                  aria-pressed={selectedDay === day.day}
+                  className={`text-[9px] ${selectedDay === day.day ? 'font-bold text-orange-700' : 'text-slate-500'}`}
+                >
+                  {day.day}
+                </button>
               </div>
             ))}
           </div>
         </div>
-        <p className="mt-3 text-[10px] font-semibold text-slate-500">Each bar represents the total value of orders created on that day.</p>
+        <p className="mt-3 text-[10px] font-semibold text-slate-500">Select a day to inspect its orders. Each bar represents active order value created that day.</p>
+        {selectedDay !== null && (
+          <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900">
+                  {new Date(selectedYear, selectedMonth, selectedDay).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </h4>
+                <p className="mt-1 text-[11px] text-slate-600">
+                  {selectedDayOrders.length} active orders · {currency(selectedDayOrders.reduce((sum, entry) => sum + entry.orderAmount, 0))}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDay(null)}
+                className="rounded-lg border border-orange-200 bg-white px-2.5 py-1 text-[10px] font-bold text-orange-800 hover:bg-orange-100"
+              >
+                Clear selection
+              </button>
+            </div>
+            {selectedDayOrders.length ? (
+              <div className="space-y-2">
+                {selectedDayOrders.map(({ order, orderAmount }) => (
+                  <div key={order.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-orange-100 bg-white px-3 py-2 text-[11px]">
+                    <span className="font-semibold text-slate-800">{order.customer.fullName} <span className="font-mono text-slate-500">· {order.id}</span></span>
+                    <span className="font-extrabold text-slate-900">{currency(orderAmount)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-600">No active orders were recorded on this day.</p>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
