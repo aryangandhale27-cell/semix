@@ -36,12 +36,12 @@ export interface TeamMember {
 
 export const leadershipTeam: TeamMember[] = [
   {
-    id: 'sushant-indure',
-    name: 'Sushant Indure',
+    id: 'rs-ceo',
+    name: 'RS',
     position: 'CEO',
     department: 'Executive Leadership',
     description: "Chief Executive Officer, responsible for the company's overall vision, strategy, leadership, and growth.",
-    initials: 'SI',
+    initials: 'RS',
     isCeo: true,
     avatarBg: 'bg-gradient-to-br from-[#561269] via-[#6d1a84] to-[#FF6B00]',
     avatarRing: 'ring-2 ring-purple-300 ring-offset-2 ring-offset-white',
