@@ -1350,16 +1350,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw new Error('Enter a payment amount greater than zero.');
     }
 
-    const currentBalance = currentOrder.balanceDue ?? Math.max(
+    const currentBalance = Number((currentOrder.balanceDue ?? Math.max(
       0,
       currentOrder.totalAmount - (currentOrder.amountPaid || 0)
-    );
+    )).toFixed(2));
     if (amount > currentBalance) {
       throw new Error(`The collected amount cannot exceed the remaining balance of ₹${currentBalance.toLocaleString('en-IN')}.`);
     }
 
-    const amountPaid = (currentOrder.amountPaid || 0) + amount;
-    const balanceDue = Math.max(0, currentOrder.totalAmount - amountPaid);
+    const amountPaid = Number(((currentOrder.amountPaid || 0) + amount).toFixed(2));
+    const balanceDue = Number(Math.max(0, currentOrder.totalAmount - amountPaid).toFixed(2));
     if (deliverAfterPayment && balanceDue > 0) {
       throw new Error(`Please collect the remaining ₹${balanceDue.toLocaleString('en-IN')} before completing delivery.`);
     }

@@ -284,7 +284,7 @@ export const AdminOrdersTab: React.FC = () => {
     const order = orders.find((item) => item.id === orderId);
     if (order?.isOfflineOrder && (order.balanceDue || 0) > 0) {
       setPaymentCollectionOrder(order);
-      setDeliveryPaymentAmount(String(order.balanceDue));
+      setDeliveryPaymentAmount((order.balanceDue || 0).toFixed(2));
       setDeliveryConfirmationOrderId(null);
       return;
     }
@@ -408,7 +408,7 @@ export const AdminOrdersTab: React.FC = () => {
                 autoFocus
                 required
                 min="0.01"
-                max={paymentCollectionOrder.balanceDue || 0}
+                max={(paymentCollectionOrder.balanceDue || 0).toFixed(2)}
                 step="0.01"
                 type="number"
                 value={deliveryPaymentAmount}

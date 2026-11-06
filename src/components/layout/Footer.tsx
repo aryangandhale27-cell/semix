@@ -43,8 +43,8 @@ export const Footer: React.FC = () => {
                   <span className="text-slate-400 font-medium block text-[11px] uppercase tracking-wider mb-0.5 text-[#dfb5e9]">
                     Corporate HQ / Office Address
                   </span>
-                  G35 TOWERS, PCMC CHOWK,<br />
-                  PIMPRI CHINCHWAD, PUNE
+                  G35 Towers, PCMC Chowk,<br />
+                  Pimpri Chinchwad, Pune
                 </div>
               </div>
 
@@ -188,7 +188,7 @@ export const Footer: React.FC = () => {
                   Office Location
                 </span>
                 <span className="text-xs sm:text-sm text-slate-300 block">
-                  G35 TOWERS, PCMC CHOWK, PIMPRI CHINCHWAD, PUNE
+                  G35 Towers, PCMC Chowk, Pimpri Chinchwad, Pune
                 </span>
               </li>
               <li className="pt-1">

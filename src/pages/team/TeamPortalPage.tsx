@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { Order, Product, EscalationIssue, OrderStatus, EscalationType, EscalationPriority } from '../../types';
 import { ProductFormModal } from '../../components/team/ProductFormModal';
-import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { auth } from '../../lib/firebase';
 import { 
@@ -19,7 +18,6 @@ import {
   Minus,
   Plus,
   Edit,
-  Trash2,
   Filter,
   CheckSquare,
   Square,
@@ -48,7 +46,6 @@ export const TeamPortalPage: React.FC = () => {
     updateProductStock, 
     updateProduct,
     addProduct,
-    deleteProduct,
     isProductSyncing,
     loadAllProducts,
     loadProductsPage,
@@ -133,7 +130,6 @@ export const TeamPortalPage: React.FC = () => {
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
-  const [productToDelete, setProductToDelete] = useState<{ id: string; name: string; sku?: string } | null>(null);
   const [updatingFeaturedProductId, setUpdatingFeaturedProductId] = useState<string | null>(null);
 
   // Inline Stock Editing state: { [productId]: number | null }
@@ -317,10 +313,6 @@ export const TeamPortalPage: React.FC = () => {
     } finally {
       setUpdatingFeaturedProductId(null);
     }
-  };
-
-  const handleDeleteProductConfirm = (productId: string, name: string, sku?: string) => {
-    setProductToDelete({ id: productId, name, sku });
   };
 
   // Component Checklist toggle
@@ -997,13 +989,6 @@ export const TeamPortalPage: React.FC = () => {
                                 <span>Edit</span>
                               </button>
 
-                              <button
-                                onClick={() => handleDeleteProductConfirm(prod.id, prod.name, prod.sku)}
-                                className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="Delete Product"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1691,11 +1676,6 @@ export const TeamPortalPage: React.FC = () => {
         }}
         initialProduct={editingProduct}
         onSave={handleSaveProduct}
-        onDelete={(id) => {
-          deleteProduct(id);
-          setEditingProduct(null);
-          setProductModalOpen(false);
-        }}
       />
 
       {/* PRINTABLE ESD DISPATCH SLIP MODAL */}
@@ -1773,22 +1753,6 @@ export const TeamPortalPage: React.FC = () => {
           </div>
         </div>
       )}
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmModal
-        isOpen={!!productToDelete}
-        onClose={() => setProductToDelete(null)}
-        onConfirm={() => {
-          if (productToDelete) {
-            deleteProduct(productToDelete.id);
-            setProductToDelete(null);
-          }
-        }}
-        title="Remove Product From Inventory"
-        itemName={productToDelete?.name}
-        sku={productToDelete?.sku}
-        description="Are you sure you want to delete this component from inventory? This removes it permanently from the public catalog."
-        confirmLabel="Remove Product"
-      />
       <QuickViewModal
         product={quickViewProduct}
         onClose={() => setQuickViewProduct(null)}

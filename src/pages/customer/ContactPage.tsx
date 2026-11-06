@@ -493,8 +493,8 @@ export const ContactPage: React.FC = () => {
                 </div>
                 <div className="text-xs text-slate-600 space-y-1">
                   <p className="font-semibold text-slate-800">SEMIX LABS Electronics HQ</p>
-                  <p>G35 TOWERS, PCMC CHOWK,</p>
-                  <p>PIMPRI CHINCHWAD, PUNE</p>
+                  <p>G35 Towers, PCMC Chowk,</p>
+                  <p>Pimpri Chinchwad, Pune</p>
                 </div>
               </div>
             </div>

@@ -37,7 +37,6 @@ interface ProductFormModalProps {
   onClose: () => void;
   initialProduct?: Product | null;
   onSave: (productData: Omit<Product, 'id'> | Product) => void | Promise<void>;
-  onDelete?: (productId: string) => void;
 }
 
 const PRESET_SILICON_IMAGES = [
@@ -53,8 +52,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   isOpen,
   onClose,
   initialProduct,
-  onSave,
-  onDelete
+  onSave
 }) => {
   const { categories, showToast } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1013,24 +1011,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
               {/* Submit Buttons */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
-                {isEditMode && onDelete && initialProduct ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(`Are you sure you want to permanently delete "${initialProduct.name}" from inventory?`)) {
-                        onDelete(initialProduct.id);
-                        onClose();
-                      }
-                    }}
-                    className="px-3.5 py-2.5 rounded-xl border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Product</span>
-                  </button>
-                ) : (
-                  <div />
-                )}
-
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
