@@ -12,6 +12,22 @@ import { SemixLabsLogo } from '../common/SemixLabsLogo';
 // External Privacy Policy / Document Link (opens in a new tab with target="_blank" rel="noopener noreferrer")
 export const PRIVACY_POLICY_URL = 'https://udyamregistration.gov.in';
 
+const PAYMENT_METHODS = [
+  { name: 'UPI', className: 'font-black italic tracking-tight text-slate-300' },
+  { name: 'HDFC Bank', className: 'font-bold text-slate-300' },
+  { name: 'Axis Bank', className: 'font-black italic text-pink-400' },
+  { name: 'SBI', className: 'font-black italic text-blue-400' },
+  { name: 'ICICI Bank', className: 'font-black italic text-orange-400' },
+  { name: 'Cash on Delivery', className: 'font-bold text-slate-300' },
+  { name: 'VISA', className: 'font-black italic text-blue-400' },
+  { name: 'RuPay', className: 'font-black italic text-blue-300' },
+  { name: 'Paytm', className: 'font-black italic text-sky-400' },
+  { name: 'PhonePe', className: 'font-bold text-violet-300' },
+  { name: 'YES BANK', className: 'font-bold text-emerald-300' },
+  { name: 'Kotak', className: 'font-black italic text-rose-400' },
+  { name: 'Google Pay', className: 'font-bold text-slate-200' },
+];
+
 export const Footer: React.FC = () => {
   return (
     <footer id="main-footer" className="bg-[#0a0410] text-slate-300 border-t border-white/10 mt-16 font-sans">
@@ -203,6 +219,52 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
+        </div>
+      </div>
+
+      {/* Payment methods */}
+      <div className="border-t border-white/10 bg-[#08030d]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+          <h4 className="text-sm sm:text-base font-semibold text-slate-300 mb-4">
+            Payment partners
+          </h4>
+          <div className="flex flex-wrap items-center gap-x-7 gap-y-4 sm:gap-x-9">
+            {PAYMENT_METHODS.map(({ name, className }) => (
+              <span
+                key={name}
+                aria-label={name}
+                className={`text-xs sm:text-sm whitespace-nowrap opacity-80 ${className}`}
+              >
+                {name}
+              </span>
+            ))}
+            <span aria-label="Mastercard" className="inline-flex items-center opacity-80">
+              <span className="w-4 h-4 rounded-full bg-[#eb001b]" />
+              <span className="w-4 h-4 rounded-full bg-[#f79e1b] -ml-1.5 mix-blend-screen" />
+              <span className="sr-only">Mastercard</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Parent brand banner */}
+      <div className="border-t border-white/10 bg-[radial-gradient(circle_at_top,_rgba(168,85,247,0.18),_transparent_40%),_linear-gradient(180deg,_#120915_0%,_#09050d_100%)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+          <div className="flex justify-center">
+            <div className="inline-flex items-center gap-3 sm:gap-4 rounded-2xl border border-[#f8d56d]/30 bg-[#160d1f]/80 px-4 py-3 sm:px-6 sm:py-4 shadow-[0_0_30px_rgba(252,211,77,0.12)] backdrop-blur-sm">
+              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#fbbf24] via-[#f97316] to-[#ec4899] text-xl sm:text-2xl font-black text-[#1b1026] shadow-[0_0_20px_rgba(251,191,36,0.35)]">
+                R
+              </div>
+              <div className="text-left">
+                <div className="bg-gradient-to-r from-[#fef3c7] via-[#fbbf24] to-[#f472b6] bg-clip-text text-lg sm:text-2xl font-black tracking-tight text-transparent">
+                  Rietzz Prime Venture Pvt Ltd
+                </div>
+                <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300/90">
+                  Parent brand
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
