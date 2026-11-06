@@ -5,7 +5,8 @@ import {
   Phone, 
   Mail, 
   ArrowUpRight,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from 'lucide-react';
 import { SemixLabsLogo } from '../common/SemixLabsLogo';
 
@@ -70,10 +71,10 @@ export const Footer: React.FC = () => {
                   <Phone className="w-3 h-3 sm:w-4 sm:h-4" strokeWidth={1.75} />
                 </div>
                 <a 
-                  href="tel:+917602003432"
+                  href="tel:+917666601086"
                   className="text-xs sm:text-sm font-mono text-slate-200 hover:text-white transition-colors"
                 >
-                  +91 7602003432
+                  +91 7666601086
                 </a>
               </div>
 
@@ -182,10 +183,10 @@ export const Footer: React.FC = () => {
                   Phone
                 </span>
                 <a 
-                  href="tel:+917602003432"
+                  href="tel:+917666601086"
                   className="text-xs sm:text-sm font-mono text-slate-300 hover:text-[#c084fc] transition-colors block"
                 >
-                  +91 7602003432
+                  +91 7666601086
                 </a>
               </li>
               <li>
@@ -225,22 +226,36 @@ export const Footer: React.FC = () => {
       {/* Payment methods */}
       <div className="border-t border-white/10 bg-[#08030d]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
-          <h4 className="text-sm sm:text-base font-semibold text-slate-300 mb-4">
-            Payment partners
-          </h4>
-          <div className="flex flex-wrap items-center gap-x-7 gap-y-4 sm:gap-x-9">
+          <div className="mb-4 sm:mb-5">
+            <h4 className="flex items-center gap-2.5 text-base sm:text-lg font-extrabold tracking-tight text-white">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#c084fc]/30 bg-gradient-to-br from-[#561269] to-[#a855f7] text-white shadow-[0_0_16px_rgba(168,85,247,0.2)]">
+                <CreditCard className="h-4 w-4" strokeWidth={2.25} />
+              </span>
+              Payment partners
+            </h4>
+            <div className="ml-10 mt-2 h-0.5 w-12 rounded-full bg-gradient-to-r from-[#a855f7] to-[#f472b6]" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             {PAYMENT_METHODS.map(({ name, className }) => (
               <span
                 key={name}
                 aria-label={name}
-                className={`text-xs sm:text-sm whitespace-nowrap opacity-80 ${className}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1.5 shadow-sm shadow-black/10 transition-colors hover:border-white/20 hover:bg-white/[0.07]"
               >
-                {name}
+                <span className="flex h-4 w-4 items-center justify-center rounded-full border border-white/15 bg-gradient-to-br from-[#561269] to-[#a855f7] text-[8px] font-black text-white">
+                  {name === 'Cash on Delivery' ? '₹' : name.slice(0, 1)}
+                </span>
+                <span className={`text-[11px] sm:text-xs font-semibold whitespace-nowrap ${className}`}>
+                  {name}
+                </span>
               </span>
             ))}
-            <span aria-label="Mastercard" className="inline-flex items-center opacity-80">
-              <span className="w-4 h-4 rounded-full bg-[#eb001b]" />
-              <span className="w-4 h-4 rounded-full bg-[#f79e1b] -ml-1.5 mix-blend-screen" />
+            <span aria-label="Mastercard" className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1.5 shadow-sm shadow-black/10">
+              <span className="inline-flex items-center">
+                <span className="h-3.5 w-3.5 rounded-full bg-[#eb001b]" />
+                <span className="-ml-1 h-3.5 w-3.5 rounded-full bg-[#f79e1b] mix-blend-screen" />
+              </span>
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-200">Mastercard</span>
               <span className="sr-only">Mastercard</span>
             </span>
           </div>
