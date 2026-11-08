@@ -213,14 +213,6 @@ function AppContent({ loadDeferredOverlays }: { loadDeferredOverlays: boolean })
         </main>
 
         <Footer />
-        <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 text-center sm:py-5">
-          <Link
-            to="/return-policy"
-            className="text-sm font-semibold text-slate-600 transition-colors hover:text-[#561269]"
-          >
-            Return &amp; Refund Policy
-          </Link>
-        </div>
 
         <ToastContainer />
 

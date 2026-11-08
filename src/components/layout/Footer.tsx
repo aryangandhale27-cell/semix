@@ -6,7 +6,10 @@ import {
   Mail, 
   ArrowUpRight,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Building2,
+  CircleHelp,
+  Headphones
 } from 'lucide-react';
 import { SemixLabsLogo } from '../common/SemixLabsLogo';
 
@@ -33,11 +36,11 @@ export const Footer: React.FC = () => {
   return (
     <footer id="main-footer" className="bg-[#0a0410] text-slate-300 border-t border-white/10 mt-16 font-sans">
       {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-14 lg:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-5 sm:gap-10 lg:gap-8">
+      <div className="semix-footer-main max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-14 lg:py-16">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-10 lg:gap-8">
           
           {/* Column 1: Semix Labs branding and contact details */}
-          <div className="lg:col-span-5 sm:col-span-2 lg:pr-8 space-y-3 sm:space-y-6">
+          <div className="col-span-2 lg:col-span-4 sm:col-span-2 lg:pr-8 space-y-3 sm:space-y-6">
             <div className="flex items-center min-h-0 sm:min-h-20">
               <Link to="/" aria-label="SEMIX LABS home" className="inline-flex rounded-lg sm:rounded-xl bg-white p-1 sm:p-2 shadow-lg shadow-black/20 hover:bg-slate-100 transition-colors">
                 <SemixLabsLogo variant="full" size="xl" className="!h-12 !w-40 sm:!h-16 sm:!w-56 max-w-full" />
@@ -50,7 +53,7 @@ export const Footer: React.FC = () => {
             </p>
 
             {/* Outlined Contact Info with Purple/Violet Accents */}
-            <div className="space-y-2 sm:space-y-3.5 text-sm pt-0.5 sm:pt-1">
+            <div className="semix-footer-brand-contact space-y-2 sm:space-y-3.5 text-sm pt-0.5 sm:pt-1">
               {/* Corporate HQ Address */}
               <div className="flex items-start gap-2 sm:gap-3 text-slate-300 group">
                 <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-[#561269]/20 border border-[#a855f7]/40 text-[#c084fc] flex items-center justify-center shrink-0 mt-0.5 transition-colors group-hover:border-[#a855f7] group-hover:bg-[#561269]/30">
@@ -100,29 +103,31 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Column 2: COMPANY (lg:col-span-2) */}
-          <div className="lg:col-span-2 sm:col-span-1">
+          <div className="footer-link-panel lg:col-span-2 sm:col-span-1">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-2 sm:mb-5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#a855f7]" />
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-[#a855f7]/25 bg-[#561269]/40 text-[#d9a8eb]">
+                <Building2 className="h-3.5 w-3.5" />
+              </span>
               COMPANY
             </h4>
-            <ul className="space-y-1.5 sm:space-y-3 text-sm">
+            <ul className="footer-link-list space-y-1.5 sm:space-y-3 text-sm">
               <li>
-                <Link to="/about" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
+                <Link to="/about" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link to="/about#about-features" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
+                <Link to="/about#about-features" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
                   Our Capabilities
                 </Link>
               </li>
               <li>
-                <Link to="/about#about-stats" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
+                <Link to="/about#about-stats" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
                   Why Semix Labs
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
+                <Link to="/contact" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
                   Contact Us & Support
                 </Link>
               </li>
@@ -130,24 +135,26 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Column 3: INFORMATION (lg:col-span-3) */}
-          <div className="lg:col-span-3 sm:col-span-1">
+          <div className="footer-link-panel lg:col-span-2 sm:col-span-1">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-2 sm:mb-5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#a855f7]" />
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-[#a855f7]/25 bg-[#561269]/40 text-[#d9a8eb]">
+                <CircleHelp className="h-3.5 w-3.5" />
+              </span>
               INFORMATION
             </h4>
-            <ul className="space-y-1.5 sm:space-y-3 text-sm">
+            <ul className="footer-link-list space-y-1.5 sm:space-y-3 text-sm">
               <li>
-                <Link to="/contact" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
+                <Link to="/contact" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
                   FAQs
                 </Link>
               </li>
               <li>
-                <Link to="/services" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
+                <Link to="/services" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
                   Services
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
+                <Link to="/contact" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
                   Support
                 </Link>
               </li>
@@ -157,29 +164,37 @@ export const Footer: React.FC = () => {
                   href={PRIVACY_POLICY_URL}
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-slate-400 hover:text-[#c084fc] transition-colors inline-flex items-center gap-1.5 group/privacy"
+                  className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors inline-flex items-center gap-1.5 group/privacy"
                 >
                   <span>Privacy Policy</span>
                   <ArrowUpRight className="w-3.5 h-3.5 text-[#a855f7] opacity-70 group-hover/privacy:opacity-100 group-hover/privacy:translate-x-0.5 group-hover/privacy:-translate-y-0.5 transition-all" />
                 </a>
               </li>
               <li>
-                <Link to="/contact" className="text-slate-400 hover:text-[#c084fc] transition-colors block">
+                <Link to="/contact" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
                   Terms & Conditions
+                </Link>
+              </li>
+              <li>
+                <Link to="/return-policy" className="footer-link text-slate-400 hover:text-[#c084fc] transition-colors block">
+                  Return &amp; Refund Policy
                 </Link>
               </li>
             </ul>
           </div>
 
           {/* Column 4: CONTACT (lg:col-span-2) */}
-          <div className="lg:col-span-2 sm:col-span-2 lg:col-span-2">
+          <div className="footer-contact-panel col-span-2 sm:col-span-2 lg:col-span-4">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-2 sm:mb-5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#a855f7]" />
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-[#a855f7]/25 bg-[#561269]/40 text-[#d9a8eb]">
+                <Headphones className="h-3.5 w-3.5" />
+              </span>
               CONTACT
             </h4>
-            <ul className="space-y-1.5 sm:space-y-3.5 text-sm">
-              <li>
-                <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block mb-0.5">
+            <ul className="footer-contact-list space-y-1.5 sm:space-y-3.5 text-sm">
+              <li className="footer-contact-phone">
+                <span className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">
+                  <Phone className="h-3 w-3 text-[#c084fc]" />
                   Phone
                 </span>
                 <a 
@@ -189,8 +204,9 @@ export const Footer: React.FC = () => {
                   +91 7666601086
                 </a>
               </li>
-              <li>
-                <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block mb-0.5">
+              <li className="footer-contact-email">
+                <span className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">
+                  <Mail className="h-3 w-3 text-[#c084fc]" />
                   Email
                 </span>
                 <a 
@@ -200,15 +216,16 @@ export const Footer: React.FC = () => {
                   office@semixlabs.com
                 </a>
               </li>
-              <li>
-                <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block mb-0.5">
+              <li className="footer-contact-address">
+                <span className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">
+                  <MapPin className="h-3 w-3 text-[#c084fc]" />
                   Office Location
                 </span>
                 <span className="text-xs sm:text-sm text-slate-300 block">
                   G35 Towers, PCMC Chowk, Pimpri Chinchwad, Pune
                 </span>
               </li>
-              <li className="pt-1">
+              <li className="footer-contact-cta pt-1">
                 <Link 
                   to="/contact"
                   className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#561269]/30 border border-[#a855f7]/50 text-[#c084fc] hover:bg-[#561269] hover:text-white transition-all shadow-sm group"
@@ -224,9 +241,9 @@ export const Footer: React.FC = () => {
       </div>
 
       {/* Payment methods */}
-      <div className="border-t border-white/10 bg-[#08030d]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
-          <div className="mb-4 sm:mb-5">
+      <div className="semix-footer-payments border-t border-white/10 bg-[#08030d]">
+        <div className="semix-footer-payments-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-8 lg:py-9">
+          <div className="semix-footer-payments-heading mb-5 sm:mb-6">
             <h4 className="flex items-center gap-2.5 text-base sm:text-lg font-extrabold tracking-tight text-white">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#c084fc]/30 bg-gradient-to-br from-[#561269] to-[#a855f7] text-white shadow-[0_0_16px_rgba(168,85,247,0.2)]">
                 <CreditCard className="h-4 w-4" strokeWidth={2.25} />
@@ -235,12 +252,12 @@ export const Footer: React.FC = () => {
             </h4>
             <div className="ml-10 mt-2 h-0.5 w-12 rounded-full bg-gradient-to-r from-[#a855f7] to-[#f472b6]" />
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          <div className="semix-footer-payment-list flex flex-wrap items-center gap-2.5 sm:gap-3">
             {PAYMENT_METHODS.map(({ name, className }) => (
               <span
                 key={name}
                 aria-label={name}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1.5 shadow-sm shadow-black/10 transition-colors hover:border-white/20 hover:bg-white/[0.07]"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-3 py-2 shadow-sm shadow-black/10 transition-colors hover:border-white/20 hover:bg-white/[0.07]"
               >
                 <span className="flex h-4 w-4 items-center justify-center rounded-full border border-white/15 bg-gradient-to-br from-[#561269] to-[#a855f7] text-[8px] font-black text-white">
                   {name === 'Cash on Delivery' ? '₹' : name.slice(0, 1)}
@@ -250,7 +267,7 @@ export const Footer: React.FC = () => {
                 </span>
               </span>
             ))}
-            <span aria-label="Mastercard" className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1.5 shadow-sm shadow-black/10">
+            <span aria-label="Mastercard" className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-3 py-2 shadow-sm shadow-black/10">
               <span className="inline-flex items-center">
                 <span className="h-3.5 w-3.5 rounded-full bg-[#eb001b]" />
                 <span className="-ml-1 h-3.5 w-3.5 rounded-full bg-[#f79e1b] mix-blend-screen" />
@@ -263,16 +280,16 @@ export const Footer: React.FC = () => {
       </div>
 
       {/* Parent brand banner */}
-      <div className="border-t border-white/10 bg-[radial-gradient(circle_at_top,_rgba(168,85,247,0.18),_transparent_40%),_linear-gradient(180deg,_#120915_0%,_#09050d_100%)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+      <div className="semix-footer-parent border-t border-white/10 bg-[radial-gradient(circle_at_top,_rgba(168,85,247,0.18),_transparent_40%),_linear-gradient(180deg,_#120915_0%,_#09050d_100%)]">
+        <div className="semix-footer-parent-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-7">
           <div className="flex justify-center">
-            <div className="inline-flex items-center gap-3 sm:gap-4 rounded-2xl border border-[#f8d56d]/30 bg-[#160d1f]/80 px-4 py-3 sm:px-6 sm:py-4 shadow-[0_0_30px_rgba(252,211,77,0.12)] backdrop-blur-sm">
+            <div className="semix-footer-parent-card inline-flex items-center gap-3 sm:gap-4 rounded-2xl border border-[#f8d56d]/30 bg-[#160d1f]/80 px-4 py-3 sm:px-6 sm:py-4 shadow-[0_0_30px_rgba(252,211,77,0.12)] backdrop-blur-sm">
               <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#fbbf24] via-[#f97316] to-[#ec4899] text-xl sm:text-2xl font-black text-[#1b1026] shadow-[0_0_20px_rgba(251,191,36,0.35)]">
                 R
               </div>
               <div className="text-left">
                 <div className="bg-gradient-to-r from-[#fef3c7] via-[#fbbf24] to-[#f472b6] bg-clip-text text-lg sm:text-2xl font-black tracking-tight text-transparent">
-                  Rietzz Prime Venture Pvt Ltd
+                  Rietzz Prime Ventures Pvt Ltd
                 </div>
                 <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300/90">
                   Parent brand
@@ -285,7 +302,7 @@ export const Footer: React.FC = () => {
 
       {/* Bottom Copyright Section */}
       <div className="border-t border-white/10 bg-[#06020b]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-xs text-slate-500">
+        <div className="semix-footer-copyright max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-xs text-slate-500">
           <p className="text-center sm:text-left text-slate-400">
             © 2026 <strong className="text-slate-300 font-medium">SEMIX LABS</strong>. All Rights Reserved.
           </p>

@@ -10,6 +10,7 @@ import {
   Heart, 
   MapPin, 
   AlertCircle, 
+  ChevronDown,
   ChevronRight, 
   Download, 
   MessageSquare,
@@ -21,7 +22,8 @@ import {
   FileText,
   Building2,
   Clock,
-  Mail
+  Mail,
+  Smartphone
 } from 'lucide-react';
 import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
 
@@ -56,7 +58,8 @@ export const CustomerDashboardPage: React.FC = () => {
     : [];
 
   const activeTab = searchParams.get('tab') || 'orders';
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(customerOrders[0] || null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddressEntry[]>(() => readSavedCustomerAddresses());
   const [addressForm, setAddressForm] = useState<CustomerAddress>(() =>
@@ -138,8 +141,9 @@ export const CustomerDashboardPage: React.FC = () => {
 
   useEffect(() => {
     const selectedStillBelongsToCustomer = selectedOrder && customerOrders.some((order) => order.id === selectedOrder.id);
-    if (!selectedStillBelongsToCustomer) {
-      setSelectedOrder(customerOrders[0] || null);
+    if (selectedOrder && !selectedStillBelongsToCustomer) {
+      setSelectedOrder(null);
+      setShowOrderDetails(false);
     }
     if (!customerOrders.some((order) => order.id === ticketOrderId)) {
       setTicketOrderId(customerOrders[0]?.id || '');
@@ -172,125 +176,238 @@ export const CustomerDashboardPage: React.FC = () => {
     setTimeout(() => setTicketSubmitted(false), 3000);
   };
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header Profile Banner */}
-      <div id="customer-dashboard-profile" className="bg-gradient-to-r from-[#561269] to-[#380847] rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg border border-[#561269]/30">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#FF6B00] text-white font-extrabold text-xl flex items-center justify-center shadow-md border border-orange-400/30 shrink-0 select-none">
-            {userInitials}
+  const renderOrderTracking = (order: Order) => (
+    <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tracking details</p>
+          <p className="truncate font-mono text-sm font-extrabold text-slate-800">{order.id}</p>
+        </div>
+        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase text-slate-600">
+          {order.status}
+        </span>
+      </div>
+      <StatusTimeline
+        status={order.status}
+        timeline={order.statusTimeline}
+        trackingNumber={order.trackingNumber}
+        courier={order.courier}
+        courierTrackingId={order.courierTrackingId}
+      />
+
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowOrderDetails((isOpen) => !isOpen)}
+          aria-expanded={showOrderDetails}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50"
+        >
+          <span>
+            <span className="block text-xs font-extrabold text-slate-800">Order details</span>
+            <span className="mt-0.5 block text-[11px] text-slate-500">
+              {order.items.length} component line(s) <span className="mx-1">·</span> ₹{order.totalAmount.toLocaleString('en-IN')}
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5 text-xs font-bold text-[#561269]">
+            {showOrderDetails ? 'Hide details' : 'View order details'}
+            <ChevronDown className={`h-4 w-4 transition-transform ${showOrderDetails ? 'rotate-180' : ''}`} />
+          </span>
+        </button>
+        {showOrderDetails && (
+          <div className="border-t border-slate-100 p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                Components in Shipment #{order.id}
+              </h4>
+              <button
+                onClick={() => showToast('Invoice Downloaded', `Tax invoice for ${order.id} saved as PDF`, 'info')}
+                className="flex items-center gap-1 text-xs font-bold text-[#561269] hover:text-[#FF6B00] cursor-pointer"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download GST Tax Invoice (PDF)</span>
+              </button>
+            </div>
+            <div className="mt-2 divide-y divide-slate-100">
+              {order.items.map((item, index) => (
+                <div key={`${order.id}-${item.sku}-${index}`} className="flex items-center justify-between gap-3 py-2.5 text-xs">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-10 w-10 shrink-0 rounded border border-slate-200 bg-slate-50 p-1 object-contain mix-blend-multiply"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900">{item.name}</p>
+                      <p className="font-mono text-[11px] text-slate-400">SKU: {item.sku} • Qty: {item.quantity}</p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-mono font-bold text-slate-900">
+                    ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-white">{userName}</h1>
-              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+        )}
+      </div>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedOrder(null);
+            setShowOrderDetails(false);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-100 cursor-pointer"
+        >
+          Close tracking
+          <ChevronDown className="h-4 w-4 rotate-180" />
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-7">
+      {/* Header Profile Banner */}
+      <div id="customer-dashboard-profile" className="relative flex min-h-52 flex-col justify-between gap-6 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-[0_12px_30px_rgba(27,31,42,0.08)] sm:min-h-56 sm:p-6">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#561269] via-[#8b5b95] to-[#d7bd81]" />
+        <div className="customer-profile-identity relative flex min-w-0 items-center gap-3 sm:gap-4">
+          <div className="relative flex h-14 w-14 shrink-0 select-none items-center justify-center rounded-xl border border-[#e7d8eb] bg-gradient-to-br from-[#fbf7fc] to-[#f0e7f2] text-lg font-extrabold text-[#561269] shadow-sm sm:h-16 sm:w-16 sm:text-xl">
+            {userInitials}
+            <span className="absolute bottom-1.5 h-0.5 w-5 rounded-full bg-[#c4a767]" />
+          </div>
+          <div className="min-w-0">
+            <p className="mb-1 text-[9px] font-extrabold uppercase tracking-[0.18em] text-[#8b6b91]">Account overview</p>
+            <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <h1 className="truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">{userName}</h1>
+              <span className="shrink-0 rounded-full border border-[#e8d8ec] bg-[#faf6fb] px-2 py-0.5 text-[9px] font-bold uppercase text-[#561269]">
                 {user?.role || 'Customer'} Account
               </span>
             </div>
-            <p className="text-xs text-purple-200 mt-0.5">
-              {userEmail} • Mobile: {userPhone} • Maker ID: RTZ-{user?.id?.slice(-4) || '8042'}
-            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-4 text-slate-500 sm:text-xs">
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <Mail className="h-3 w-3 shrink-0 text-[#8b6b91]" />
+                <span className="truncate">{userEmail}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Smartphone className="h-3 w-3 shrink-0 text-[#8b6b91]" />
+                <span>{userPhone}</span>
+              </span>
+              <span className="hidden items-center gap-1.5 sm:inline-flex">
+                <User className="h-3 w-3 shrink-0 text-[#8b6b91]" />
+                <span>Maker ID: RTZ-{user?.id?.slice(-4) || '8042'}</span>
+              </span>
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
           <button
             onClick={() => setIsEmailModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all shadow-xs cursor-pointer"
+            className="customer-email-button ml-auto flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#561269] bg-[#561269] text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#460e56] cursor-pointer sm:h-auto sm:w-auto sm:px-3 sm:py-2.5"
             title="Preview and export confirmation & welcome emails"
+            aria-label="Order and welcome emails"
           >
-            <Mail className="w-4 h-4 text-[#FF6B00]" />
-            <span>Order & Welcome Emails</span>
+            <Mail className="w-4 h-4 text-[#ead8a7]" />
+            <span className="hidden sm:inline">Order &amp; Welcome Emails</span>
           </button>
-          <div className="bg-white/10 px-4 py-2 rounded-xl text-center border border-white/15">
-            <span className="text-[10px] text-purple-200 block uppercase font-bold">Total Orders</span>
-            <span className="text-lg font-bold font-mono text-white">{customerOrders.length}</span>
+        </div>
+
+        <div className="customer-profile-stats relative grid w-full grid-cols-2 gap-2.5 sm:gap-3">
+          <div className="customer-profile-stat flex min-w-0 items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f2eaf4] text-[#561269]">
+              <Package className="h-4 w-4" />
+            </span>
+            <div className="text-left">
+              <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-500">Total orders</span>
+              <span className="text-base font-extrabold font-mono text-slate-900">{customerOrders.length}</span>
+            </div>
           </div>
-          <div className="bg-white/10 px-4 py-2 rounded-xl text-center border border-white/15">
-            <span className="text-[10px] text-purple-200 block uppercase font-bold">Wishlist Parts</span>
-            <span className="text-lg font-bold font-mono text-[#FF6B00]">{wishlist.length}</span>
+          <div className="customer-profile-stat flex min-w-0 items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f7f0df] text-[#96763d]">
+              <Heart className="h-4 w-4" />
+            </span>
+            <div className="text-left">
+              <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-500">Wishlist parts</span>
+              <span className="text-base font-extrabold font-mono text-slate-900">{wishlist.length}</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div id="customer-dashboard-tabs" className="flex border-b border-slate-200 bg-slate-50 p-1 rounded-xl gap-1 overflow-x-auto">
+      <div id="customer-dashboard-tabs" className="grid grid-cols-2 border border-slate-200/80 bg-white p-1.5 rounded-2xl gap-1.5 shadow-sm sm:flex sm:flex-wrap sm:gap-1">
         <button
           onClick={() => setSearchParams({ tab: 'orders' })}
           title="Orders & Live Tracking"
           aria-label="Orders & Live Tracking"
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:whitespace-nowrap ${
             activeTab === 'orders'
-              ? 'bg-[#561269] text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
+              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
           }`}
         >
-          <Package className="w-4 h-4 text-[#FF6B00]" />
-          <span>Orders & Live Tracking ({customerOrders.length})</span>
+          <Package className={`h-4 w-4 shrink-0 ${activeTab === 'orders' ? 'text-orange-300' : 'text-[#FF6B00]'}`} />
+          <span className="truncate">Orders &amp; Live Tracking ({customerOrders.length})</span>
         </button>
 
         <button
           onClick={() => setSearchParams({ tab: 'wishlist' })}
           title="Saved Components"
           aria-label="Saved Components"
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:whitespace-nowrap ${
             activeTab === 'wishlist'
-              ? 'bg-[#561269] text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
+              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
           }`}
         >
-          <Heart className="w-4 h-4 text-rose-400" />
-          <span>Saved Components ({wishlist.length})</span>
+          <Heart className={`h-4 w-4 shrink-0 ${activeTab === 'wishlist' ? 'text-rose-200' : 'text-rose-400'}`} />
+          <span className="truncate">Saved Components ({wishlist.length})</span>
         </button>
 
         <button
           onClick={() => setSearchParams({ tab: 'support' })}
           title="Technical Support & RMA Escalation"
           aria-label="Technical Support & RMA Escalation"
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:whitespace-nowrap ${
             activeTab === 'support'
-              ? 'bg-[#561269] text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
+              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
           }`}
         >
-          <MessageSquare className="w-4 h-4 text-purple-400" />
-          <span>Technical Support & RMA Escalation</span>
+          <MessageSquare className={`h-4 w-4 shrink-0 ${activeTab === 'support' ? 'text-purple-200' : 'text-purple-500'}`} />
+          <span className="truncate">Technical Support &amp; RMA</span>
         </button>
 
         <button
           onClick={() => setSearchParams({ tab: 'bulk' })}
           title="Bulk Enquiries & Quotes"
           aria-label="Bulk Enquiries & Quotes"
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:whitespace-nowrap ${
             activeTab === 'bulk'
-              ? 'bg-[#561269] text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
+              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
           }`}
         >
-          <FileText className="w-4 h-4 text-amber-400" />
-          <span>Bulk Enquiries & Quotes ({bulkEnquiries.length})</span>
+          <FileText className={`h-4 w-4 shrink-0 ${activeTab === 'bulk' ? 'text-amber-200' : 'text-amber-500'}`} />
+          <span className="truncate">Bulk Enquiries &amp; Quotes ({bulkEnquiries.length})</span>
         </button>
 
         <button
           onClick={() => setSearchParams({ tab: 'address' })}
           title="Shipping & GST Profile"
           aria-label="Shipping & GST Profile"
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+          className={`col-span-2 min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:col-span-1 sm:whitespace-nowrap ${
             activeTab === 'address'
-              ? 'bg-[#561269] text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
+              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
           }`}
         >
-          <MapPin className="w-4 h-4 text-cyan-400" />
-          <span>Shipping & GST Profile</span>
+          <MapPin className={`h-4 w-4 shrink-0 ${activeTab === 'address' ? 'text-cyan-200' : 'text-cyan-500'}`} />
+          <span className="truncate">Shipping &amp; GST Profile</span>
         </button>
       </div>
 
       {/* Tab 1: Orders & Live Tracking */}
       {activeTab === 'orders' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Order Selector List */}
-          <div className="lg:col-span-5 space-y-3">
+        <div className="mx-auto max-w-4xl space-y-3">
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700">
               Select Shipment to Track
             </h3>
@@ -298,103 +415,74 @@ export const CustomerDashboardPage: React.FC = () => {
             {customerOrders.map((ord) => {
               const isSelected = selectedOrder?.id === ord.id;
               return (
-                <div
-                  key={ord.id}
-                  onClick={() => setSelectedOrder(ord)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'border-[#561269] bg-[#561269]/5/50 shadow-sm ring-1 ring-[#561269]'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-mono font-bold text-slate-900">{ord.id}</span>
-                    <span
-                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                        ord.status === 'delivered'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : ord.status === 'shipped'
-                          ? 'bg-purple-100 text-purple-800'
-                          : ord.status === 'packed'
-                          ? 'bg-cyan-100 text-cyan-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {ord.status}
-                    </span>
-                  </div>
+                <React.Fragment key={ord.id}>
+                  <div
+                    className={`rounded-xl border p-4 transition-all ${
+                      isSelected
+                        ? 'border-slate-500 bg-slate-50 shadow-md shadow-slate-950/5 ring-1 ring-slate-400/70'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 shrink-0 rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50 to-orange-50 p-1.5">
+                        {ord.items[0]?.image && (
+                          <img src={ord.items[0].image} alt="" className="h-full w-full object-contain mix-blend-multiply" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="truncate font-mono font-bold text-slate-900">{ord.id}</span>
+                          <span
+                            className={`shrink-0 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                              ord.status === 'delivered'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : ord.status === 'shipped'
+                                ? 'bg-purple-100 text-purple-800'
+                                : ord.status === 'packed'
+                                ? 'bg-cyan-100 text-cyan-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {ord.status}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] font-medium text-slate-500">
+                          {ord.createdAt.slice(0, 10)} <span className="mx-1 text-slate-300">•</span> {ord.items.length} component line(s)
+                        </p>
+                      </div>
+                    </div>
 
-                  <p className="text-xs text-slate-500 font-medium">
-                    Placed on {ord.createdAt.slice(0, 10)} • {ord.items.length} component line(s)
-                  </p>
-
-                  <div className="flex items-center justify-between text-xs pt-2 mt-2 border-t border-slate-100 font-mono">
-                    <span className="text-slate-500">Amount: ₹{ord.totalAmount.toLocaleString('en-IN')}</span>
-                    <span className="text-[#561269] font-bold flex items-center gap-0.5">
-                      Track Live <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
+                    <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 font-mono text-xs">
+                      <span className="text-slate-500">Amount: ₹{ord.totalAmount.toLocaleString('en-IN')}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedOrder(null);
+                            setShowOrderDetails(false);
+                          } else {
+                            setSelectedOrder(ord);
+                            setShowOrderDetails(false);
+                          }
+                        }}
+                        aria-expanded={isSelected}
+                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 font-bold transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                            : 'bg-[#561269] text-white hover:bg-[#460e56]'
+                        }`}
+                      >
+                        {isSelected ? 'Close tracking' : 'Track Order'}
+                        {isSelected
+                          ? <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+                          : <ChevronRight className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                  {isSelected && renderOrderTracking(ord)}
+                </React.Fragment>
               );
             })}
-          </div>
-
-          {/* Detailed Timeline & Invoice View */}
-          <div className="lg:col-span-7 space-y-6">
-            {selectedOrder ? (
-              <div className="space-y-6">
-                <StatusTimeline
-                  status={selectedOrder.status}
-                  timeline={selectedOrder.statusTimeline}
-                  trackingNumber={selectedOrder.trackingNumber}
-                  courier={selectedOrder.courier}
-                  courierTrackingId={selectedOrder.courierTrackingId}
-                />
-
-                {/* Order Items Breakdown */}
-                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">
-                      Components in Shipment #{selectedOrder.id}
-                    </h4>
-                    <button
-                      onClick={() => showToast('Invoice Downloaded', `Tax invoice for ${selectedOrder.id} saved as PDF`, 'info')}
-                      className="text-xs font-bold text-[#561269] hover:text-[#FF6B00] flex items-center gap-1 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download GST Tax Invoice (PDF)</span>
-                    </button>
-                  </div>
-
-                  <div className="divide-y divide-slate-100 mt-2">
-                    {selectedOrder.items.map((it, idx) => (
-                      <div key={idx} className="py-2.5 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={it.image}
-                            alt={it.name}
-                            className="w-10 h-10 object-contain mix-blend-multiply bg-slate-50 rounded p-1 border border-slate-200"
-                          />
-                          <div>
-                            <p className="font-bold text-slate-900">{it.name}</p>
-                            <p className="text-[11px] text-slate-400 font-mono">
-                              SKU: {it.sku} • Qty: {it.quantity}
-                            </p>
-                          </div>
-                        </div>
-
-                        <span className="font-bold text-slate-900 font-mono">
-                          ₹{(it.price * it.quantity).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-slate-400 text-xs">Select an order to track.</p>
-            )}
-          </div>
         </div>
       )}
 

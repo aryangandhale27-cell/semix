@@ -24,7 +24,8 @@ import {
   Info,
   PhoneCall,
   ArrowRight,
-  HelpCircle
+  HelpCircle,
+  Copy
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -35,33 +36,26 @@ export const ContactPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Active view tab: 'all' | 'about' | 'contact'
-  const [activeTab, setActiveTab] = useState<'all' | 'about' | 'contact'>(() => {
+  const [activeTab, setActiveTab] = useState<'about' | 'contact'>(() => {
     if (location.pathname === '/about' || location.hash === '#about' || location.hash === '#about-us') {
       return 'about';
     }
-    if (location.hash === '#contact' || location.hash === '#contact-desk') {
-      return 'contact';
-    }
-    return 'all';
+    return 'contact';
   });
 
   // Sync tab with URL changes
   useEffect(() => {
-    if (location.pathname === '/about' || location.hash === '#about' || location.hash === '#about-us') {
-      setActiveTab('about');
-      const el = document.getElementById('about-us');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    } else if (location.hash === '#contact' || location.hash === '#contact-desk') {
-      setActiveTab('contact');
-      const el = document.getElementById('contact-desk');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    } else {
-      setActiveTab('all');
+    const isAbout = location.pathname === '/about' || location.hash.startsWith('#about');
+    setActiveTab(isAbout ? 'about' : 'contact');
+
+    const targetId =
+      location.hash === '#about' ? 'about-us'
+        : location.hash === '#contact' ? 'contact-desk'
+          : location.hash.slice(1) || (isAbout ? 'about-us' : '');
+    if (targetId) {
+      window.requestAnimationFrame(() => {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
   }, [location.pathname, location.hash]);
 
@@ -84,147 +78,86 @@ export const ContactPage: React.FC = () => {
     showToast('Message Sent', 'Our engineering team will respond within 24 hours.', 'success');
   };
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText('office@semixlabs.com');
+      showToast('Email Copied', 'office@semixlabs.com copied to clipboard.', 'success');
+    } catch {
+      showToast('Copy Failed', 'Select the email address and copy it manually.', 'error');
     }
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen py-5 sm:py-12">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-10">
+    <div className="bg-slate-50 min-h-screen py-3 sm:py-12">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-10">
         
         {/* Navigation Switcher Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-3 sm:pb-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">
-              <span className="text-[#561269]">SEMIX LABS</span>
-              <span>/</span>
-              <span>Hardware Desk & Company Info</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <span className={`relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-white shadow-md sm:h-12 sm:w-12 ${
+              activeTab === 'about'
+                ? 'bg-gradient-to-br from-[#561269] via-[#7e22ce] to-[#c084fc] shadow-purple-900/20'
+                : 'bg-gradient-to-br from-[#ea580c] via-[#f97316] to-[#fdba74] shadow-orange-900/20'
+            }`}>
+              <span className="absolute -right-2 -top-2 h-6 w-6 rounded-full border border-white/30" />
+              {activeTab === 'about'
+                ? <Cpu className="relative h-5 w-5 sm:h-6 sm:w-6" />
+                : <PhoneCall className="relative h-5 w-5 sm:h-6 sm:w-6" />}
+            </span>
+            <span className="block">
             <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {activeTab === 'about' ? 'About Semix Labs' : activeTab === 'contact' ? 'Contact & Engineering Desk' : 'About Us & Contact Desk'}
+              {activeTab === 'about' ? 'About Semix Labs' : 'Contact & Engineering Desk'}
             </h1>
+              <span className={`mt-1 block h-1 w-12 rounded-full bg-gradient-to-r ${
+                activeTab === 'about' ? 'from-[#561269] to-[#c084fc]' : 'from-[#ea580c] to-[#fdba74]'
+              }`} />
+            </span>
           </div>
 
           <div className="flex w-full items-center gap-0.5 p-0.5 bg-slate-200/80 rounded-lg sm:w-auto sm:gap-0 sm:p-1 sm:rounded-xl">
             <button
               onClick={() => {
-                setActiveTab('all');
-                navigate('/contact');
+                navigate('/about#about-us');
               }}
-              className={`flex-1 px-2 py-1.5 rounded-md text-[10px] leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'all'
-                  ? 'bg-white text-[#561269] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Overview & Full Desk
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('about');
-                scrollToSection('about-us');
-              }}
-              className={`flex-1 justify-center px-2 py-1.5 rounded-md text-[10px] leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+              className={`flex-1 justify-center px-3 py-2.5 rounded-md text-xs leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-1.5 ${
                 activeTab === 'about'
                   ? 'bg-[#561269] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <Info className="w-3.5 h-3.5 sm:w-3.5 sm:h-3.5" />
               <span>About Us</span>
             </button>
             <button
               onClick={() => {
-                setActiveTab('contact');
-                scrollToSection('contact-desk');
+                navigate('/contact#contact-desk');
               }}
-              className={`flex-1 justify-center px-2 py-1.5 rounded-md text-[10px] leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+              className={`flex-1 justify-center px-3 py-2.5 rounded-md text-xs leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-1.5 ${
                 activeTab === 'contact'
                   ? 'bg-[#FF6B00] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <PhoneCall className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <PhoneCall className="w-3.5 h-3.5 sm:w-3.5 sm:h-3.5" />
               <span>Contact Us</span>
             </button>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* ABOUT SEMIX LABS SECTION (Visible when tab is 'about' or 'all')           */}
+        {/* ABOUT SEMIX LABS SECTION */}
         {/* ========================================================================= */}
-        {(activeTab === 'about' || activeTab === 'all') && (
-          <section id="about-us" className="space-y-10 scroll-mt-20">
+        {activeTab === 'about' && (
+          <section id="about-us" className="space-y-6 sm:space-y-10 scroll-mt-20">
             
-            {/* 1. Company Overview Banner */}
-            <div className="bg-gradient-to-br from-[#561269] via-[#380847] to-slate-950 rounded-2xl sm:rounded-3xl p-4 sm:p-10 lg:p-12 text-white shadow-2xl relative overflow-hidden border border-[#561269]/40">
-              {/* Subtle Ambient Decorative Circles */}
-              <div className="absolute -right-20 -top-20 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute right-1/3 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-              
-              <div className="relative z-10 max-w-4xl space-y-3 sm:space-y-5">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white/10 border border-white/15 text-orange-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md">
-                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FF6B00]" />
-                  <span>About Semix Labs</span>
+            {/* Quick Company Stats / Milestones Strip */}
+            <div id="about-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-6 shadow-xs hover:border-[#561269]/40 transition-colors">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center mb-2 sm:mb-3">
+                  <Package className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                
-                <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-                  Empowering Next-Gen <span className="text-[#FF6B00]">Hardware Innovation</span>
-                </h2>
-                
-                <p className="text-xs sm:text-base lg:text-lg text-purple-100 leading-relaxed max-w-3xl">
-                  Semix Labs is a premier one-stop destination for electronic components, high-density PCB prototyping, 3D printing, and engineering development tools for makers, startups, and industrial R&D. We empower the creators of tomorrow with authentic hardware, lightning-fast turnaround, and dedicated technical expertise.
-                </p>
-
-                {/* Quick Action Navigation Buttons */}
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-1 sm:pt-2">
-                  <Link
-                    to="/shop"
-                    className="px-3.5 py-2 sm:px-5 sm:py-2.5 bg-[#FF6B00] hover:bg-[#e05e00] text-white font-bold text-[11px] sm:text-sm rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/20 flex items-center gap-1.5 sm:gap-2 transition-all"
-                  >
-                    <Package className="w-4 h-4" />
-                    <span>Explore 5,000+ Products</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                  <Link
-                    to="/services"
-                    className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 backdrop-blur-xs flex items-center gap-2 transition-all"
-                  >
-                    <Layers className="w-4 h-4 text-cyan-300" />
-                    <span>Rapid PCB & 3D Prototyping</span>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection('meet-our-team')}
-                    className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 backdrop-blur-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Users className="w-3.5 h-3.5 text-orange-400" />
-                    <span>Meet Our Team</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection('contact-desk')}
-                    className="px-4 py-2.5 text-purple-200 hover:text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <span>Talk to an Engineer</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Quick Company Stats / Milestones Strip */}
-            <div id="about-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs hover:border-[#561269]/40 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center mb-3">
-                  <Package className="w-5 h-5" />
-                </div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
-                  10,000+
+                <div className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+                  15,000+
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-slate-800 mt-1">
                   Components & Boards in Stock
@@ -234,11 +167,11 @@ export const ContactPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs hover:border-[#561269]/40 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#561269] flex items-center justify-center mb-3">
-                  <Truck className="w-5 h-5" />
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-6 shadow-xs hover:border-[#561269]/40 transition-colors">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-50 text-[#561269] flex items-center justify-center mb-2 sm:mb-3">
+                  <Truck className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+                <div className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
                   24-48 Hours
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-slate-800 mt-1">
@@ -249,11 +182,11 @@ export const ContactPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs hover:border-[#561269]/40 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
-                  <Users className="w-5 h-5" />
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-6 shadow-xs hover:border-[#561269]/40 transition-colors">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 sm:mb-3">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+                <div className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
                   10,000+
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-slate-800 mt-1">
@@ -264,11 +197,11 @@ export const ContactPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs hover:border-[#561269]/40 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
-                  <CheckCircle2 className="w-5 h-5" />
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-6 shadow-xs hover:border-[#561269]/40 transition-colors">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-2 sm:mb-3">
+                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+                <div className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
                   99.8%
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-slate-800 mt-1">
@@ -280,8 +213,8 @@ export const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 3. Core Features / Value Highlights Grid */}
-            <div id="about-features" className="space-y-6">
+            {/* Core Features / Value Highlights Grid */}
+            <div id="about-features" className="space-y-4 sm:space-y-6">
               <div className="text-center max-w-2xl mx-auto space-y-2">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-[#561269] text-xs font-bold uppercase tracking-wider">
                   <Cpu className="w-3.5 h-3.5 text-[#561269]" />
@@ -295,12 +228,12 @@ export const ContactPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                 {/* Feature 1 */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:border-[#FF6B00]/40 hover:shadow-md transition-all space-y-3 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center">
-                      <ShieldCheck className="w-6 h-6" />
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs hover:border-[#FF6B00]/40 hover:shadow-md transition-all space-y-2 sm:space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center">
+                      <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div className="inline-block px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6B00] text-[10px] font-bold uppercase tracking-wide">
                       100% Original
@@ -319,10 +252,10 @@ export const ContactPage: React.FC = () => {
                 </div>
 
                 {/* Feature 2 */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:border-[#561269]/40 hover:shadow-md transition-all space-y-3 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#561269] flex items-center justify-center">
-                      <Layers className="w-6 h-6" />
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs hover:border-[#561269]/40 hover:shadow-md transition-all space-y-2 sm:space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-50 text-[#561269] flex items-center justify-center">
+                      <Layers className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div className="inline-block px-2.5 py-0.5 rounded-full bg-purple-50 text-[#561269] text-[10px] font-bold uppercase tracking-wide">
                       Rapid Turnaround
@@ -341,10 +274,10 @@ export const ContactPage: React.FC = () => {
                 </div>
 
                 {/* Feature 3 */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:border-emerald-500/40 hover:shadow-md transition-all space-y-3 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                      <Truck className="w-6 h-6" />
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs hover:border-emerald-500/40 hover:shadow-md transition-all space-y-2 sm:space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <Truck className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wide">
                       Express Shipping
@@ -363,10 +296,10 @@ export const ContactPage: React.FC = () => {
                 </div>
 
                 {/* Feature 4 */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:border-amber-500/40 hover:shadow-md transition-all space-y-3 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                      <Wrench className="w-6 h-6" />
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs hover:border-amber-500/40 hover:shadow-md transition-all space-y-2 sm:space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                      <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div className="inline-block px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wide">
                       Expert Guidance
@@ -386,43 +319,29 @@ export const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 4. Leadership & Core Team Section */}
+            {/* Leadership & Core Team Section */}
             <OurTeamSection />
           </section>
         )}
 
-        {/* Divider if showing both */}
-        {activeTab === 'all' && (
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-slate-50 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                Support & Contact Desk
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* ========================================================================= */}
-        {/* CONTACT & SUPPORT DESK SECTION (Visible when tab is 'contact' or 'all')    */}
+        {/* CONTACT & SUPPORT DESK SECTION */}
         {/* ========================================================================= */}
-        {(activeTab === 'contact' || activeTab === 'all') && (
-          <section id="contact-desk" className="space-y-10 scroll-mt-20">
+        {activeTab === 'contact' && (
+          <section id="contact-desk" className="space-y-6 sm:space-y-10 scroll-mt-20">
             
             {/* Header if only contact tab is active */}
             {activeTab === 'contact' && (
-              <div className="bg-gradient-to-br from-[#561269] via-[#380847] to-slate-950 rounded-3xl p-6 sm:p-10 text-white shadow-2xl relative overflow-hidden border border-[#561269]/40">
+              <div className="bg-gradient-to-br from-[#561269] via-[#380847] to-slate-950 rounded-2xl sm:rounded-3xl p-4 sm:p-10 text-white shadow-2xl relative overflow-hidden border border-[#561269]/40">
                 <div className="relative z-10 max-w-3xl space-y-3">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-orange-300 text-xs font-bold uppercase tracking-wider backdrop-blur-md">
                     <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
                     <span>Engineering Support & Sourcing Desk</span>
                   </div>
-                  <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+                  <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
                     Get in Touch with <span className="text-[#FF6B00]">SEMIX LABS</span>
                   </h2>
-                  <p className="text-sm sm:text-base text-purple-200 leading-relaxed max-w-2xl">
+                  <p className="text-xs sm:text-base text-purple-200 leading-relaxed max-w-2xl">
                     Have questions about component availability, custom fabrication, bulk sourcing, or your orders? Our technical team is ready to assist you.
                   </p>
                 </div>
@@ -430,11 +349,11 @@ export const ContactPage: React.FC = () => {
             )}
 
             {/* Contact Direct Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
               {/* Card 1: Direct Support */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4 hover:border-[#561269]/40 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center">
-                  <Phone className="w-6 h-6" />
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4 hover:border-[#561269]/40 transition-colors">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center">
+                  <Phone className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Direct Phone / WhatsApp</h3>
@@ -458,34 +377,38 @@ export const ContactPage: React.FC = () => {
               </div>
 
               {/* Card 2: Email Inquiries */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4 hover:border-[#561269]/40 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-[#561269]/5 text-[#561269] flex items-center justify-center">
-                  <Mail className="w-6 h-6" />
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4 hover:border-[#561269]/40 transition-colors">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#561269]/5 text-[#561269] flex items-center justify-center">
+                  <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Email Desks</h3>
                   <p className="text-xs text-slate-500 mt-0.5">Response within 2-4 business hours</p>
                 </div>
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">B2B & Bulk Quotations:</span>
-                    <a href="mailto:office@semixlabs.com" className="font-bold text-[#561269] hover:underline text-sm font-mono">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href="mailto:office@semixlabs.com"
+                      className="font-bold text-[#561269] hover:underline text-sm font-mono"
+                    >
                       office@semixlabs.com
                     </a>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Orders & Technical Support:</span>
-                    <a href="mailto:office@semixlabs.com" className="font-bold text-slate-700 hover:underline font-mono">
-                      office@semixlabs.com
-                    </a>
+                    <button
+                      type="button"
+                      onClick={handleCopyEmail}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-600 transition-colors hover:border-[#561269]/40 hover:text-[#561269]"
+                      aria-label="Copy office@semixlabs.com"
+                      title="Copy email address"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy
+                    </button>
                   </div>
                 </div>
-              </div>
 
               {/* Card 3: Central Warehouse & Hub */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4 hover:border-[#561269]/40 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#561269] flex items-center justify-center">
-                  <Building2 className="w-6 h-6" />
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4 hover:border-[#561269]/40 transition-colors">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-50 text-[#561269] flex items-center justify-center">
+                  <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Central Hub & Logistics</h3>
@@ -500,11 +423,11 @@ export const ContactPage: React.FC = () => {
             </div>
 
             {/* Contact Form & Quick Sourcing Shortcuts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
               {/* Form */}
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs">
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-8 shadow-xs">
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Send Us an Engineering Message</h3>
-                <p className="text-xs text-slate-500 mb-6">
+                <p className="text-xs text-slate-500 mb-4 sm:mb-6">
                   Fill out the form below and an applications engineer will review your project specifications.
                 </p>
 
@@ -524,8 +447,8 @@ export const ContactPage: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1">Your Name *</label>
                         <input
@@ -602,7 +525,7 @@ export const ContactPage: React.FC = () => {
 
               {/* Quick Hub Links & Timings */}
               <div className="space-y-4">
-                <div className="bg-gradient-to-br from-[#561269] to-[#380847] text-white rounded-2xl p-6 shadow-md space-y-4">
+                <div className="bg-gradient-to-br from-[#561269] to-[#380847] text-white rounded-2xl p-4 sm:p-6 shadow-md space-y-3 sm:space-y-4">
                   <h4 className="text-base font-bold text-white flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-[#FF6B00]" />
                     <span>Need Bulk Components?</span>
@@ -619,7 +542,7 @@ export const ContactPage: React.FC = () => {
                   </Link>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-3">
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-3">
                   <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#561269]" />
                     <span>Warehouse Timings</span>
