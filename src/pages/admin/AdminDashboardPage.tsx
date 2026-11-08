@@ -20,6 +20,7 @@ import {
   RefreshCw,
   CheckCircle2,
   ChevronDown,
+  LayoutGrid,
   Flame,
   Sparkles
 } from 'lucide-react';
@@ -313,10 +314,15 @@ export const AdminDashboardPage: React.FC = () => {
       />
 
       {/* Tabs */}
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 via-white to-purple-50 p-2 shadow-sm">
-        <div className="min-w-0">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-violet-500">Admin Sections</p>
-          <p className="truncate text-sm font-black text-slate-800">
+      <div className="relative flex items-center justify-between gap-3 overflow-visible rounded-2xl border border-[#561269]/15 bg-gradient-to-r from-[#561269]/[0.045] via-white to-white p-3 shadow-sm sm:p-3.5">
+        <div className="pointer-events-none absolute inset-y-3 left-0 w-1 rounded-r-full bg-gradient-to-b from-[#561269] to-violet-400" />
+        <div className="flex min-w-0 items-center gap-3 pl-1">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#561269] text-white shadow-sm shadow-[#561269]/20">
+            <LayoutGrid className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#7C3AED]">Admin workspace</p>
+          <p className="truncate text-sm font-black text-slate-900 sm:text-base">
             {activeTab === 'orders' ? 'Orders & Seller Assignment' :
               activeTab === 'coupons' ? 'Coupons & Discounts' :
               activeTab === 'users' ? 'User Management' :
@@ -331,6 +337,7 @@ export const AdminDashboardPage: React.FC = () => {
               activeTab === 'collect_payment' ? 'Collect Payment' :
               activeTab === 'uploaded_lists' ? 'Uploaded Electronics Lists' : 'Custom Project Requests'}
           </p>
+          </div>
         </div>
         <div className="relative shrink-0">
           <button
@@ -338,10 +345,10 @@ export const AdminDashboardPage: React.FC = () => {
             aria-expanded={adminSectionsOpen}
             aria-label="Open admin section"
             onClick={() => setAdminSectionsOpen((open) => !open)}
-            className="flex min-h-12 items-center gap-2.5 rounded-xl border border-violet-300 bg-[#561269] px-5 py-3 text-sm font-extrabold text-white shadow-md shadow-violet-950/20 transition-colors hover:bg-[#6c1a80] focus:outline-none focus:ring-2 focus:ring-violet-300 sm:min-h-11 sm:px-5 sm:py-2.5"
+            className="flex min-h-11 items-center gap-2 rounded-xl border border-[#561269] bg-[#561269] px-3 py-2.5 text-xs font-extrabold text-white shadow-md shadow-[#561269]/20 transition-all hover:-translate-y-0.5 hover:bg-[#460e56] focus:outline-none focus:ring-2 focus:ring-violet-300 sm:gap-2.5 sm:px-4 sm:text-sm"
           >
-            <span>Open Section</span>
-            <span className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-extrabold">
+            <span className="hidden sm:inline">Browse sections</span>
+            <span className="rounded-lg border border-white/10 bg-white/15 px-2 py-1 text-[10px] font-extrabold sm:text-[11px]">
               {activeTab === 'orders' ? 'Orders' :
                 activeTab === 'coupons' ? 'Coupons' :
                 activeTab === 'users' ? 'Users' :
@@ -360,7 +367,7 @@ export const AdminDashboardPage: React.FC = () => {
           </button>
 
           {adminSectionsOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-violet-200 bg-white p-1.5 shadow-xl shadow-violet-950/20">
+            <div className="absolute right-0 top-full z-50 mt-2 max-h-[min(70vh,32rem)] w-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/15">
               {[
                 ['orders', 'Orders & Seller Assignment'],
                 ['coupons', 'Coupons & Discounts'],
@@ -384,7 +391,7 @@ export const AdminDashboardPage: React.FC = () => {
                     setActiveTab(value as typeof activeTab);
                     setAdminSectionsOpen(false);
                   }}
-                  className={`block w-full rounded-lg px-3 py-2 text-left text-xs font-bold transition-colors ${
+                  className={`block w-full rounded-xl px-3 py-2.5 text-left text-xs font-bold transition-colors ${
                     activeTab === value
                       ? 'bg-violet-100 text-[#561269]'
                       : 'text-slate-700 hover:bg-violet-50 hover:text-[#561269]'

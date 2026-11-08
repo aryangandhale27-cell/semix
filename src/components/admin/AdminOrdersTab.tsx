@@ -518,15 +518,6 @@ export const AdminOrdersTab: React.FC<AdminOrdersTabProps> = ({
           </button>
         </div>
 
-        {/* Firebase Live Database Badge */}
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-1.5 text-xs sm:justify-start">
-          <Database className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-          <span className="text-[11px] text-slate-600">
-            <span className="sm:hidden">Live data · </span>
-            <span className="hidden sm:inline">Source: <code className="font-mono font-semibold text-slate-800">orders/{'{id}'}/items</code> in </span>
-            <strong className="text-[#561269]">semix-ai-stdio</strong>
-          </span>
-        </div>
       </div>
 
       {viewMode === 'ordered_products' ? (
