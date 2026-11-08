@@ -1,6 +1,6 @@
 import React from 'react';
 import { OrderStatus, StatusTimelineEntry } from '../../types';
-import { CheckCircle2, Circle, Clock, PackageCheck, Truck, Home, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock, PackageCheck, Truck, Home, AlertCircle } from 'lucide-react';
 
 interface StatusTimelineProps {
   status: OrderStatus;
@@ -70,20 +70,25 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({
   }
 
   return (
-    <div id="order-status-timeline-container" className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs">
+    <div id="order-status-timeline-container" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {/* Top Tracking details */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-slate-100">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Shipment Reference</span>
-          <p className="text-sm sm:text-base font-bold font-mono text-[#561269] mt-0.5">
-            {trackingNumber || 'RTZ-IN-EXP-8902'}
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-[#561269]/[0.04] via-white to-white px-5 py-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#561269]/10 text-[#561269]">
+            <PackageCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Shipment reference</span>
+            <p className="mt-0.5 font-mono text-sm font-bold text-[#561269] sm:text-base">
+              {trackingNumber || 'RTZ-IN-EXP-8902'}
+            </p>
+          </div>
         </div>
 
         {courier && (
-          <div className="text-right">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Carrier Partner</span>
-            <p className="text-xs sm:text-sm font-semibold text-slate-800">
+          <div className="rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right">
+            <span className="block text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Carrier partner</span>
+            <p className="mt-0.5 text-xs font-semibold text-slate-800 sm:text-sm">
               {courier} {courierTrackingId && <span className="font-mono text-slate-500 font-normal">({courierTrackingId})</span>}
             </p>
           </div>
@@ -91,50 +96,53 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({
       </div>
 
       {/* Visual Stepper Progress Bar */}
-      <div className="py-8 px-2">
+      <div className="px-4 py-8 sm:px-6 sm:py-9">
         <div className="relative">
           {/* Background Connecting Line */}
-          <div className="absolute top-5 left-6 right-6 h-1 bg-slate-200 -z-0"></div>
+          <div className="absolute left-[12.5%] right-[12.5%] top-5 h-1 rounded-full bg-slate-100"></div>
 
           {/* Active Colored Line */}
           <div
-            className="absolute top-5 left-6 h-1 bg-gradient-to-r from-[#561269] to-[#FF6B00] transition-all duration-500 -z-0"
-            style={{ width: `${Math.min(100, Math.max(0, (currentIndex / (steps.length - 1)) * 100))}%` }}
+            className="absolute left-[12.5%] top-5 h-1 rounded-full bg-emerald-500 transition-all duration-500"
+            style={{ width: `${Math.max(0, (currentIndex / (steps.length - 1)) * 75)}%` }}
           ></div>
 
           {/* Stepper Nodes */}
-          <div className="flex items-start justify-between relative z-10">
+          <div className="relative z-10 grid grid-cols-4">
             {steps.map((step, index) => {
               const isCompleted = index <= currentIndex;
-              const isCurrent = index === currentIndex;
+              const isCurrent = index === currentIndex && status !== 'delivered';
+              const isPast = index < currentIndex || status === 'delivered';
 
               return (
-                <div key={step.key} className="flex flex-col items-center text-center max-w-[100px] sm:max-w-[130px]">
+                <div key={step.key} className="flex min-w-0 flex-col items-center px-1 text-center">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                       isCurrent
-                        ? 'bg-[#FF6B00] text-white ring-4 ring-orange-100 shadow-md shadow-orange-500/20'
-                        : isCompleted
-                        ? 'bg-[#561269] text-white shadow-xs'
-                        : 'bg-white text-slate-400 border-2 border-slate-200'
+                        ? 'bg-[#561269] text-white ring-4 ring-[#561269]/10 shadow-md shadow-[#561269]/20'
+                        : isPast
+                          ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/20'
+                          : 'border-2 border-slate-200 bg-white text-slate-400'
                     }`}
                   >
-                    {isCompleted ? step.icon : <Circle className="w-3.5 h-3.5" />}
+                    {isPast ? <CheckCircle2 className="h-5 w-5" /> : step.icon}
                   </div>
 
                   <span
-                    className={`text-xs font-bold mt-2.5 leading-tight ${
+                    className={`mt-3 text-[11px] font-extrabold leading-tight sm:text-xs ${
                       isCurrent
-                        ? 'text-[#FF6B00]'
-                        : isCompleted
                         ? 'text-[#561269]'
-                        : 'text-slate-400'
+                        : isPast
+                          ? 'text-emerald-700'
+                          : isCompleted
+                            ? 'text-emerald-700'
+                          : 'text-slate-400'
                     }`}
                   >
                     {step.label}
                   </span>
 
-                  <span className="text-[10px] text-slate-500 hidden sm:block mt-1 font-normal">
+                  <span className="mt-1 hidden max-w-[150px] text-[10px] font-normal leading-relaxed text-slate-500 sm:block">
                     {step.desc}
                   </span>
                 </div>
@@ -145,9 +153,9 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({
       </div>
 
       {/* Detailed Activity Logs */}
-      <div className="mt-4 pt-4 border-t border-slate-100">
-        <h5 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3 flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-[#561269]" />
+      <div className="mx-5 mb-5 mt-1 border-t border-slate-100 pt-4 sm:mx-6 sm:mb-6">
+        <h5 className="mb-3 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+          <Clock className="h-4 w-4 text-[#561269]" />
           <span>Fulfillment & Dispatch Activity Log</span>
         </h5>
 
