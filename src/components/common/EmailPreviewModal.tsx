@@ -16,6 +16,7 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   Send,
   CheckCircle2,
   AlertCircle
@@ -44,11 +45,18 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
     initialEmail || (sentEmails.length > 0 ? sentEmails[0] : null)
   );
   const [viewMode, setViewMode] = useState<'preview' | 'html'>('preview');
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showDeliveryGuide, setShowDeliveryGuide] = useState(false);
   const [smtpStatus, setSmtpStatus] = useState<{ configured: boolean; user?: string | null; message?: string } | null>(null);
 
   // Query server SMTP status on open
+  useEffect(() => {
+    if (isOpen) {
+      setMobilePreviewOpen(Boolean(initialEmail));
+    }
+  }, [isOpen, initialEmail]);
+
   useEffect(() => {
     if (isOpen) {
       checkServerEmailStatus().then(setSmtpStatus);
@@ -87,38 +95,47 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-1.5 backdrop-blur-xs animate-in fade-in duration-200 sm:p-6">
       <div 
-        className="relative w-full max-w-5xl h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200"
+        className="relative flex h-[calc(100dvh-0.75rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:h-[90vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-[#561269] text-white shadow-xs">
-              <Mail className="w-5 h-5" />
+        <div className="flex shrink-0 flex-col gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-center justify-between gap-2 sm:justify-start sm:gap-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="rounded-lg bg-[#561269] p-2 text-white shadow-xs sm:rounded-xl sm:p-2.5">
+              <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-slate-900">
+                <h2 className="truncate text-sm font-black text-slate-900 sm:text-lg">
                   Transactional Email Center
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 uppercase">
+                <span className="hidden rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-violet-800 sm:inline">
                   Live Branded Templates
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="hidden text-xs text-slate-500 sm:block">
                 Automated email dispatcher for Customers, Sellers, and Admins (SEMIX LABS)
               </p>
             </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-700 sm:hidden"
+              aria-label="Close email preview"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-nowrap items-center gap-1 overflow-x-auto pb-0 sm:w-auto sm:gap-2">
             {/* View Mode Toggle */}
-            <div className="flex bg-slate-200 p-1 rounded-xl text-xs font-bold text-slate-600">
+            <div className="flex shrink-0 rounded-lg bg-slate-200 p-0.5 text-[11px] font-bold text-slate-600 sm:rounded-xl sm:p-1 sm:text-xs">
               <button
                 onClick={() => setViewMode('preview')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex items-center gap-1 rounded-md px-2 py-1.5 transition-all sm:gap-1.5 sm:rounded-lg sm:px-3 ${
                   viewMode === 'preview'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'hover:text-slate-900'
@@ -129,7 +146,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
               </button>
               <button
                 onClick={() => setViewMode('html')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex items-center gap-1 rounded-md px-2 py-1.5 transition-all sm:gap-1.5 sm:rounded-lg sm:px-3 ${
                   viewMode === 'html'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'hover:text-slate-900'
@@ -143,17 +160,18 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
             {/* Open in Gmail */}
             <button
               onClick={handleOpenInGmail}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-[#ea4335] text-white hover:bg-[#d93025] rounded-xl transition-all shadow-xs"
+              className="flex shrink-0 items-center gap-1 rounded-lg bg-[#ea4335] px-2 py-1.5 text-[11px] font-bold text-white shadow-xs transition-all hover:bg-[#d93025] sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs"
               title="Open this pre-filled draft directly in Gmail"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>Open in Gmail</span>
+              <span className="sm:hidden">Gmail</span>
+              <span className="hidden sm:inline">Open in Gmail</span>
             </button>
 
             {/* Download EML */}
             <button
               onClick={handleDownloadEml}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 transition-colors hover:bg-slate-50 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs"
               title="Download as .eml email file"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
@@ -163,7 +181,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
             {/* Copy Button */}
             <button
               onClick={handleCopyHtml}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 transition-colors hover:bg-slate-50 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs"
               title="Copy Raw HTML to clipboard"
             >
               {copied ? (
@@ -174,7 +192,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Copy HTML</span>
+                  <span className="hidden sm:inline">Copy HTML</span>
                 </>
               )}
             </button>
@@ -182,7 +200,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors"
+              className="hidden shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-700 sm:block sm:rounded-xl sm:p-2"
               aria-label="Close email preview"
             >
               <X className="w-5 h-5" />
@@ -191,9 +209,9 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
         </div>
 
         {/* Modal Main Body */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
           {/* Left Sidebar: List of Queued / Sent Emails */}
-          <div className="w-72 sm:w-80 border-r border-slate-200 bg-slate-50 flex flex-col shrink-0 overflow-y-auto p-3 space-y-2">
+          <div className={`${mobilePreviewOpen ? 'hidden' : 'flex'} max-h-[28vh] w-full shrink-0 flex-col space-y-2 overflow-y-auto border-b border-slate-200 bg-slate-50 p-3 md:flex md:max-h-none md:w-72 md:border-b-0 md:border-r md:p-3 lg:w-80`}>
             <div className="px-2 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
               Sent & Queued Emails ({sentEmails.length})
             </div>
@@ -213,7 +231,10 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
                 return (
                   <div
                     key={email.id}
-                    onClick={() => setSelectedEmail(email)}
+                    onClick={() => {
+                      setSelectedEmail(email);
+                      setMobilePreviewOpen(true);
+                    }}
                     className={`p-3 rounded-xl cursor-pointer border transition-all text-left ${
                       isSelected
                         ? 'bg-white border-[#561269] shadow-sm ring-1 ring-violet-300'
@@ -275,39 +296,66 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
           </div>
 
           {/* Right Pane: Rendered Preview or HTML Code */}
-          <div className="flex-1 flex flex-col bg-slate-100 overflow-hidden">
+          <div className={`${mobilePreviewOpen ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-100 md:flex`}>
             {currentEmail ? (
-              <div className="flex flex-col h-full">
+              <div className="flex h-full min-h-0 flex-col">
                 {/* Email Metadata Top Ribbon */}
-                <div className="bg-white px-6 py-3 border-b border-slate-200 shrink-0 text-xs text-slate-600 space-y-2">
+                <div className="shrink-0 border-b border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-600 sm:space-y-2 sm:px-6 sm:py-3 sm:text-xs">
+                  <div className="flex min-w-0 items-center gap-1.5 md:hidden">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex shrink-0 items-center gap-0.5 rounded-md px-1 py-1 font-bold text-[#561269] hover:bg-violet-50"
+                    aria-label="Back to Admin"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Admin</span>
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-bold text-slate-900">{currentEmail.subject}</p>
+                    <p className="truncate text-[10px] text-slate-500">{currentEmail.recipientName} · {currentEmail.to.join(', ')}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeliveryGuide(!showDeliveryGuide)}
+                    className="flex shrink-0 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 font-bold text-amber-900"
+                    aria-label="Toggle email delivery help"
+                  >
+                    <Info className="h-3.5 w-3.5 text-amber-700" />
+                    {showDeliveryGuide ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                  </div>
+                  <div className="hidden md:flex md:items-center md:justify-between md:gap-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-slate-800 w-16">Subject:</strong>
-                        <span className="font-bold text-slate-900">{currentEmail.subject}</span>
+                      <div className="flex min-w-0 items-start gap-2">
+                        <strong className="w-16 shrink-0 text-slate-800">Subject:</strong>
+                        <span className="min-w-0 break-words font-bold text-slate-900">{currentEmail.subject}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <strong className="text-slate-800 w-16">Recipient:</strong>
-                        <span className="font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <strong className="w-16 shrink-0 text-slate-800">Recipient:</strong>
+                        <span className="min-w-0 break-all rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-700">
                           {currentEmail.recipientName} &lt;{currentEmail.to.join(', ')}&gt;
                         </span>
-                        <span className="text-slate-400">• Firestore: <code className="text-violet-700 font-bold">mail/</code></span>
+                        <span className="hidden shrink-0 text-slate-400 sm:inline">• Firestore: <code className="font-bold text-violet-700">mail/</code></span>
                       </div>
                     </div>
 
                     {/* Why not in Gmail? Guide Button */}
                     <button
                       onClick={() => setShowDeliveryGuide(!showDeliveryGuide)}
-                      className="flex items-center gap-1.5 self-start sm:self-center px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 transition-colors"
+                      className="flex items-center gap-1 self-start rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-left text-[11px] font-bold text-amber-900 transition-colors hover:bg-amber-100 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs sm:self-center"
                     >
                       <Info className="w-3.5 h-3.5 text-amber-700" />
-                      <span>Why haven't I received this in my real Gmail?</span>
+                      <span className="sm:hidden">Delivery help</span>
+                      <span className="hidden sm:inline">Why haven't I received this in my real Gmail?</span>
                       {showDeliveryGuide ? (
                         <ChevronUp className="w-3 h-3 text-amber-700" />
                       ) : (
                         <ChevronDown className="w-3 h-3 text-amber-700" />
                       )}
                     </button>
+                  </div>
                   </div>
 
                   {/* Expandable Explanation & Setup Guide */}
@@ -362,13 +410,13 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
                 </div>
 
                 {/* Email View (Iframe Render or Code View) */}
-                <div className="flex-1 overflow-auto p-4 flex justify-center">
+                <div className="flex min-h-0 flex-1 justify-center overflow-auto p-1.5 sm:p-4">
                   {viewMode === 'preview' ? (
-                    <div className="w-full max-w-[660px] bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+                    <div className="h-full min-h-0 w-full max-w-[660px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm sm:rounded-xl sm:shadow-md">
                       <iframe
                         title="Email HTML Preview"
                         srcDoc={currentEmail.html}
-                        className="w-full h-full min-h-[620px] border-none"
+                        className="h-full min-h-0 w-full border-none"
                         sandbox="allow-same-origin allow-popups"
                       />
                     </div>

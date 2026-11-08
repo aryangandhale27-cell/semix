@@ -30,7 +30,6 @@ import {
   Mail,
   Phone,
   Trash2,
-  Plus,
   X,
   FileText
 } from 'lucide-react';
@@ -41,7 +40,15 @@ import {
   SentEmailRecord 
 } from '../../services/emailService';
 
-export const AdminOrdersTab: React.FC = () => {
+interface AdminOrdersTabProps {
+  openAddOrderRequest?: boolean;
+  onAddOrderRequestHandled?: () => void;
+}
+
+export const AdminOrdersTab: React.FC<AdminOrdersTabProps> = ({
+  openAddOrderRequest = false,
+  onAddOrderRequestHandled,
+}) => {
   const { orders, availableSellers, products, deleteOrder, updateOrderStatus, collectOfflineOrderPayment, showToast } = useApp();
   const [viewMode, setViewMode] = useState<'orders' | 'ordered_products'>('orders');
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'delivered'>('all');
@@ -59,6 +66,12 @@ export const AdminOrdersTab: React.FC = () => {
   const [deliveryPaymentAmount, setDeliveryPaymentAmount] = useState('');
   const [isRecordingDeliveryPayment, setIsRecordingDeliveryPayment] = useState(false);
   const [isOfflineOrderFormOpen, setIsOfflineOrderFormOpen] = useState(false);
+
+  useEffect(() => {
+    if (!openAddOrderRequest) return;
+    setIsOfflineOrderFormOpen(true);
+    onAddOrderRequestHandled?.();
+  }, [openAddOrderRequest, onAddOrderRequestHandled]);
 
   useEffect(() => {
     if (!orderPendingDeletion) return;
@@ -154,7 +167,14 @@ export const AdminOrdersTab: React.FC = () => {
       );
     }
 
-    return list;
+    return [...list].sort((a, b) => {
+      const dateA = Date.parse(a.createdAt);
+      const dateB = Date.parse(b.createdAt);
+
+      if (!Number.isFinite(dateA)) return Number.isFinite(dateB) ? 1 : 0;
+      if (!Number.isFinite(dateB)) return -1;
+      return dateB - dateA;
+    });
   }, [orders, filter, pendingOrders, activeAssignedOrders, deliveredOrders, searchQuery]);
 
   // Aggregated Information about products ordered across all customer orders
@@ -456,54 +476,57 @@ export const AdminOrdersTab: React.FC = () => {
       )}
 
       {/* Navigation View Switcher: Customer Orders vs Ordered Products Overview */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+      <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1.5">
           <button
+            type="button"
+            aria-label={`Customer Shipments and Orders, ${orders.length} total`}
             onClick={() => setViewMode('orders')}
-            className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            className={`flex min-h-14 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[11px] font-extrabold transition-all cursor-pointer sm:min-h-0 sm:flex-none sm:gap-2 sm:px-4 sm:py-2.5 sm:text-xs ${
               viewMode === 'orders'
-                ? 'bg-[#561269] text-white shadow-xs'
+                ? 'bg-[#561269] text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            <Package className="w-4 h-4" />
-            <span>Customer Shipments &amp; Orders ({orders.length})</span>
+            <Package className="h-4 w-4 shrink-0" />
+            <span className="sm:hidden">Customer Orders</span>
+            <span className="hidden sm:inline">Customer Shipments &amp; Orders</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${viewMode === 'orders' ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              {orders.length}
+            </span>
           </button>
 
           <button
+            type="button"
+            aria-label={`Ordered Products Overview, ${orderedProductsSummary.length} products, ${totalUnitsOrderedAll} units`}
             onClick={() => setViewMode('ordered_products')}
-            className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            className={`flex min-h-14 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[11px] font-extrabold transition-all cursor-pointer sm:min-h-0 sm:flex-none sm:gap-2 sm:px-4 sm:py-2.5 sm:text-xs ${
               viewMode === 'ordered_products'
-                ? 'bg-[#561269] text-white shadow-xs'
+                ? 'bg-[#561269] text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Ordered Products Overview ({orderedProductsSummary.length})</span>
-            <span className="bg-[#FF6B00] text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full">
+            <ShoppingBag className="h-4 w-4 shrink-0" />
+            <span className="sm:hidden">Products</span>
+            <span className="hidden sm:inline">Ordered Products Overview</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${viewMode === 'ordered_products' ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              {orderedProductsSummary.length}
+            </span>
+            <span className="hidden rounded-full bg-[#FF6B00] px-1.5 py-0.5 font-mono text-[10px] text-white sm:inline">
               {totalUnitsOrderedAll} Units
             </span>
           </button>
         </div>
 
         {/* Firebase Live Database Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-          <Database className="w-3.5 h-3.5 text-emerald-600" />
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-1.5 text-xs sm:justify-start">
+          <Database className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
           <span className="text-[11px] text-slate-600">
-            Source: <code className="font-mono text-slate-800 font-semibold">orders/{'{id}'}/items</code> in <strong className="text-[#561269]">semix-ai-stdio</strong>
+            <span className="sm:hidden">Live data · </span>
+            <span className="hidden sm:inline">Source: <code className="font-mono font-semibold text-slate-800">orders/{'{id}'}/items</code> in </span>
+            <strong className="text-[#561269]">semix-ai-stdio</strong>
           </span>
         </div>
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setIsOfflineOrderFormOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#561269] px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition-colors hover:bg-[#460e56]"
-        >
-          <Plus className="h-4 w-4" />
-          Add Order
-        </button>
       </div>
 
       {viewMode === 'ordered_products' ? (

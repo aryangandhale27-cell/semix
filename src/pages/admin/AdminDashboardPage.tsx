@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, StaffMember } from '../../types';
-import { SemixLabsLogo } from '../../components/common/SemixLabsLogo';
+import { ProductFormModal } from '../../components/team/ProductFormModal';
 import { 
   TrendingUp, 
   Package, 
@@ -14,12 +14,10 @@ import {
   AlertTriangle, 
   Search, 
   X, 
-  Sliders, 
   BarChart3,
   Cpu,
   Store,
   RefreshCw,
-  Cloud,
   CheckCircle2,
   ChevronDown,
   Flame,
@@ -41,13 +39,8 @@ import { UploadedListRequestsTab } from '../../components/admin/UploadedListRequ
 import { AdminFinancialDashboard } from '../../components/admin/AdminFinancialDashboard';
 import { useFirestoreAdminKPIs } from '../../hooks/useFirestoreAdminKPIs';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
-import { EmailPreviewModal } from '../../components/common/EmailPreviewModal';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
-import { getLocalSentEmails } from '../../services/emailService';
-import { Tag, Mail, SlidersHorizontal, FolderTree, Image as ImageIcon, Award, ShieldAlert } from 'lucide-react';
-import { CATEGORIES } from '../../mockData/products';
-import { generateProductDescription } from '../../services/aiService';
-import { getProductPriceBreakdown } from '../../utils/pricing';
+import { Tag, SlidersHorizontal, FolderTree, Image as ImageIcon, Award, ShieldAlert, ShoppingBag } from 'lucide-react';
 import { backfillProductSearchKeywords } from '../../services/firebaseService';
 
 const ADMIN_PRODUCT_BATCH_SIZE = 50;
@@ -69,8 +62,7 @@ export const AdminDashboardPage: React.FC = () => {
     toggleStaffStatus, 
     customProjects,
     adminNotifications,
-    showToast,
-    isFirebaseLive
+    showToast
   } = useApp();
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -84,6 +76,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'orders' | 'coupons' | 'users' | 'bonuses' | 'banners' | 'categories' | 'audit_logs' | 'analytics' | 'financials' | 'catalog' | 'staff' | 'custom_projects' | 'collect_payment' | 'uploaded_lists'>(() => {
     return pendingOrdersCount > 0 ? 'orders' : 'orders';
   });
+  const [openAddOrderRequest, setOpenAddOrderRequest] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [visibleProductCount, setVisibleProductCount] = useState(ADMIN_PRODUCT_BATCH_SIZE);
   const [isCatalogLoaded, setIsCatalogLoaded] = useState(false);
@@ -95,31 +88,6 @@ export const AdminDashboardPage: React.FC = () => {
   const [freshProductId, setFreshProductId] = useState('');
   const [trendingProductSearch, setTrendingProductSearch] = useState('');
   const [freshProductSearch, setFreshProductSearch] = useState('');
-  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
-
-  // New product form state
-  const [newProduct, setNewProduct] = useState<Partial<Product>>({
-    name: '',
-    sku: '',
-    brand: 'SEMIX LABS',
-    category: 'Electronic Modules and Development Boards',
-    subcategory: 'Microcontrollers',
-    semixPrice: 399,
-    price: 499,
-    originalPrice: 650,
-    stockCount: 50,
-    minOrderQty: 1,
-    shortDescription: '',
-    description: '',
-    voltage: '5V & 3.3V',
-    locationBin: 'BIN-A05',
-    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80',
-    images: ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80'],
-    tags: ['electronics', 'iot'],
-    rating: 4.8,
-    reviewCount: 1,
-    inStock: true
-  });
 
   // New staff form state
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
@@ -139,9 +107,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   // Real-time Firestore Admin KPIs
   const firestoreKPIs = useFirestoreAdminKPIs(orders, products, isCatalogLoaded);
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [adminSectionsOpen, setAdminSectionsOpen] = useState(false);
-  const sentEmailsList = getLocalSentEmails();
   const productAttribution = useMemo(() => {
     const counts = new Map<string, { name: string; email: string; role: string; count: number }>();
 
@@ -222,74 +188,11 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const handleSaveNewProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProduct.name?.trim() || !newProduct.sku?.trim() || !newProduct.category?.trim()) {
-      showToast('Validation Error', 'Name, SKU, and category are required.', 'error');
-      return;
-    }
-
-    const semixEntryPrice = Number(newProduct.semixPrice ?? newProduct.price ?? 299);
-    const calculatedPrice = getProductPriceBreakdown(semixEntryPrice);
-
-    const fullProduct: Omit<Product, 'id'> = {
-      name: newProduct.name!,
-      sku: newProduct.sku!.toUpperCase(),
-      brand: newProduct.brand || 'SEMIX LABS',
-      category: newProduct.category || 'Electronic Modules and Development Boards',
-      subcategory: newProduct.subcategory || 'Microcontrollers',
-      semixPrice: semixEntryPrice,
-      price: Number(newProduct.price) || calculatedPrice.sellingPrice,
-      originalPrice: Number(newProduct.originalPrice) || calculatedPrice.mrp,
-      stockCount: Number(newProduct.stockCount) || 25,
-      minOrderQty: 1,
-      inStock: (Number(newProduct.stockCount) || 0) > 0,
-      image: newProduct.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80',
-      images: [newProduct.image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80'],
-      shortDescription: newProduct.shortDescription || 'High-performance engineering silicon module.',
-      description: newProduct.description || 'Full technical specifications and reference design available in attached datasheet.',
-      rating: 4.9,
-      reviewCount: 4,
-      locationBin: newProduct.locationBin || 'BIN-A01',
-      voltage: newProduct.voltage || '3.3V / 5V',
-      tags: ['electronics', 'hardware'],
-      specifications: [
-        { name: 'Supply Voltage', value: newProduct.voltage || '5V DC' },
-        { name: 'Package', value: 'SMD / Breakout' }
-      ],
-      bulkTiers: [
-        { minQty: 1, unitPrice: Number(newProduct.price) || 299, discountPercent: 0 },
-        { minQty: 5, unitPrice: Math.round((Number(newProduct.price) || 299) * 0.95), discountPercent: 5 },
-        { minQty: 25, unitPrice: Math.round((Number(newProduct.price) || 299) * 0.88), discountPercent: 12 }
-      ]
-    };
-
-    try {
-      await addProduct(fullProduct);
-      setIsAddProductOpen(false);
-    } catch (error) {
-      console.error('[Admin] Product creation failed:', error);
-      showToast('Product Save Failed', 'Firestore rejected the product. Check your account permissions and try again.', 'error');
-    }
-  };
-
-  const handleGenerateDescription = async () => {
-    const productName = newProduct.name?.trim() || '';
-    const productCategory = newProduct.category?.trim() || '';
-    if (!productName || !productCategory) {
-      showToast('Product Name and Category Required', 'Enter both fields before generating a description.', 'warning');
-      return;
-    }
-
-    setIsGeneratingDescription(true);
-    try {
-      const description = await generateProductDescription(productName, productCategory);
-      setNewProduct((current) => ({ ...current, description }));
-      showToast('Description Generated', 'Review and edit the description before saving.', 'success');
-    } catch (error) {
-      showToast('AI Description Failed', error instanceof Error ? error.message : 'Please try again.', 'error');
-    } finally {
-      setIsGeneratingDescription(false);
+  const handleSaveNewProduct = async (productData: Omit<Product, 'id'> | Product) => {
+    if ('id' in productData) {
+      await updateProduct(productData);
+    } else {
+      await addProduct(productData);
     }
   };
 
@@ -370,55 +273,34 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-5 sm:space-y-8">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#561269] via-[#380847] to-slate-900 rounded-xl sm:rounded-2xl p-3 sm:p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-2 sm:gap-4 shadow-lg border border-[#561269]/30">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <SemixLabsLogo
-            variant="full"
-            size="md"
-            className="!h-8 !w-20 sm:!h-12 sm:!w-40 !min-w-0 shrink-0 rounded-lg sm:rounded-xl border border-white/20 bg-white px-1 sm:px-2 py-1 object-cover"
-          />
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-1 sm:gap-1.5 bg-[#FF6B00] text-white text-[8px] sm:text-[10px] leading-tight font-extrabold uppercase px-1.5 sm:px-2.5 py-0.5 sm:py-0.5 rounded-full mb-0.5 sm:mb-1.5">
-              <Sliders className="hidden sm:block w-3.5 h-3.5" />
-              <span className="sm:hidden">Admin Console</span>
-              <span className="hidden sm:inline">Master Administration Console</span>
-            </div>
-            <h1 className="text-base sm:text-2xl leading-tight font-extrabold text-white">
-              SEMIX LABS Platform Controller
-            </h1>
-            <p className="hidden sm:block text-xs text-purple-200 mt-0.5">
-              Full control over silicon catalogs, revenue analytics, staff RBAC permissions, and store config
-            </p>
+      <div className="relative overflow-hidden rounded-2xl border border-violet-100 bg-white p-3.5 text-slate-900 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 text-[#561269]">
+            <ShieldAlert className="h-5 w-5" />
           </div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Admin Portal</h1>
         </div>
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-white/10 rounded-xl border border-white/15 text-xs text-white/90">
-            <Cloud className={`w-4 h-4 ${isFirebaseLive ? 'text-emerald-400' : 'text-amber-400'}`} />
-            <span className="font-semibold">{isFirebaseLive ? 'Cloud Firestore Live' : 'Offline State'}</span>
-          </div>
-
+        <div className="mt-3 flex w-full items-center gap-2 sm:mt-0 sm:w-auto sm:gap-3">
           <button
-            onClick={() => setIsEmailModalOpen(true)}
-            className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1.5 border border-white/20 shadow-xs cursor-pointer transition-all"
-            title="View Automated Customer, Seller & Admin Transactional Emails"
+            type="button"
+            onClick={() => {
+              setActiveTab('orders');
+              setOpenAddOrderRequest(true);
+            }}
+            className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl border border-[#561269] bg-[#561269] px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#460e56] sm:min-h-12 sm:flex-none sm:px-5 sm:py-3 sm:text-sm"
           >
-            <Mail className="w-4 h-4 text-purple-200" />
-            <span>Emails</span>
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-violet-400 text-slate-950">
-              {sentEmailsList.length}
-            </span>
+            <ShoppingBag className="h-5 w-5" />
+            <span>Add Order</span>
           </button>
-
           <button
+            type="button"
             onClick={() => setIsAddProductOpen(true)}
-            className="bg-[#FF6B00] hover:bg-orange-600 text-white px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all hover:scale-105"
+            className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl border border-[#561269] bg-[#561269] px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#460e56] sm:min-h-12 sm:flex-none sm:px-5 sm:py-3 sm:text-sm"
           >
-            <Plus className="w-4 h-4" />
-            <span className="sm:hidden">Add Component</span>
-            <span className="hidden sm:inline">Add New Component</span>
+            <Plus className="h-5 w-5" />
+            <span>Add Component</span>
           </button>
         </div>
       </div>
@@ -456,10 +338,10 @@ export const AdminDashboardPage: React.FC = () => {
             aria-expanded={adminSectionsOpen}
             aria-label="Open admin section"
             onClick={() => setAdminSectionsOpen((open) => !open)}
-            className="flex items-center gap-2 rounded-lg border border-violet-300 bg-[#561269] px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-violet-950/20 transition-colors hover:bg-[#6c1a80] focus:outline-none focus:ring-2 focus:ring-violet-300"
+            className="flex min-h-12 items-center gap-2.5 rounded-xl border border-violet-300 bg-[#561269] px-5 py-3 text-sm font-extrabold text-white shadow-md shadow-violet-950/20 transition-colors hover:bg-[#6c1a80] focus:outline-none focus:ring-2 focus:ring-violet-300 sm:min-h-11 sm:px-5 sm:py-2.5"
           >
             <span>Open Section</span>
-            <span className="rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-extrabold">
+            <span className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-extrabold">
               {activeTab === 'orders' ? 'Orders' :
                 activeTab === 'coupons' ? 'Coupons' :
                 activeTab === 'users' ? 'Users' :
@@ -474,7 +356,7 @@ export const AdminDashboardPage: React.FC = () => {
                 activeTab === 'collect_payment' ? 'Payments' :
                 activeTab === 'uploaded_lists' ? 'Uploaded Lists' : 'Projects'}
             </span>
-            <ChevronDown className={`h-3.5 w-3.5 text-violet-200 transition-transform ${adminSectionsOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`h-4 w-4 text-violet-200 transition-transform ${adminSectionsOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {adminSectionsOpen && (
@@ -675,7 +557,10 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Tab 0: Orders & Seller Assignment */}
       {activeTab === 'orders' && (
-        <AdminOrdersTab />
+        <AdminOrdersTab
+          openAddOrderRequest={openAddOrderRequest}
+          onAddOrderRequestHandled={() => setOpenAddOrderRequest(false)}
+        />
       )}
 
       {/* Tab: Coupons & Discounts Management */}
@@ -1205,154 +1090,11 @@ export const AdminDashboardPage: React.FC = () => {
         <CustomProjectsManager />
       )}
 
-      {/* Add Product Modal */}
-      {isAddProductOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-200">
-              <h3 className="font-bold text-base text-[#561269]">Add New Electronic Component</h3>
-              <button onClick={() => setIsAddProductOpen(false)} className="p-1 rounded-lg bg-slate-100 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveNewProduct} className="space-y-3 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Component Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Raspberry Pi Pico 2 W"
-                    value={newProduct.name}
-                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">SKU Code</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. RPI-PICO-2W"
-                    value={newProduct.sku}
-                    onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg p-2 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Category</label>
-                  <select
-                    value={newProduct.category || ''}
-                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                    required
-                    className="w-full h-10 appearance-auto bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900"
-                  >
-                    <option value="" disabled>Select a category</option>
-                    {(categories.length > 0 ? categories : CATEGORIES).map((c) => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Manufacturer Brand</label>
-                  <input
-                    type="text"
-                    value={newProduct.brand}
-                    onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Base Price (₹)</label>
-                  <input
-                    type="number"
-                    value={newProduct.price}
-                    onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
-                    className="w-full border border-slate-300 rounded-lg p-2 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Initial Stock Count</label>
-                  <input
-                    type="number"
-                    value={newProduct.stockCount}
-                    onChange={(e) => setNewProduct({ ...newProduct, stockCount: Number(e.target.value) })}
-                    className="w-full border border-slate-300 rounded-lg p-2 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Operating Logic Voltage</label>
-                  <input
-                    type="text"
-                    value={newProduct.voltage}
-                    onChange={(e) => setNewProduct({ ...newProduct, voltage: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Assigned Warehouse Bin</label>
-                  <input
-                    type="text"
-                    value={newProduct.locationBin}
-                    onChange={(e) => setNewProduct({ ...newProduct, locationBin: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg p-2 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Short Description</label>
-                <input
-                  type="text"
-                  value={newProduct.shortDescription}
-                  onChange={(e) => setNewProduct({ ...newProduct, shortDescription: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg p-2"
-                  placeholder="Summary for catalog card"
-                />
-              </div>
-
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                  <label className="block font-bold text-slate-700">Description</label>
-                  <button
-                    type="button"
-                    onClick={handleGenerateDescription}
-                    disabled={isGeneratingDescription}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#561269]/30 bg-purple-50 px-2.5 py-1.5 text-[11px] font-bold text-[#561269] transition-colors hover:bg-purple-100 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <Sparkles className={`h-3.5 w-3.5 text-[#FF6B00] ${isGeneratingDescription ? 'animate-pulse' : ''}`} />
-                    {isGeneratingDescription ? 'Generating...' : 'Generate AI Description'}
-                  </button>
-                </div>
-                <textarea
-                  rows={4}
-                  value={newProduct.description || ''}
-                  onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg p-2"
-                  placeholder="Professional product description"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddProductOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#FF6B00] text-white font-bold cursor-pointer"
-                >
-                  Publish Component
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ProductFormModal
+        isOpen={isAddProductOpen}
+        onClose={() => setIsAddProductOpen(false)}
+        onSave={handleSaveNewProduct}
+      />
 
       {/* Edit Product Modal */}
       {editingProduct && (
@@ -1545,11 +1287,6 @@ export const AdminDashboardPage: React.FC = () => {
         onClose={() => setQuickViewProduct(null)}
       />
 
-      {/* Email Preview and Verification Center */}
-      <EmailPreviewModal
-        isOpen={isEmailModalOpen}
-        onClose={() => setIsEmailModalOpen(false)}
-      />
     </div>
   );
 };

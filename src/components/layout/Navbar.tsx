@@ -27,6 +27,8 @@ export const Navbar: React.FC = () => {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isCustomProjectPage = location.pathname === '/bulk-enquiry'
+    && new URLSearchParams(location.search).get('mode') === 'custom-project';
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -210,7 +212,7 @@ export const Navbar: React.FC = () => {
             <Link
               to="/bulk-enquiry"
               className={`flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
-                isActive('/bulk-enquiry')
+                isActive('/bulk-enquiry') && !isCustomProjectPage
                   ? 'bg-white/15 text-white'
                   : 'text-purple-100 hover:bg-white/10 hover:text-white'
               }`}
@@ -220,7 +222,11 @@ export const Navbar: React.FC = () => {
             </Link>
             <Link
               to="/bulk-enquiry?mode=custom-project"
-              className="flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap text-purple-100 hover:bg-white/10 hover:text-white transition-colors"
+              className={`flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
+                isCustomProjectPage
+                  ? 'bg-white/15 text-white'
+                  : 'text-purple-100 hover:bg-white/10 hover:text-white'
+              }`}
             >
               <Layers className="w-2.5 h-2.5 text-cyan-300" />
               Projects

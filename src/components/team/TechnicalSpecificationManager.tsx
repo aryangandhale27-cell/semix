@@ -62,9 +62,6 @@ export const TechnicalSpecificationManager: React.FC<TechnicalSpecificationManag
               ({specifications.length} defined)
             </span>
           </label>
-          <p className="text-[11px] text-slate-500">
-            Define hardware parameters such as operating voltage, pinouts, and clock speeds.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -122,9 +119,6 @@ export const TechnicalSpecificationManager: React.FC<TechnicalSpecificationManag
         <div className="border border-dashed border-slate-200 rounded-xl p-6 text-center bg-slate-50/50">
           <Sliders className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
           <p className="text-xs font-semibold text-slate-600">No technical specifications added yet</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Click &quot;+ Add Specification&quot; or choose a preset to add hardware attributes.
-          </p>
           <button
             type="button"
             onClick={() => handleAddSpec('', '')}

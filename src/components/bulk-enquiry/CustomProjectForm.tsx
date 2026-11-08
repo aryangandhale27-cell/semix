@@ -312,7 +312,7 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-8">
       {/* Fast Preset Templates Bar */}
       <div className="hidden flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-purple-50/80 border border-purple-200/70">
         <div className="flex items-center gap-2 text-xs text-[#561269] font-bold">
@@ -338,7 +338,7 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
       </div>
 
       {/* SECTION 1: Project Overview */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-8 space-y-4 sm:space-y-6">
         <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
@@ -354,7 +354,7 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
           </span>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4 sm:space-y-5">
           {/* Project Name */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
@@ -367,7 +367,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
                 setProjectName(e.target.value);
                 if (errors.projectName) setErrors((prev) => ({ ...prev, projectName: '' }));
               }}
-              placeholder="e.g. Multi-Gas Sensing Edge Node with LoRa & BLE"
               className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                 errors.projectName ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
               }`}
@@ -432,7 +431,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
                   type="text"
                   value={customQuantity}
                   onChange={(e) => setCustomQuantity(e.target.value)}
-                  placeholder="Specify target units (e.g. 2,500 pcs)"
                   className="w-full mt-2 px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:outline-hidden focus:border-[#561269]"
                 />
               )}
@@ -476,7 +474,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
                   type="text"
                   value={customBudget}
                   onChange={(e) => setCustomBudget(e.target.value)}
-                  placeholder="e.g. ₹1.5L – ₹3L approx"
                   className="w-full mt-2 px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:outline-hidden focus:border-[#561269]"
                 />
               )}
@@ -486,7 +483,7 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
       </div>
 
       {/* SECTION 2: Technical Specifications & File Upload */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-8 space-y-4 sm:space-y-6">
         <div className="border-b border-slate-100 pb-4">
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
             <Wrench className="w-5 h-5 text-[#561269]" />
@@ -497,7 +494,7 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
           </p>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4 sm:space-y-5">
           {/* Detailed Description */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
@@ -511,7 +508,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
                 setDescription(e.target.value);
                 if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
               }}
-              placeholder="Outline project functions, operating voltages, environmental conditions (e.g. IP rating, temperature range), interface protocols (I2C, SPI, CAN, Ethernet), and specific deliverables required..."
               className={`w-full p-3.5 rounded-xl border text-xs sm:text-sm font-sans transition-all focus:outline-hidden ${
                 errors.description ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
               }`}
@@ -528,7 +524,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
               type="text"
               value={preferredComponents}
               onChange={(e) => setPreferredComponents(e.target.value)}
-              placeholder="e.g. ESP32-S3, STM32F401, nRF52840, Sensirion SCD41, DRV8305"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-hidden focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20"
             />
             
@@ -633,7 +628,7 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
       </div>
 
       {/* SECTION 3: Client & Organization Details */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-8 space-y-4 sm:space-y-6">
         <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
@@ -663,7 +658,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
                 setClientName(e.target.value);
                 if (errors.clientName) setErrors((prev) => ({ ...prev, clientName: '' }));
               }}
-              placeholder="e.g. Aryan Sharma"
               className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                 errors.clientName ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
               }`}
@@ -684,7 +678,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
                 setClientEmail(e.target.value);
                 if (errors.clientEmail) setErrors((prev) => ({ ...prev, clientEmail: '' }));
               }}
-              placeholder="e.g. aryan@techinnovations.in"
               className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                 errors.clientEmail ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
               }`}
@@ -705,7 +698,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
                 setClientPhone(e.target.value);
                 if (errors.clientPhone) setErrors((prev) => ({ ...prev, clientPhone: '' }));
               }}
-              placeholder="e.g. +91 98765 43210"
               className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                 errors.clientPhone ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
               }`}
@@ -726,7 +718,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
                 setCompanyName(e.target.value);
                 if (errors.companyName) setErrors((prev) => ({ ...prev, companyName: '' }));
               }}
-              placeholder="e.g. IIT Bombay ECE Lab / NexGen IoT Ltd"
               className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                 errors.companyName ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
               }`}
@@ -744,7 +735,6 @@ export const CustomProjectForm: React.FC<CustomProjectFormProps> = ({ onSuccess 
               type="text"
               value={gstin}
               onChange={(e) => setGstin(e.target.value.toUpperCase())}
-              placeholder="e.g. 27AAAAA0000A1Z5"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-mono focus:outline-hidden focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20"
             />
           </div>

@@ -66,8 +66,20 @@ const POPULAR_SUGGESTIONS = [
 export const BulkEnquiryPage: React.FC = () => {
   const { submitBulkEnquiry, showToast, products } = useApp();
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isUploadListRequest = searchParams.get('upload-list') === 'true';
+  const deskMode = searchParams.get('mode') === 'custom-project' ? 'custom_project' : 'bom';
+  const selectDeskMode = (mode: 'bom' | 'custom_project') => {
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams);
+      if (mode === 'custom_project') {
+        nextParams.set('mode', 'custom-project');
+      } else {
+        nextParams.delete('mode');
+      }
+      return nextParams;
+    }, { replace: true });
+  };
 
   // Form State: Customer & Company Details
   const [fullName, setFullName] = useState(user?.name || '');
@@ -112,9 +124,6 @@ export const BulkEnquiryPage: React.FC = () => {
   // Modal & Flow State
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(isUploadListRequest);
   const [submittedEnquiry, setSubmittedEnquiry] = useState<BulkEnquirySubmission | null>(null);
-  const [deskMode, setDeskMode] = useState<'bom' | 'custom_project'>(() =>
-    searchParams.get('mode') === 'custom-project' ? 'custom_project' : 'bom'
-  );
   const [submittedProject, setSubmittedProject] = useState<CustomProjectSubmission | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -282,30 +291,30 @@ export const BulkEnquiryPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen py-8 sm:py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="bg-slate-50 min-h-screen py-4 sm:py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
         
         {/* Mode Selector Tabs: Option A: Bulk Component Procurement, Option B: Custom Project Development */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-2 sm:p-2.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-1.5 sm:p-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
             <button
               type="button"
-              onClick={() => setDeskMode('bom')}
-              className={`flex items-center gap-3.5 p-4 rounded-2xl transition-all cursor-pointer text-left ${
+              onClick={() => selectDeskMode('bom')}
+              className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all cursor-pointer text-left ${
                 deskMode === 'bom'
                   ? 'bg-gradient-to-r from-[#561269] to-[#380847] text-white shadow-md'
                   : 'bg-slate-50 hover:bg-slate-100/80 text-slate-700'
               }`}
             >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${
                 deskMode === 'bom' ? 'bg-white/15 text-white' : 'bg-white text-[#561269] shadow-2xs border border-slate-200'
               }`}>
-                <Boxes className="w-6 h-6" />
+                <Boxes className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-start justify-between gap-2">
                   <span className="font-extrabold text-sm sm:text-base leading-tight">
-                    Option A: Bulk Component Procurement
+                    Bulk Component Procurement
                   </span>
                   {deskMode === 'bom' && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF6B00] text-white shrink-0">
@@ -321,22 +330,22 @@ export const BulkEnquiryPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setDeskMode('custom_project')}
-              className={`flex items-center gap-3.5 p-4 rounded-2xl transition-all cursor-pointer text-left ${
+              onClick={() => selectDeskMode('custom_project')}
+              className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all cursor-pointer text-left ${
                 deskMode === 'custom_project'
                   ? 'bg-gradient-to-r from-[#561269] to-[#380847] text-white shadow-md'
                   : 'bg-slate-50 hover:bg-slate-100/80 text-slate-700'
               }`}
             >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${
                 deskMode === 'custom_project' ? 'bg-white/15 text-white' : 'bg-white text-[#561269] shadow-2xs border border-slate-200'
               }`}>
-                <Cpu className="w-6 h-6" />
+                <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-start justify-between gap-2">
                   <span className="font-extrabold text-sm sm:text-base leading-tight">
-                    Option B: Custom Project Development
+                    Custom Project Development
                   </span>
                   {deskMode === 'custom_project' ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF6B00] text-white shrink-0">
@@ -363,46 +372,31 @@ export const BulkEnquiryPage: React.FC = () => {
               project={submittedProject}
               onReset={handleResetProject}
               onCopyId={handleCopyId}
-              onSwitchToBOM={() => setDeskMode('bom')}
+              onSwitchToBOM={() => selectDeskMode('bom')}
             />
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-4 sm:space-y-6">
               {/* Custom Project Hero Banner */}
-              <div className="bg-gradient-to-br from-[#561269] via-[#380847] to-slate-950 rounded-3xl p-6 sm:p-10 text-white shadow-2xl relative overflow-hidden border border-[#561269]/30">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-[#FF6B00]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-                <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <div className="relative z-10 max-w-3xl space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-orange-300 text-xs font-bold uppercase tracking-wider backdrop-blur-md">
+              <div className="bg-gradient-to-br from-[#561269] via-[#380847] to-slate-950 rounded-2xl p-5 sm:p-8 text-white shadow-lg border border-[#561269]/30">
+                <div className="max-w-3xl space-y-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-orange-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
                     <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
-                    <span>Direct Admin Routing & Turnkey Engineering</span>
+                    <span>Direct Engineering & Turnkey Projects</span>
                   </div>
 
-                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-                    Custom Project <span className="text-[#FF6B00]">Development</span> Desk
+                  <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
+                    Custom Project <span className="block text-[#FF6B00] sm:inline">Development Desk</span>
                   </h1>
 
                   <p className="text-sm sm:text-base text-purple-200 leading-relaxed max-w-2xl">
-                    Need turnkey embedded hardware, multilayer PCB layouts, or bare-metal firmware? Submit your project blueprint below. Inquiries are transmitted directly to our Chief Engineering Desk for confidential evaluation, DFM analysis, and rapid quotation.
+                    Submit turnkey embedded hardware, PCB, or firmware requirements for confidential engineering review, DFM analysis, and quotation.
                   </p>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
-                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs p-2.5 rounded-xl border border-white/10">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span className="text-xs font-semibold text-slate-200">NDA Protected</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs p-2.5 rounded-xl border border-white/10">
-                      <Cpu className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span className="text-xs font-semibold text-slate-200">Silicon to Code</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs p-2.5 rounded-xl border border-white/10">
-                      <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="text-xs font-semibold text-slate-200">&lt; 8hr Turnaround</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs p-2.5 rounded-xl border border-white/10">
-                      <Layers className="w-4 h-4 text-orange-400 shrink-0" />
-                      <span className="text-xs font-semibold text-slate-200">Turnkey SMT & Fab</span>
-                    </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-[11px] font-semibold text-slate-200">
+                    <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />NDA protected</span>
+                    <span className="flex items-center gap-1.5"><Cpu className="h-3.5 w-3.5 text-cyan-400" />Silicon to code</span>
+                    <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-amber-400" />Under 8-hour response</span>
+                    <span className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5 text-orange-400" />Turnkey SMT &amp; fab</span>
                   </div>
                 </div>
               </div>
@@ -494,7 +488,6 @@ export const BulkEnquiryPage: React.FC = () => {
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder="e.g. Aryan Sharma"
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                         errors.fullName ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
                       }`}
@@ -512,7 +505,6 @@ export const BulkEnquiryPage: React.FC = () => {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. aryan@company.com or lab@univ.edu"
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                         errors.email ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
                       }`}
@@ -530,7 +522,6 @@ export const BulkEnquiryPage: React.FC = () => {
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="e.g. +91 98765 43210"
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                         errors.phone ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
                       }`}
@@ -548,7 +539,6 @@ export const BulkEnquiryPage: React.FC = () => {
                       type="text"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="e.g. NexGen Robotics Ltd / IIT Lab"
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-hidden ${
                         errors.companyName ? 'border-red-400 bg-red-50/30 ring-2 ring-red-100' : 'border-slate-300 focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20'
                       }`}
@@ -625,7 +615,6 @@ export const BulkEnquiryPage: React.FC = () => {
                     rows={2}
                     value={projectNotes}
                     onChange={(e) => setProjectNotes(e.target.value)}
-                    placeholder="Specify special requirements e.g. 'RoHS Certificate needed', 'Reel packaging only', 'Alternate equivalent IC allowed if out of stock'..."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:border-[#561269] focus:ring-2 focus:ring-[#561269]/20 focus:outline-hidden"
                   />
                 </div>
@@ -701,7 +690,6 @@ export const BulkEnquiryPage: React.FC = () => {
                                 type="text"
                                 value={row.partNumber}
                                 onChange={(e) => handleUpdateRow(row.id, 'partNumber', e.target.value)}
-                                placeholder="e.g. ESP32-WROOM-32D or 10k 0805"
                                 className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-[#561269] focus:ring-1 focus:ring-[#561269] font-semibold text-slate-900 text-xs outline-hidden bg-white"
                               />
                             </div>
@@ -739,7 +727,6 @@ export const BulkEnquiryPage: React.FC = () => {
                               type="text"
                               value={row.targetPrice || ''}
                               onChange={(e) => handleUpdateRow(row.id, 'targetPrice', e.target.value)}
-                              placeholder="e.g. ₹240 / Best Quote"
                               className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-[#561269] focus:ring-1 focus:ring-[#561269] text-slate-800 text-xs outline-hidden bg-white"
                             />
                           </td>

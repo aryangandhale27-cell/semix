@@ -795,53 +795,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                       />
                     </div>
 
-                    {/* Quick Silicon Asset Presets */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                          Add from Hardware Presets
-                        </span>
-                        <span className="text-[10px] text-slate-400">Click to append to gallery</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {PRESET_SILICON_IMAGES.map((preset) => {
-                          const isAlreadyAdded = images.includes(preset.url);
-                          return (
-                            <button
-                              key={preset.label}
-                              type="button"
-                              onClick={() => {
-                                if (isAlreadyAdded) {
-                                  const idx = images.indexOf(preset.url);
-                                  setActivePreviewIdx(idx);
-                                } else {
-                                  handleAddUrl(preset.url);
-                                }
-                              }}
-                              className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${
-                                isAlreadyAdded
-                                  ? 'border-[#561269]/40 bg-[#561269]/5 ring-1 ring-[#561269]/20'
-                                  : 'border-slate-200 bg-white hover:border-slate-300'
-                              }`}
-                            >
-                              <img
-                                src={preset.url}
-                                alt={preset.label}
-                                className="w-6 h-6 object-contain rounded bg-slate-50 shrink-0"
-                              />
-                              <div className="min-w-0">
-                                <span className="text-[10px] font-bold text-slate-700 block truncate">
-                                  {preset.label}
-                                </span>
-                                <span className="text-[9px] text-slate-400 block">
-                                  {isAlreadyAdded ? 'Added' : '+ Add'}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
                   </div>
                 </div>
 
@@ -987,7 +940,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     </div>
                     <textarea
                       rows={3}
-                      placeholder="Comprehensive technical details, operating guidelines, and pinout notes..."
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269] focus:border-[#561269] transition-all"
