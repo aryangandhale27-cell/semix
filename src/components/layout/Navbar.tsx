@@ -13,7 +13,6 @@ import {
   Flame,
   ArrowRight,
   User,
-  ShieldCheck,
   Boxes,
   FileText,
   Home,
@@ -281,16 +280,6 @@ export const Navbar: React.FC = () => {
                   </Link>
                 )}
 
-                {user?.role === 'admin' && (
-                  <Link
-                    to="/admin/dashboard"
-                    id="nav-admin-desk-link"
-                    className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-400 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md shadow-violet-950/30 transition-colors whitespace-nowrap"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-purple-200" />
-                    <span>Admin Console</span>
-                  </Link>
-                )}
               </>
             )}
           </div>
