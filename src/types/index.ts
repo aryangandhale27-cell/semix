@@ -1,4 +1,5 @@
 export type UserRole = 'customer' | 'team' | 'admin' | 'seller';
+export type HomepageProductSection = 'trending' | 'fresh';
 export type AccountStatus = 'active' | 'suspended';
 
 export interface AuthUser {
@@ -94,6 +95,8 @@ export interface Product {
   isNew?: boolean;
   isFeatured?: boolean;
   isBestSeller?: boolean;
+  bestSellerAddedAt?: string;
+  newArrivalAddedAt?: string;
   codEnabled?: boolean;
   voltage?: string;
   protocol?: string;

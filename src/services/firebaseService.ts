@@ -24,6 +24,7 @@ import {
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   Product,
+  HomepageProductSection,
   Order,
   CustomProjectSubmission,
   AuthUser,
@@ -300,12 +301,68 @@ export async function fetchFlaggedProductsFromFirestore(
     const snapshot = await getDocs(query(
       collection(db, 'products'),
       where(flag, '==', true),
-      limit(boundedPageSize)
+      limit(100)
     ));
-    return snapshot.docs.map((item) => ({ ...item.data(), id: item.id }) as Product);
+    const addedAtField = flag === 'isBestSeller' ? 'bestSellerAddedAt' : 'newArrivalAddedAt';
+    return snapshot.docs
+      .map((item) => ({ ...item.data(), id: item.id }) as Product)
+      .sort((left, right) => {
+        const leftDate = left[addedAtField] || left.createdAt || '';
+        const rightDate = right[addedAtField] || right.createdAt || '';
+        return rightDate.localeCompare(leftDate) || left.id.localeCompare(right.id);
+      })
+      .slice(0, boundedPageSize);
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, `products.${flag}`);
   }
+}
+
+export const HOMEPAGE_SECTION_LIMITS: Record<HomepageProductSection, number> = {
+  trending: 12,
+  fresh: 6,
+};
+
+export async function assignHomepageProductToFirestore(
+  product: Product,
+  section: HomepageProductSection
+): Promise<Array<{ id: string; changes: Partial<Product> }>> {
+  const flag = section === 'trending' ? 'isBestSeller' : 'isNew';
+  const addedAtField = section === 'trending' ? 'bestSellerAddedAt' : 'newArrivalAddedAt';
+  const limitCount = HOMEPAGE_SECTION_LIMITS[section];
+  const flaggedProducts = await fetchFlaggedProductsFromFirestore(flag, 100);
+  const otherProducts = flaggedProducts.filter((item) => item.id !== product.id);
+  const evictionCount = Math.max(0, otherProducts.length + 1 - limitCount);
+  const oldestProducts = [...otherProducts]
+    .sort((left, right) => {
+      const leftDate = left[addedAtField] || left.createdAt || '';
+      const rightDate = right[addedAtField] || right.createdAt || '';
+      return leftDate.localeCompare(rightDate) || left.id.localeCompare(right.id);
+    })
+    .slice(0, evictionCount);
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  oldestProducts.forEach((oldest) => {
+    batch.update(doc(db, 'products', oldest.id), { [flag]: false, updatedAt: now });
+  });
+  batch.update(doc(db, 'products', product.id), {
+    [flag]: true,
+    [addedAtField]: now,
+    updatedAt: now,
+  });
+
+  await batch.commit();
+
+  return [
+    ...oldestProducts.map((oldest) => ({
+      id: oldest.id,
+      changes: { [flag]: false, updatedAt: now } as Partial<Product>,
+    })),
+    {
+      id: product.id,
+      changes: { [flag]: true, [addedAtField]: now, updatedAt: now } as Partial<Product>,
+    },
+  ];
 }
 
 export interface ProductSearchCursor {

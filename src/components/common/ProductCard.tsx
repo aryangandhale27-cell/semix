@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Product } from '../../types';
 import { useApp } from '../../context/AppContext';
+import { HomepageSectionActions } from './HomepageSectionActions';
 import { 
   ShoppingCart, 
   Heart, 
@@ -221,6 +222,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               {product.sku}
             </span>
           </div>
+
+          <HomepageSectionActions product={product} compact className="mb-1.5" />
 
           {/* Product Title */}
           <Link

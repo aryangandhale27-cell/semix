@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   Product, 
+  HomepageProductSection,
   CartItem, 
   Order, 
   EscalationIssue, 
@@ -32,6 +33,7 @@ import {
   type ProductPage,
   type ProductPageOptions,
   syncAllProductsToFirestore,
+  assignHomepageProductToFirestore,
   syncOrderToFirestore, 
   deleteOrderFromFirestore,
   subscribeToOrders,
@@ -140,6 +142,7 @@ interface AppContextType {
   resetCategoryImage: (categoryId: string) => Promise<void>;
   updateProductStock: (productId: string, newStock: number) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
+  assignHomepageProduct: (productId: string, section: HomepageProductSection) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   isProductSyncing: boolean;
@@ -1157,6 +1160,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Product Updated', `${normalized.name} changes synced to Firebase`, 'success');
   };
 
+  const assignHomepageProduct = async (productId: string, section: HomepageProductSection) => {
+    const product = products.find((item) => item.id === productId);
+    if (!product) {
+      showToast('Product Not Found', 'Reload the catalog and try again.', 'error');
+      return;
+    }
+
+    try {
+      const updates = await assignHomepageProductToFirestore(product, section);
+      setProducts((current) => current.map((item) => {
+        const update = updates.find((entry) => entry.id === item.id);
+        return update ? { ...item, ...update.changes } : item;
+      }));
+      showToast(
+        section === 'trending' ? 'Added to Trending' : 'Added to Fresh Silicon',
+        `${product.name} is now featured on the homepage.`,
+        'success'
+      );
+    } catch (error) {
+      console.error('[App] Homepage section assignment failed:', error);
+      showToast('Assignment Failed', 'Could not update the homepage section in Firestore.', 'error');
+    }
+  };
+
   const addProduct = async (productData: Omit<Product, 'id'>) => {
     const id = productData.sku 
       ? `prod-${productData.sku.toLowerCase().replace(/[^a-z0-9]/g, '-')}` 
@@ -1712,6 +1739,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     resetCategoryImage,
     updateProductStock,
     updateProduct,
+    assignHomepageProduct,
     addProduct,
     deleteProduct,
     isProductSyncing,
@@ -1815,6 +1843,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     resetCategoryImage,
     updateProductStock,
     updateProduct,
+    assignHomepageProduct,
     addProduct,
     deleteProduct,
     syncAllProductsToFirebase,

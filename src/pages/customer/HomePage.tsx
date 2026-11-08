@@ -5,7 +5,7 @@ import { ProductCard } from '../../components/common/ProductCard';
 import { ExploreCategories } from '../../components/home/ExploreCategories';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { Product, HomepageBanner } from '../../types';
-import { fetchFlaggedProductsFromFirestore } from '../../services/firebaseService';
+import { fetchFlaggedProductsFromFirestore, HOMEPAGE_SECTION_LIMITS } from '../../services/firebaseService';
 import { 
   ArrowRight, 
   Sparkles, 
@@ -34,8 +34,8 @@ export const HomePage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     Promise.all([
-      fetchFlaggedProductsFromFirestore('isBestSeller', 8),
-      fetchFlaggedProductsFromFirestore('isNew', 4),
+      fetchFlaggedProductsFromFirestore('isBestSeller', HOMEPAGE_SECTION_LIMITS.trending),
+      fetchFlaggedProductsFromFirestore('isNew', HOMEPAGE_SECTION_LIMITS.fresh),
     ])
       .then(([bestSellerProducts, newProducts]) => {
         if (!isMounted) return;
@@ -305,49 +305,61 @@ export const HomePage: React.FC = () => {
 
       {/* 6. Why Choose SEMIX LABS Section */}
       <section id="why-semixlabs" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="bg-slate-50 rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-slate-200">
+        <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4 sm:rounded-2xl sm:p-8">
+          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#561269]/25 to-transparent" aria-hidden="true" />
           <div className="text-center max-w-2xl mx-auto mb-4 sm:mb-8">
-            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-[#FF6B00] block mb-0.5 sm:mb-1">
+            <span className="mb-1 inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-[#FF6B00] sm:text-[11px]">
+              <span className="h-px w-5 bg-[#FF6B00]" aria-hidden="true" />
               Engineered For Makers & Industry
+              <span className="h-px w-5 bg-[#FF6B00]" aria-hidden="true" />
             </span>
-            <h3 className="text-lg sm:text-2xl font-extrabold text-[#561269]">
+            <h3 className="text-lg font-extrabold text-[#561269] sm:text-2xl">
               Why Technical Teams Choose SEMIX LABS
             </h3>
-            <p className="text-[11px] sm:text-xs text-slate-600 mt-1">
-              We eliminate counterfeit ICs and supply chain delays so your prototypes work on the first power-up.
-            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
-            <div className="bg-white p-3.5 sm:p-5 rounded-lg sm:rounded-xl border border-slate-200 shadow-2xs">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center font-bold mb-2 sm:mb-3">
-                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+            <article className="group relative min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-200 hover:shadow-lg sm:min-h-52 sm:rounded-xl sm:p-5">
+              <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-[#FF6B00] sm:inset-y-5" aria-hidden="true" />
+              <ShieldCheck className="pointer-events-none absolute -right-2 -top-3 h-20 w-20 text-orange-500/[0.08] transition-transform duration-300 group-hover:scale-110 sm:-right-3 sm:-top-4 sm:h-32 sm:w-32" strokeWidth={1.2} aria-hidden="true" />
+              <div className="relative mb-4 flex items-center justify-between sm:mb-9">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-orange-100 bg-orange-50 text-[#FF6B00] shadow-sm sm:h-12 sm:w-12 sm:rounded-xl">
+                  <ShieldCheck className="h-4 w-4 sm:h-6 sm:w-6" />
+                </div>
               </div>
-              <h4 className="font-bold text-xs sm:text-sm text-slate-900 mb-1">100% Verified Silicon & Datasheets</h4>
-              <p className="text-[11px] sm:text-xs text-slate-500 leading-snug sm:leading-relaxed">
+              <h4 className="relative mb-1 text-xs font-bold text-slate-900 sm:text-sm">100% Verified Silicon & Datasheets</h4>
+              <p className="relative text-[11px] leading-snug text-slate-500 sm:text-xs sm:leading-relaxed">
                 Direct procurement from authorized manufacturers. Technical pinout sheets and verified voltage ratings.
               </p>
-            </div>
+            </article>
 
-            <div className="bg-white p-3.5 sm:p-5 rounded-lg sm:rounded-xl border border-slate-200 shadow-2xs">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold mb-2 sm:mb-3">
-                <Truck className="w-4 h-4 sm:w-5 sm:h-5" />
+            <article className="group relative min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-cyan-200 hover:shadow-lg sm:min-h-52 sm:rounded-xl sm:p-5">
+              <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-cyan-500 sm:inset-y-5" aria-hidden="true" />
+              <Truck className="pointer-events-none absolute -right-2 -top-3 h-20 w-20 text-cyan-600/[0.08] transition-transform duration-300 group-hover:scale-110 sm:-right-3 sm:-top-4 sm:h-32 sm:w-32" strokeWidth={1.2} aria-hidden="true" />
+              <div className="relative mb-4 flex items-center justify-between sm:mb-9">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-100 bg-cyan-50 text-cyan-600 shadow-sm sm:h-12 sm:w-12 sm:rounded-xl">
+                  <Truck className="h-4 w-4 sm:h-6 sm:w-6" />
+                </div>
               </div>
-              <h4 className="font-bold text-xs sm:text-sm text-slate-900 mb-1">Same-Day Dispatch Desk</h4>
-              <p className="text-[11px] sm:text-xs text-slate-500 leading-snug sm:leading-relaxed">
+              <h4 className="relative mb-1 text-xs font-bold text-slate-900 sm:text-sm">Same-Day Dispatch Desk</h4>
+              <p className="relative text-[11px] leading-snug text-slate-500 sm:text-xs sm:leading-relaxed">
                 Orders placed before 4:00 PM are picked from designated warehouse bins, ESD sealed, and dispatched.
               </p>
-            </div>
+            </article>
 
-            <div className="bg-white p-3.5 sm:p-5 rounded-lg sm:rounded-xl border border-slate-200 shadow-2xs">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold mb-2 sm:mb-3">
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
+            <article className="group relative min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-violet-200 hover:shadow-lg sm:min-h-52 sm:rounded-xl sm:p-5">
+              <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-violet-600 sm:inset-y-5" aria-hidden="true" />
+              <Zap className="pointer-events-none absolute -right-2 -top-3 h-20 w-20 text-violet-600/[0.08] transition-transform duration-300 group-hover:scale-110 sm:-right-3 sm:-top-4 sm:h-32 sm:w-32" strokeWidth={1.2} aria-hidden="true" />
+              <div className="relative mb-4 flex items-center justify-between sm:mb-9">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-violet-100 bg-violet-50 text-violet-600 shadow-sm sm:h-12 sm:w-12 sm:rounded-xl">
+                  <Zap className="h-4 w-4 sm:h-6 sm:w-6" />
+                </div>
               </div>
-              <h4 className="font-bold text-xs sm:text-sm text-slate-900 mb-1">Tiered Pricing & GST Invoicing</h4>
-              <p className="text-[11px] sm:text-xs text-slate-500 leading-snug sm:leading-relaxed">
+              <h4 className="relative mb-1 text-xs font-bold text-slate-900 sm:text-sm">Tiered Pricing & GST Invoicing</h4>
+              <p className="relative text-[11px] leading-snug text-slate-500 sm:text-xs sm:leading-relaxed">
                 Automated bulk discounts for universities and startups with instant B2B GST tax invoices.
               </p>
-            </div>
+            </article>
           </div>
         </div>
       </section>

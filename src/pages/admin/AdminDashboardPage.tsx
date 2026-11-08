@@ -55,6 +55,7 @@ export const AdminDashboardPage: React.FC = () => {
     banners,
     addProduct, 
     updateProduct, 
+    assignHomepageProduct,
     deleteProduct, 
     isProductSyncing,
     loadAllProducts,
@@ -241,35 +242,20 @@ export const AdminDashboardPage: React.FC = () => {
     if (!normalizedQuery) return products;
     return products.filter((product) =>
       [product.name, product.sku, product.brand].some((value) =>
-        value.toLowerCase().includes(normalizedQuery)
+        String(value ?? '').toLowerCase().includes(normalizedQuery)
       )
     );
   };
 
   const addProductToHomepageSection = async (productId: string, section: 'trending' | 'fresh') => {
-    const product = products.find((item) => item.id === productId);
-    if (!product) return;
-
-    try {
-      await updateProduct({
-        ...product,
-        ...(section === 'trending' ? { isBestSeller: true } : { isNew: true }),
-      });
-      showToast(
-        section === 'trending' ? 'Added to Trending' : 'Added to Fresh Silicon',
-        `${product.name} will now appear on the homepage section.`,
-        'success'
-      );
-      if (section === 'trending') {
-        setTrendingProductId('');
-        setTrendingProductSearch('');
-      } else {
-        setFreshProductId('');
-        setFreshProductSearch('');
-      }
-    } catch (error) {
-      console.error('[Admin] Homepage section assignment failed:', error);
-      showToast('Assignment Failed', 'Could not update the product in Firestore.', 'error');
+    if (!productId) return;
+    await assignHomepageProduct(productId, section);
+    if (section === 'trending') {
+      setTrendingProductId('');
+      setTrendingProductSearch('');
+    } else {
+      setFreshProductId('');
+      setFreshProductSearch('');
     }
   };
 
@@ -855,22 +841,38 @@ export const AdminDashboardPage: React.FC = () => {
                   <input
                     type="search"
                     value={trendingProductSearch}
-                    onChange={(event) => setTrendingProductSearch(event.target.value)}
+                    onChange={(event) => {
+                      setTrendingProductSearch(event.target.value);
+                      setTrendingProductId('');
+                    }}
                     placeholder="Search by name, SKU, or brand"
                     aria-label="Search trending products"
                     className="w-full rounded-lg border border-orange-200 bg-white py-2 pl-9 pr-3 text-xs font-medium text-slate-800 placeholder:text-slate-400"
                   />
+                  {trendingProductSearch.trim() && !trendingProductId && (
+                    <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-lg border border-orange-200 bg-white p-1 shadow-xl">
+                      {filterHomepageProducts(trendingProductSearch).slice(0, 8).map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          role="option"
+                          aria-selected="false"
+                          onClick={() => {
+                            setTrendingProductId(product.id);
+                            setTrendingProductSearch(product.name);
+                          }}
+                          className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs hover:bg-orange-50"
+                        >
+                          <span className="min-w-0 truncate font-semibold text-slate-800">{product.name}</span>
+                          <span className="shrink-0 font-mono text-[10px] text-slate-500">{product.sku}</span>
+                        </button>
+                      ))}
+                      {filterHomepageProducts(trendingProductSearch).length === 0 && (
+                        <p className="px-2.5 py-2 text-xs text-slate-500">No matching products.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <select
-                  value={trendingProductId}
-                  onChange={(event) => setTrendingProductId(event.target.value)}
-                  className="min-w-0 flex-1 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-medium text-slate-800"
-                >
-                  <option value="">Select an existing product</option>
-                  {filterHomepageProducts(trendingProductSearch).map((product) => (
-                    <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>
-                  ))}
-                </select>
                 <button
                   type="button"
                   onClick={() => addProductToHomepageSection(trendingProductId, 'trending')}
@@ -893,22 +895,38 @@ export const AdminDashboardPage: React.FC = () => {
                   <input
                     type="search"
                     value={freshProductSearch}
-                    onChange={(event) => setFreshProductSearch(event.target.value)}
+                    onChange={(event) => {
+                      setFreshProductSearch(event.target.value);
+                      setFreshProductId('');
+                    }}
                     placeholder="Search by name, SKU, or brand"
                     aria-label="Search new-arrival products"
                     className="w-full rounded-lg border border-violet-200 bg-white py-2 pl-9 pr-3 text-xs font-medium text-slate-800 placeholder:text-slate-400"
                   />
+                  {freshProductSearch.trim() && !freshProductId && (
+                    <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-lg border border-violet-200 bg-white p-1 shadow-xl">
+                      {filterHomepageProducts(freshProductSearch).slice(0, 8).map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          role="option"
+                          aria-selected="false"
+                          onClick={() => {
+                            setFreshProductId(product.id);
+                            setFreshProductSearch(product.name);
+                          }}
+                          className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs hover:bg-violet-50"
+                        >
+                          <span className="min-w-0 truncate font-semibold text-slate-800">{product.name}</span>
+                          <span className="shrink-0 font-mono text-[10px] text-slate-500">{product.sku}</span>
+                        </button>
+                      ))}
+                      {filterHomepageProducts(freshProductSearch).length === 0 && (
+                        <p className="px-2.5 py-2 text-xs text-slate-500">No matching products.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <select
-                  value={freshProductId}
-                  onChange={(event) => setFreshProductId(event.target.value)}
-                  className="min-w-0 flex-1 rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-medium text-slate-800"
-                >
-                  <option value="">Select an existing product</option>
-                  {filterHomepageProducts(freshProductSearch).map((product) => (
-                    <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>
-                  ))}
-                </select>
                 <button
                   type="button"
                   onClick={() => addProductToHomepageSection(freshProductId, 'fresh')}

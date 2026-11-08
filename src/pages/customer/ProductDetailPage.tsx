@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { Product } from '../../types';
 import { ProductCard } from '../../components/common/ProductCard';
+import { HomepageSectionActions } from '../../components/common/HomepageSectionActions';
 import { 
   ShoppingCart, 
   Heart, 
@@ -343,6 +344,7 @@ export const ProductDetailPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <HomepageSectionActions product={product} />
             <button
               type="button"
               onClick={() => setIsEditModalOpen(true)}
