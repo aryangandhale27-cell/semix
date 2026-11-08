@@ -54,12 +54,41 @@ export const ProductDetailPage: React.FC = () => {
     const sourceImages = product.images?.length ? product.images : [product.image];
     return sourceImages.filter((image) => typeof image === 'string' && image.trim().length > 0);
   }, [product]);
-  const relatedProducts = useMemo(
-    () => product ? products
-      .filter((p) => p.category === product.category && p.id !== product.id)
-      .slice(0, 4) : [],
-    [products, product]
-  );
+  const relatedProducts = useMemo(() => {
+    if (!product) return [];
+
+    const stopWords = new Set(['and', 'for', 'the', 'with', 'from', 'compatible', 'development', 'board', 'boards', 'module', 'modules']);
+    const getTokens = (values: Array<string | undefined>) => new Set(
+      values
+        .flatMap((value) => value?.toLowerCase().match(/[a-z0-9]+/g) || [])
+        .filter((token) => token.length > 2 && !stopWords.has(token))
+    );
+    const productTokens = getTokens([product.name, ...(product.tags || [])]);
+    const productTags = getTokens(product.tags || []);
+    const productBrand = product.brand.trim().toLowerCase();
+
+    return products
+      .filter((candidate) => candidate.id !== product.id)
+      .map((candidate) => {
+        const candidateTokens = getTokens([candidate.name, ...(candidate.tags || [])]);
+        const candidateTags = getTokens(candidate.tags || []);
+        const sharedProductTerms = [...productTokens].filter((token) => candidateTokens.has(token)).length;
+        const sharedTags = [...productTags].filter((tag) => candidateTags.has(tag)).length;
+        const sameBrand = productBrand !== '' && productBrand === candidate.brand.trim().toLowerCase();
+        const score =
+          (sameBrand ? 12 : 0) +
+          sharedTags * 5 +
+          sharedProductTerms * 2 +
+          (candidate.subcategory === product.subcategory ? 3 : 0) +
+          (candidate.category === product.category ? 1 : 0);
+
+        return { product: candidate, score };
+      })
+      .filter((candidate) => candidate.score > 0)
+      .sort((left, right) => right.score - left.score || right.product.rating - left.product.rating)
+      .slice(0, 4)
+      .map(({ product: candidate }) => candidate);
+  }, [products, product]);
 
   const [selectedQty, setSelectedQty] = useState(1);
   const [isProductLookupLoading, setIsProductLookupLoading] = useState(false);
