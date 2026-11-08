@@ -18,7 +18,6 @@ import {
   Trash2,
   ShoppingCart,
   Send,
-  User,
   FileText,
   Building2,
   Clock,
@@ -278,24 +277,17 @@ export const CustomerDashboardPage: React.FC = () => {
           </div>
           <div className="min-w-0">
             <p className="mb-1 text-[9px] font-extrabold uppercase tracking-[0.18em] text-[#8b6b91]">Account overview</p>
-            <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex items-center gap-2">
               <h1 className="truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">{userName}</h1>
-              <span className="shrink-0 rounded-full border border-[#e8d8ec] bg-[#faf6fb] px-2 py-0.5 text-[9px] font-bold uppercase text-[#561269]">
-                {user?.role || 'Customer'} Account
-              </span>
             </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-4 text-slate-500 sm:text-xs">
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <Mail className="h-3 w-3 shrink-0 text-[#8b6b91]" />
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] leading-4 sm:text-xs">
+              <span className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-lg border border-[#e8d8ec] bg-[#faf6fb] px-2.5 py-1.5 font-semibold text-[#561269]">
+                <Mail className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{userEmail}</span>
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Smartphone className="h-3 w-3 shrink-0 text-[#8b6b91]" />
+              <span className="inline-flex items-center gap-2 rounded-lg border border-[#e8d8ec] bg-[#faf6fb] px-2.5 py-1.5 font-semibold text-[#561269]">
+                <Smartphone className="h-3.5 w-3.5 shrink-0" />
                 <span>{userPhone}</span>
-              </span>
-              <span className="hidden items-center gap-1.5 sm:inline-flex">
-                <User className="h-3 w-3 shrink-0 text-[#8b6b91]" />
-                <span>Maker ID: RTZ-{user?.id?.slice(-4) || '8042'}</span>
               </span>
             </div>
           </div>
@@ -311,23 +303,25 @@ export const CustomerDashboardPage: React.FC = () => {
         </div>
 
         <div className="customer-profile-stats relative grid w-full grid-cols-2 gap-2.5 sm:gap-3">
-          <div className="customer-profile-stat flex min-w-0 items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f2eaf4] text-[#561269]">
-              <Package className="h-4 w-4" />
+          <div className="customer-profile-stat relative flex min-h-20 min-w-0 items-center gap-3 overflow-hidden rounded-xl border border-[#561269]/15 bg-gradient-to-br from-[#faf6fb] via-white to-white px-3 py-3 shadow-sm sm:min-h-[76px] sm:px-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#561269]/10 text-[#561269] ring-1 ring-inset ring-[#561269]/10">
+              <Package className="h-5 w-5" />
             </span>
             <div className="text-left">
-              <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-500">Total orders</span>
-              <span className="text-base font-extrabold font-mono text-slate-900">{customerOrders.length}</span>
+              <span className="block text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500">Total orders</span>
+              <span className="mt-0.5 block text-xl font-black font-mono leading-none text-slate-900">{customerOrders.length}</span>
             </div>
+            <Package className="pointer-events-none absolute -bottom-3 -right-2 h-16 w-16 text-[#561269]/[0.06]" />
           </div>
-          <div className="customer-profile-stat flex min-w-0 items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f7f0df] text-[#96763d]">
-              <Heart className="h-4 w-4" />
+          <div className="customer-profile-stat relative flex min-h-20 min-w-0 items-center gap-3 overflow-hidden rounded-xl border border-rose-200/70 bg-gradient-to-br from-rose-50/70 via-white to-white px-3 py-3 shadow-sm sm:min-h-[76px] sm:px-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600 ring-1 ring-inset ring-rose-200/70">
+              <Heart className="h-5 w-5" />
             </span>
             <div className="text-left">
-              <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-500">Wishlist parts</span>
-              <span className="text-base font-extrabold font-mono text-slate-900">{wishlist.length}</span>
+              <span className="block text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500">Wishlist parts</span>
+              <span className="mt-0.5 block text-xl font-black font-mono leading-none text-slate-900">{wishlist.length}</span>
             </div>
+            <Heart className="pointer-events-none absolute -bottom-3 -right-2 h-16 w-16 text-rose-500/[0.07]" />
           </div>
         </div>
       </div>

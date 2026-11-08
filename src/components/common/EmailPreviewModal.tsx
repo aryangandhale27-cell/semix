@@ -63,6 +63,15 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   // Sync selected email if initialEmail changes
   useEffect(() => {
     if (initialEmail) {
@@ -95,7 +104,10 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-1.5 backdrop-blur-xs animate-in fade-in duration-200 sm:p-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-1.5 backdrop-blur-xs animate-in fade-in duration-200 sm:p-6"
+      onClick={onClose}
+    >
       <div 
         className="relative flex h-[calc(100dvh-0.75rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:h-[90vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -123,8 +135,9 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-700 sm:hidden"
-              aria-label="Close email preview"
+              className="shrink-0 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-900 sm:rounded-xl sm:p-2"
+              aria-label="Close email preview and return"
+              title="Close and return"
             >
               <X className="h-5 w-5" />
             </button>
@@ -197,14 +210,6 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
               )}
             </button>
 
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="hidden shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-700 sm:block sm:rounded-xl sm:p-2"
-              aria-label="Close email preview"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
         </div>
 
