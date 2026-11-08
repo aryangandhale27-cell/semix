@@ -56,18 +56,6 @@ export const CustomerDashboardPage: React.FC = () => {
         );
       })
     : [];
-  const pendingAssignmentOrders = customerOrders.filter((order) =>
-    order.status === 'placed' || order.status === 'pending_assignment'
-  ).length;
-  const activeOrders = customerOrders.filter((order) =>
-    order.status === 'assigned' ||
-    order.status === 'processing' ||
-    order.status === 'packed' ||
-    order.status === 'shipped'
-  ).length;
-  const deliveredOrders = customerOrders.filter((order) =>
-    order.status === 'delivered' || order.status === 'completed'
-  ).length;
 
   const activeTab = searchParams.get('tab') || 'orders';
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -449,42 +437,7 @@ export const CustomerDashboardPage: React.FC = () => {
 
       {/* Tab 1: Orders & Live Tracking */}
       {activeTab === 'orders' && (
-        <div className="mx-auto max-w-6xl space-y-5">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="min-h-28 rounded-2xl border border-[#561269]/25 bg-gradient-to-br from-[#561269]/[0.06] to-white p-4 shadow-sm">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#561269]/10 text-[#561269]">
-                <Package className="h-4 w-4" />
-              </span>
-              <p className="mt-3 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Total orders</p>
-              <p className="mt-1 text-2xl font-black leading-none text-slate-900">{customerOrders.length}</p>
-              <p className="mt-2 text-[10px] font-medium text-slate-500">All registered orders</p>
-            </div>
-            <div className="min-h-28 rounded-2xl border border-orange-200 bg-orange-50/50 p-4 shadow-sm">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
-                <Clock className="h-4 w-4" />
-              </span>
-              <p className="mt-3 text-[10px] font-extrabold uppercase tracking-wide text-orange-800">Pending assignment</p>
-              <p className="mt-1 text-2xl font-black leading-none text-slate-900">{pendingAssignmentOrders}</p>
-              <p className="mt-2 text-[10px] font-medium text-orange-800">Awaiting fulfillment</p>
-            </div>
-            <div className="min-h-28 rounded-2xl border border-blue-200 bg-blue-50/40 p-4 shadow-sm">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
-                <ShoppingCart className="h-4 w-4" />
-              </span>
-              <p className="mt-3 text-[10px] font-extrabold uppercase tracking-wide text-blue-800">Active / assigned</p>
-              <p className="mt-1 text-2xl font-black leading-none text-slate-900">{activeOrders}</p>
-              <p className="mt-2 text-[10px] font-medium text-blue-800">In fulfillment or transit</p>
-            </div>
-            <div className="min-h-28 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                <CheckCircle2 className="h-4 w-4" />
-              </span>
-              <p className="mt-3 text-[10px] font-extrabold uppercase tracking-wide text-emerald-800">Delivered</p>
-              <p className="mt-1 text-2xl font-black leading-none text-emerald-700">{deliveredOrders}</p>
-              <p className="mt-2 text-[10px] font-medium text-emerald-800">Successfully completed</p>
-            </div>
-          </div>
-
+        <div className="mx-auto max-w-6xl space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700">
               Select an order to track
