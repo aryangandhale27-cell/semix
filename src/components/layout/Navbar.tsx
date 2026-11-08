@@ -333,7 +333,7 @@ export const Navbar: React.FC = () => {
         <Link
           to="/bulk-enquiry"
           className={`px-2 py-0.5 rounded-md font-semibold transition-colors ${
-            isActive('/bulk-enquiry')
+            isActive('/bulk-enquiry') && !isCustomProjectPage
               ? 'bg-[#FF6B00] text-white font-bold'
               : 'text-purple-200 hover:text-white hover:bg-white/5'
           }`}
