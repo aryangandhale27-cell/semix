@@ -56,6 +56,18 @@ export const CustomerDashboardPage: React.FC = () => {
         );
       })
     : [];
+  const pendingAssignmentOrders = customerOrders.filter((order) =>
+    order.status === 'placed' || order.status === 'pending_assignment'
+  ).length;
+  const activeOrders = customerOrders.filter((order) =>
+    order.status === 'assigned' ||
+    order.status === 'processing' ||
+    order.status === 'packed' ||
+    order.status === 'shipped'
+  ).length;
+  const deliveredOrders = customerOrders.filter((order) =>
+    order.status === 'delivered' || order.status === 'completed'
+  ).length;
 
   const activeTab = searchParams.get('tab') || 'orders';
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -333,127 +345,206 @@ export const CustomerDashboardPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div id="customer-dashboard-tabs" className="grid grid-cols-2 border border-slate-200/80 bg-white p-1.5 rounded-2xl gap-1.5 shadow-sm sm:flex sm:flex-wrap sm:gap-1">
+      <div id="customer-dashboard-tabs" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <button
           onClick={() => setSearchParams({ tab: 'orders' })}
           title="Orders & Live Tracking"
           aria-label="Orders & Live Tracking"
-          className={`min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:whitespace-nowrap ${
+          className={`flex min-h-32 min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
             activeTab === 'orders'
-              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
-              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
+              ? 'border-[#561269] bg-[#561269] text-white shadow-md shadow-purple-950/15'
+              : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-[#561269]/30 hover:shadow-md'
           }`}
         >
-          <Package className={`h-4 w-4 shrink-0 ${activeTab === 'orders' ? 'text-orange-300' : 'text-[#FF6B00]'}`} />
-          <span className="truncate">Orders &amp; Live Tracking ({customerOrders.length})</span>
+          <span className="flex w-full items-center justify-between">
+            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${activeTab === 'orders' ? 'bg-white/10 text-orange-200' : 'bg-orange-50 text-[#FF6B00]'}`}><Package className="h-5 w-5" /></span>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold tabular-nums ${activeTab === 'orders' ? 'bg-white/15 text-white' : 'bg-[#561269]/[0.07] text-[#561269]'}`}>{customerOrders.length}</span>
+          </span>
+          <span>
+            <span className="block text-xs font-extrabold leading-snug">Orders &amp; Live Tracking</span>
+            <span className={`mt-1 block text-[10px] font-medium ${activeTab === 'orders' ? 'text-purple-100' : 'text-slate-500'}`}>Follow your shipments</span>
+          </span>
         </button>
 
         <button
           onClick={() => setSearchParams({ tab: 'wishlist' })}
           title="Saved Components"
           aria-label="Saved Components"
-          className={`min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:whitespace-nowrap ${
+          className={`flex min-h-32 min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
             activeTab === 'wishlist'
-              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
-              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
+              ? 'border-[#561269] bg-[#561269] text-white shadow-md shadow-purple-950/15'
+              : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-[#561269]/30 hover:shadow-md'
           }`}
         >
-          <Heart className={`h-4 w-4 shrink-0 ${activeTab === 'wishlist' ? 'text-rose-200' : 'text-rose-400'}`} />
-          <span className="truncate">Saved Components ({wishlist.length})</span>
+          <span className="flex w-full items-center justify-between">
+            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${activeTab === 'wishlist' ? 'bg-white/10 text-rose-200' : 'bg-rose-50 text-rose-500'}`}><Heart className="h-5 w-5" /></span>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold tabular-nums ${activeTab === 'wishlist' ? 'bg-white/15 text-white' : 'bg-[#561269]/[0.07] text-[#561269]'}`}>{wishlist.length}</span>
+          </span>
+          <span>
+            <span className="block text-xs font-extrabold leading-snug">Saved Components</span>
+            <span className={`mt-1 block text-[10px] font-medium ${activeTab === 'wishlist' ? 'text-purple-100' : 'text-slate-500'}`}>Your saved parts</span>
+          </span>
         </button>
 
         <button
           onClick={() => setSearchParams({ tab: 'support' })}
           title="Technical Support & RMA Escalation"
           aria-label="Technical Support & RMA Escalation"
-          className={`min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:whitespace-nowrap ${
+          className={`flex min-h-32 min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
             activeTab === 'support'
-              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
-              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
+              ? 'border-[#561269] bg-[#561269] text-white shadow-md shadow-purple-950/15'
+              : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-[#561269]/30 hover:shadow-md'
           }`}
         >
-          <MessageSquare className={`h-4 w-4 shrink-0 ${activeTab === 'support' ? 'text-purple-200' : 'text-purple-500'}`} />
-          <span className="truncate">Technical Support &amp; RMA</span>
+          <span className="flex w-full items-center justify-between">
+            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${activeTab === 'support' ? 'bg-white/10 text-purple-200' : 'bg-purple-50 text-purple-600'}`}><MessageSquare className="h-5 w-5" /></span>
+            <span className={`flex h-8 w-8 items-center justify-center rounded-full ${activeTab === 'support' ? 'bg-white/15 text-white' : 'bg-[#561269]/[0.07] text-[#561269]'}`}><ChevronRight className="h-4 w-4" /></span>
+          </span>
+          <span>
+            <span className="block text-xs font-extrabold leading-snug">Technical Support &amp; RMA</span>
+            <span className={`mt-1 block text-[10px] font-medium ${activeTab === 'support' ? 'text-purple-100' : 'text-slate-500'}`}>Get help with an order</span>
+          </span>
         </button>
 
         <button
           onClick={() => setSearchParams({ tab: 'bulk' })}
           title="Bulk Enquiries & Quotes"
           aria-label="Bulk Enquiries & Quotes"
-          className={`min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:whitespace-nowrap ${
+          className={`flex min-h-32 min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
             activeTab === 'bulk'
-              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
-              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
+              ? 'border-[#561269] bg-[#561269] text-white shadow-md shadow-purple-950/15'
+              : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-[#561269]/30 hover:shadow-md'
           }`}
         >
-          <FileText className={`h-4 w-4 shrink-0 ${activeTab === 'bulk' ? 'text-amber-200' : 'text-amber-500'}`} />
-          <span className="truncate">Bulk Enquiries &amp; Quotes ({bulkEnquiries.length})</span>
+          <span className="flex w-full items-center justify-between">
+            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${activeTab === 'bulk' ? 'bg-white/10 text-amber-200' : 'bg-amber-50 text-amber-600'}`}><FileText className="h-5 w-5" /></span>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold tabular-nums ${activeTab === 'bulk' ? 'bg-white/15 text-white' : 'bg-[#561269]/[0.07] text-[#561269]'}`}>{bulkEnquiries.length}</span>
+          </span>
+          <span>
+            <span className="block text-xs font-extrabold leading-snug">Bulk Enquiries &amp; Quotes</span>
+            <span className={`mt-1 block text-[10px] font-medium ${activeTab === 'bulk' ? 'text-purple-100' : 'text-slate-500'}`}>Request volume pricing</span>
+          </span>
         </button>
 
         <button
           onClick={() => setSearchParams({ tab: 'address' })}
           title="Shipping & GST Profile"
           aria-label="Shipping & GST Profile"
-          className={`col-span-2 min-w-0 px-2.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-all cursor-pointer text-left sm:col-span-1 sm:whitespace-nowrap ${
+          className={`col-span-2 flex min-h-32 min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 cursor-pointer md:col-span-1 ${
             activeTab === 'address'
-              ? 'bg-[#561269] text-white shadow-sm shadow-purple-950/15'
-              : 'text-slate-600 hover:bg-purple-50 hover:text-[#561269]'
+              ? 'border-[#561269] bg-[#561269] text-white shadow-md shadow-purple-950/15'
+              : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-[#561269]/30 hover:shadow-md'
           }`}
         >
-          <MapPin className={`h-4 w-4 shrink-0 ${activeTab === 'address' ? 'text-cyan-200' : 'text-cyan-500'}`} />
-          <span className="truncate">Shipping &amp; GST Profile</span>
+          <span className="flex w-full items-center justify-between">
+            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${activeTab === 'address' ? 'bg-white/10 text-cyan-200' : 'bg-cyan-50 text-cyan-600'}`}><MapPin className="h-5 w-5" /></span>
+            <span className={`flex h-8 w-8 items-center justify-center rounded-full ${activeTab === 'address' ? 'bg-white/15 text-white' : 'bg-[#561269]/[0.07] text-[#561269]'}`}><ChevronRight className="h-4 w-4" /></span>
+          </span>
+          <span>
+            <span className="block text-xs font-extrabold leading-snug">Shipping &amp; GST Profile</span>
+            <span className={`mt-1 block text-[10px] font-medium ${activeTab === 'address' ? 'text-purple-100' : 'text-slate-500'}`}>Manage delivery details</span>
+          </span>
         </button>
       </div>
 
       {/* Tab 1: Orders & Live Tracking */}
       {activeTab === 'orders' && (
-        <div className="mx-auto max-w-4xl space-y-3">
+        <div className="mx-auto max-w-6xl space-y-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="min-h-28 rounded-2xl border border-[#561269]/25 bg-gradient-to-br from-[#561269]/[0.06] to-white p-4 shadow-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#561269]/10 text-[#561269]">
+                <Package className="h-4 w-4" />
+              </span>
+              <p className="mt-3 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Total orders</p>
+              <p className="mt-1 text-2xl font-black leading-none text-slate-900">{customerOrders.length}</p>
+              <p className="mt-2 text-[10px] font-medium text-slate-500">All registered orders</p>
+            </div>
+            <div className="min-h-28 rounded-2xl border border-orange-200 bg-orange-50/50 p-4 shadow-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
+                <Clock className="h-4 w-4" />
+              </span>
+              <p className="mt-3 text-[10px] font-extrabold uppercase tracking-wide text-orange-800">Pending assignment</p>
+              <p className="mt-1 text-2xl font-black leading-none text-slate-900">{pendingAssignmentOrders}</p>
+              <p className="mt-2 text-[10px] font-medium text-orange-800">Awaiting fulfillment</p>
+            </div>
+            <div className="min-h-28 rounded-2xl border border-blue-200 bg-blue-50/40 p-4 shadow-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                <ShoppingCart className="h-4 w-4" />
+              </span>
+              <p className="mt-3 text-[10px] font-extrabold uppercase tracking-wide text-blue-800">Active / assigned</p>
+              <p className="mt-1 text-2xl font-black leading-none text-slate-900">{activeOrders}</p>
+              <p className="mt-2 text-[10px] font-medium text-blue-800">In fulfillment or transit</p>
+            </div>
+            <div className="min-h-28 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+              <p className="mt-3 text-[10px] font-extrabold uppercase tracking-wide text-emerald-800">Delivered</p>
+              <p className="mt-1 text-2xl font-black leading-none text-emerald-700">{deliveredOrders}</p>
+              <p className="mt-2 text-[10px] font-medium text-emerald-800">Successfully completed</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700">
-              Select Shipment to Track
+              Select an order to track
             </h3>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+              {customerOrders.length} {customerOrders.length === 1 ? 'order' : 'orders'}
+            </span>
+          </div>
+
+          {customerOrders.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
+              <Package className="mx-auto h-8 w-8 text-slate-300" />
+              <p className="mt-2 text-sm font-bold text-slate-700">No orders yet</p>
+              <p className="mt-1 text-xs text-slate-500">Your orders will appear here when you place one.</p>
+            </div>
+          )}
 
             {customerOrders.map((ord) => {
               const isSelected = selectedOrder?.id === ord.id;
               return (
                 <React.Fragment key={ord.id}>
                   <div
-                    className={`rounded-xl border p-4 transition-all ${
+                    className={`rounded-2xl border p-4 transition-all ${
                       isSelected
-                        ? 'border-slate-500 bg-slate-50 shadow-md shadow-slate-950/5 ring-1 ring-slate-400/70'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                        ? 'border-[#561269]/50 bg-[#561269]/[0.025] shadow-md shadow-[#561269]/10 ring-1 ring-[#561269]/20'
+                        : 'border-slate-200 bg-white shadow-sm hover:border-[#561269]/30 hover:shadow-md'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 shrink-0 rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50 to-orange-50 p-1.5">
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#561269]/10 bg-gradient-to-br from-[#561269]/10 via-white to-orange-50 p-2">
                         {ord.items[0]?.image && (
                           <img src={ord.items[0].image} alt="" className="h-full w-full object-contain mix-blend-multiply" />
                         )}
+                        {!ord.items[0]?.image && <Package className="h-6 w-6 text-[#561269]/60" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2 text-xs">
-                          <span className="truncate font-mono font-bold text-slate-900">{ord.id}</span>
+                          <span className="truncate font-mono text-sm font-extrabold text-slate-900">{ord.id}</span>
                           <span
                             className={`shrink-0 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                              ord.status === 'delivered'
+                              ord.status === 'delivered' || ord.status === 'completed'
                                 ? 'bg-emerald-100 text-emerald-800'
-                                : ord.status === 'shipped'
+                                : ord.status === 'shipped' || ord.status === 'assigned' || ord.status === 'processing'
                                 ? 'bg-purple-100 text-purple-800'
                                 : ord.status === 'packed'
                                 ? 'bg-cyan-100 text-cyan-800'
                                 : 'bg-amber-100 text-amber-800'
                             }`}
                           >
-                            {ord.status}
+                            {ord.status.replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <p className="mt-1 text-[11px] font-medium text-slate-500">
+                        <p className="mt-1.5 text-[11px] font-medium text-slate-500">
                           {ord.createdAt.slice(0, 10)} <span className="mx-1 text-slate-300">•</span> {ord.items.length} component line(s)
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 font-mono text-xs">
-                      <span className="text-slate-500">Amount: ₹{ord.totalAmount.toLocaleString('en-IN')}</span>
+                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                      <span className="text-xs font-bold text-slate-500">Total <span className="ml-1 font-mono text-sm text-slate-900">₹{ord.totalAmount.toLocaleString('en-IN')}</span></span>
                       <button
                         type="button"
                         onClick={() => {
@@ -466,7 +557,7 @@ export const CustomerDashboardPage: React.FC = () => {
                           }
                         }}
                         aria-expanded={isSelected}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 font-bold transition-colors cursor-pointer ${
+                        className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-extrabold transition-colors cursor-pointer ${
                           isSelected
                             ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                             : 'bg-[#561269] text-white hover:bg-[#460e56]'
