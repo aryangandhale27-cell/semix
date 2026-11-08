@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { Order, Product, EscalationIssue, OrderStatus, EscalationType, EscalationPriority } from '../../types';
 import { ProductFormModal } from '../../components/team/ProductFormModal';
+import { TeamMemberProfileCard } from '../../components/team/TeamMemberProfileCard';
 import { QuickViewModal } from '../../components/common/QuickViewModal';
 import { auth } from '../../lib/firebase';
 import { 
@@ -55,8 +57,9 @@ export const TeamPortalPage: React.FC = () => {
     categories,
     showToast 
   } = useApp();
+  const { user } = useAuth();
+  const teamMemberName = user?.name || user?.displayName || auth.currentUser?.displayName || auth.currentUser?.email || 'Team member';
 
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [isTeamCatalogLoading, setIsTeamCatalogLoading] = useState(true);
   const [isTeamCatalogLoaded, setIsTeamCatalogLoaded] = useState(false);
@@ -95,27 +98,14 @@ export const TeamPortalPage: React.FC = () => {
     };
   }, [loadAllProducts, loadProductsPage, showToast]);
 
-  // Active Main Tab: 'stock' | 'fulfillment' | 'issues'
+  // Fulfillment stays unavailable in the team-member portal.
   const [activeTab, setActiveTab] = useState<'stock' | 'fulfillment' | 'issues'>(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'stock') return 'stock';
-    if (tabParam === 'fulfillment' || location.pathname.includes('/fulfillment')) return 'fulfillment';
-    if (tabParam === 'issues') return 'issues';
-    return 'stock';
+    return searchParams.get('tab') === 'issues' ? 'issues' : 'stock';
   });
 
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'stock') {
-      setActiveTab('stock');
-    } else if (tabParam === 'fulfillment' || location.pathname.includes('/fulfillment')) {
-      setActiveTab('fulfillment');
-    } else if (tabParam === 'issues') {
-      setActiveTab('issues');
-    } else if (tabParam === 'stock') {
-      setActiveTab('stock');
-    }
-  }, [location.pathname, searchParams]);
+    setActiveTab(searchParams.get('tab') === 'issues' ? 'issues' : 'stock');
+  }, [searchParams]);
 
   // ==================== 1. STOCK MANAGEMENT STATE ====================
   const [stockSearch, setStockSearch] = useState('');
@@ -175,8 +165,7 @@ export const TeamPortalPage: React.FC = () => {
     const lowStockItems = products.filter((p) => p.stockCount <= 20).length;
     const ordersToPack = orders.filter((o) => o.status === 'placed').length;
     const packedToday = orders.filter((o) => o.status === 'packed').length;
-    const shippedToday = orders.filter((o) => o.status === 'shipped' || o.status === 'delivered').length;
-    return { totalInventoryItems, lowStockItems, ordersToPack, packedToday, shippedToday };
+    return { totalInventoryItems, lowStockItems, ordersToPack, packedToday };
   }, [products, orders]);
 
   const lifetimeTeamProductCounts = useMemo(() => {
@@ -344,10 +333,10 @@ export const TeamPortalPage: React.FC = () => {
     }
 
     const note = packingTechnicianNote.trim() || 'ESD Anti-Static inspection verified. Components boxed into tamper-evident carton.';
-    updateOrderStatus(order.id, 'packed', note, 'Rajesh Kumar (Senior Packing Lead)', {
+    updateOrderStatus(order.id, 'packed', note, teamMemberName, {
       courier: courierName,
       courierTrackingId: courierTrackingId || undefined,
-      packedBy: 'Rajesh Kumar'
+      packedBy: teamMemberName
     });
 
     setPackingTechnicianNote('');
@@ -361,7 +350,7 @@ export const TeamPortalPage: React.FC = () => {
     updateOrderStatus(order.id, 'shipped', note, 'Logistics Dispatch Desk', {
       courier: courierName,
       courierTrackingId: tracking,
-      packedBy: order.packedBy || 'Rajesh Kumar'
+      packedBy: order.packedBy || teamMemberName
     });
 
     setCourierTrackingId('');
@@ -405,37 +394,34 @@ export const TeamPortalPage: React.FC = () => {
       showToast('Resolution Note Required', 'Please describe the engineering action or replacement note', 'warning');
       return;
     }
-    resolveEscalation(ticketId, resolutionText.trim(), 'Rajesh Kumar (QA Lead)');
+    resolveEscalation(ticketId, resolutionText.trim(), teamMemberName);
     setResolvingTicketId(null);
     setResolutionText('');
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="team-dashboard-portal">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 lg:py-5 lg:space-y-5" id="team-dashboard-portal">
       {/* Header Banner - Concept: Team Dashboard (Inventory & Fulfillment Portal) */}
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-gradient-to-r from-slate-900 via-[#380847] to-[#561269] rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl border border-[#561269]/30/60"
+        className="bg-white rounded-2xl p-5 sm:p-7 lg:p-5 text-slate-900 flex flex-col md:flex-row md:items-center justify-between gap-5 lg:gap-3 border border-slate-200 shadow-sm"
       >
         <div>
-          <div className="inline-flex items-center gap-1.5 bg-[#FF6B00] text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full mb-2 tracking-wider shadow-xs">
-            <PackageCheck className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 bg-[#561269]/5 text-[#561269] text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full mb-2 tracking-wider">
+            <PackageCheck className="w-3.5 h-3.5 text-[#FF6B00]" />
             <span>Team Dashboard</span>
           </div>
-          <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl lg:text-3xl font-black text-[#561269] tracking-tight">
             Inventory &amp; Fulfillment Portal
           </h1>
-          <p className="text-xs text-purple-200 mt-1 flex items-center gap-2 flex-wrap">
-            <span>Operator: <strong>Rajesh Kumar</strong> (Senior Operations Lead)</span>
-            <span>•</span>
-            <span className="font-mono bg-white/10 px-2 py-0.5 rounded text-[11px]">Station: BLR-WH-BAY-03</span>
-            <span>•</span>
-            <span className="text-emerald-300 font-semibold flex items-center gap-1">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+            <span className="text-slate-600">Signed in as <strong className="text-slate-900">{teamMemberName}</strong></span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-900 px-2.5 py-1 font-semibold text-white animate-pulse motion-reduce:animate-none">
               <ShieldCheck className="w-3.5 h-3.5" /> Real-time Warehouse Sync Active
             </span>
-          </p>
+          </div>
         </div>
 
         {/* Quick Action in Header */}
@@ -443,25 +429,35 @@ export const TeamPortalPage: React.FC = () => {
           <button
             onClick={handleOpenAddProduct}
             id="header-add-product-btn"
-            className="bg-[#FF6B00] hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer whitespace-nowrap"
+            className="bg-[#561269] hover:bg-[#460e56] text-white px-6 py-3.5 lg:px-4 lg:py-2.5 rounded-xl font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-md shadow-[#561269]/20 transition-all cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add Product</span>
+            <span>Add Product</span>
           </button>
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4 lg:gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 lg:p-3 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Lifetime Product Adds</p>
-              <h3 className="text-lg font-black text-slate-900 mt-1">{myLifetimeProductCount} items added by you</h3>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Lifetime Product Adds</p>
+              <h3 className="mt-1 text-[1.7rem] font-black leading-tight text-slate-900">{myLifetimeProductCount}</h3>
             </div>
-            <div className="bg-[#561269]/10 text-[#561269] px-2.5 py-1.5 rounded-lg text-xs font-bold">
-              {auth.currentUser?.displayName || auth.currentUser?.email || 'Team member'}
+            <div className="rounded-full border border-[#561269]/20 bg-[#561269]/10 px-3 py-1.5 text-[11px] font-bold text-[#561269] shadow-sm">
+              {teamMemberName}
             </div>
           </div>
+
+          <div className="mb-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+            <span>Top contributors</span>
+            {topContributor && (
+              <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-700">
+                {topContributor.name}
+              </span>
+            )}
+          </div>
+
           <div className="space-y-2">
             {!isTeamCatalogLoaded ? (
               <p className={`text-xs ${teamCatalogError ? 'text-rose-600' : 'text-slate-500'}`} role={teamCatalogError ? 'alert' : 'status'}>
@@ -472,50 +468,57 @@ export const TeamPortalPage: React.FC = () => {
             ) : lifetimeTeamProductCounts.map((member) => (
               <div
                 key={`${member.email || member.name}-${member.role}`}
-                className={`flex items-center justify-between rounded-xl border px-3 py-2 ${member.rank === 1 ? 'border-[#561269]/30 bg-[#561269]/5' : 'border-slate-200 bg-slate-50'}`}
+                className={`flex items-center justify-between rounded-xl border px-3 py-2.5 lg:px-2.5 lg:py-2 transition-all ${member.rank === 1 ? 'border-[#561269]/30 bg-gradient-to-r from-[#561269]/8 via-[#561269]/5 to-transparent shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black ${member.rank === 1 ? 'bg-[#561269] text-white' : 'bg-slate-200 text-slate-700'}`}>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-black ${member.rank === 1 ? 'bg-[#561269] text-white shadow-sm' : member.rank <= 3 ? 'bg-slate-200 text-slate-700' : 'bg-slate-100 text-slate-600'}`}>
                     {member.rank}
                   </span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-slate-800 truncate">{member.name}</p>
+                      <p className="truncate text-sm font-bold text-slate-800">{member.name}</p>
                       {member.rank === 1 && (
-                        <span className="text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                          Top contributor
+                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">
+                          Top
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-slate-500">{member.email || 'no email on file'} • {member.role}</p>
+                    <p className="truncate text-[10px] text-slate-500">{member.email || 'no email on file'} • {member.role}</p>
                   </div>
                 </div>
-                <span className="bg-[#561269] text-white text-[10px] font-bold px-2 py-1 rounded-full">{member.count}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${member.rank === 1 ? 'bg-[#561269] text-white' : 'bg-[#561269]/10 text-[#561269]'}`}>
+                  {member.count}
+                </span>
               </div>
             ))}
           </div>
+
           {topContributor && (
             <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-800">
-              Leaderboard leader: {topContributor.name} with {topContributor.count} total products added.
+              Leaderboard leader: <span className="font-black">{topContributor.name}</span> with <span className="font-black">{topContributor.count}</span> total products added.
             </div>
           )}
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Product Attribution</p>
-          <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
-            <p>Each product keeps the creator name, email, and role in Firestore.</p>
-            <p>This helps the admin see who added each item and contact them directly if there is a quality or listing issue later.</p>
+        {user?.role === 'team' ? (
+          <TeamMemberProfileCard key={user.id} user={user} />
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Product Attribution</p>
+            <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
+              <p>Each product keeps the creator name, email, and role in Firestore.</p>
+              <p>This helps the admin see who added each item and contact them directly if there is a quality or listing issue later.</p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* TODAY'S OVERVIEW: Compact Statistics Cards (Requirement #13) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-3">
         {/* Total Inventory */}
         <motion.div
           whileHover={{ y: -2 }}
-          className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between"
+          className="bg-white p-4 lg:p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider">Total Inventory</span>
@@ -532,7 +535,7 @@ export const TeamPortalPage: React.FC = () => {
         {/* Low Stock Items */}
         <motion.div
           whileHover={{ y: -2 }}
-          className="bg-white p-4 rounded-2xl border border-amber-200/80 bg-amber-50/20 shadow-xs flex flex-col justify-between"
+          className="bg-white p-4 lg:p-3 rounded-2xl border border-amber-200/80 bg-amber-50/20 shadow-xs flex flex-col justify-between"
         >
           <div className="flex items-center justify-between text-amber-700 mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider">Low Stock Alert</span>
@@ -549,7 +552,7 @@ export const TeamPortalPage: React.FC = () => {
         {/* Orders to Pack */}
         <motion.div
           whileHover={{ y: -2 }}
-          className="bg-white p-4 rounded-2xl border border-[#561269]/20/80 bg-[#561269]/5/20 shadow-xs flex flex-col justify-between"
+          className="bg-white p-4 lg:p-3 rounded-2xl border border-[#561269]/20/80 bg-[#561269]/5/20 shadow-xs flex flex-col justify-between"
         >
           <div className="flex items-center justify-between text-[#561269] mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider">Orders to Pack</span>
@@ -564,7 +567,7 @@ export const TeamPortalPage: React.FC = () => {
         {/* Packed Today */}
         <motion.div
           whileHover={{ y: -2 }}
-          className="bg-white p-4 rounded-2xl border border-cyan-200/80 bg-cyan-50/20 shadow-xs flex flex-col justify-between"
+          className="bg-white p-4 lg:p-3 rounded-2xl border border-cyan-200/80 bg-cyan-50/20 shadow-xs flex flex-col justify-between"
         >
           <div className="flex items-center justify-between text-cyan-800 mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider">Packed Today</span>
@@ -576,61 +579,80 @@ export const TeamPortalPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Shipped Today */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="col-span-2 sm:col-span-1 bg-white p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/20 shadow-xs flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between text-emerald-800 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Dispatched / Shipped</span>
-            <Truck className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-emerald-600 font-mono">{stats.shippedToday}</span>
-            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">In Transit</span>
-          </div>
-        </motion.div>
       </div>
 
-      {/* THREE MAJOR WORKSPACE TABS */}
-      <div className="flex border-b border-slate-200 bg-slate-100/80 p-1.5 rounded-2xl gap-1.5 overflow-x-auto shadow-inner">
+      {/* Team-member workspace tabs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-3">
         <button
           onClick={() => setActiveTab('stock')}
           id="tab-stock-management"
-          className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer whitespace-nowrap ${
+          aria-pressed={activeTab === 'stock'}
+          className={`group relative min-h-28 lg:min-h-24 overflow-hidden rounded-2xl border p-4 sm:p-5 lg:p-4 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#561269] focus-visible:ring-offset-2 ${
             activeTab === 'stock'
-              ? 'bg-[#561269] text-white shadow-md'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              ? 'border-[#561269] bg-[#561269] text-white shadow-lg shadow-[#561269]/20'
+              : 'border-slate-200 bg-white text-slate-800 shadow-sm hover:border-[#561269]/40 hover:shadow-md'
           }`}
         >
-          <Boxes className={`w-4 h-4 ${activeTab === 'stock' ? 'text-[#FF6B00]' : 'text-slate-400'}`} />
-          <span>1. Stock Management ({isTeamCatalogLoaded ? products.length.toLocaleString() : isTeamCatalogLoading ? 'Loading…' : 'Unavailable'})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('fulfillment')}
-          id="tab-fulfillment-desk"
-          className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'fulfillment'
-              ? 'bg-[#561269] text-white shadow-md'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-          }`}
-        >
-          <Truck className={`w-4 h-4 ${activeTab === 'fulfillment' ? 'text-[#FF6B00]' : 'text-slate-400'}`} />
-          <span>2. Fulfillment &amp; Packing Desk ({orders.length})</span>
+          <Boxes className={`absolute -right-2 -bottom-4 h-24 w-24 lg:h-16 lg:w-16 transition-transform group-hover:scale-110 ${
+            activeTab === 'stock' ? 'text-white/10' : 'text-[#561269]/[0.06]'
+          }`} />
+          <span className="relative flex h-full items-center justify-between gap-4">
+            <span className="flex items-center gap-3">
+              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                activeTab === 'stock' ? 'bg-white/15 text-[#FF8A33]' : 'bg-[#561269]/10 text-[#561269]'
+              }`}>
+                <Boxes className="h-6 w-6 lg:h-5 lg:w-5" />
+              </span>
+              <span>
+                <span className={`block text-sm sm:text-base font-extrabold ${
+                  activeTab === 'stock' ? 'text-white' : 'text-slate-900'
+                }`}>Stock Management</span>
+                <span className={`mt-1 block text-xs ${
+                  activeTab === 'stock' ? 'text-purple-100' : 'text-slate-500'
+                }`}>View and manage inventory</span>
+              </span>
+            </span>
+            <span className={`relative text-xl sm:text-2xl font-black tabular-nums ${
+              activeTab === 'stock' ? 'text-white' : 'text-[#561269]'
+            }`}>
+              {isTeamCatalogLoaded ? products.length.toLocaleString() : isTeamCatalogLoading ? '…' : '—'}
+            </span>
+          </span>
         </button>
 
         <button
           onClick={() => setActiveTab('issues')}
           id="tab-issue-escalation"
-          className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer whitespace-nowrap ${
+          aria-pressed={activeTab === 'issues'}
+          className={`group relative min-h-28 lg:min-h-24 overflow-hidden rounded-2xl border p-4 sm:p-5 lg:p-4 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#561269] focus-visible:ring-offset-2 ${
             activeTab === 'issues'
-              ? 'bg-[#561269] text-white shadow-md'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              ? 'border-[#561269] bg-[#561269] text-white shadow-lg shadow-[#561269]/20'
+              : 'border-slate-200 bg-white text-slate-800 shadow-sm hover:border-amber-300 hover:shadow-md'
           }`}
         >
-          <AlertTriangle className={`w-4 h-4 ${activeTab === 'issues' ? 'text-amber-400' : 'text-slate-400'}`} />
-          <span>3. Issue Escalation ({escalations.length})</span>
+          <AlertTriangle className={`absolute -right-2 -bottom-4 h-24 w-24 lg:h-16 lg:w-16 transition-transform group-hover:scale-110 ${
+            activeTab === 'issues' ? 'text-white/10' : 'text-amber-500/[0.08]'
+          }`} />
+          <span className="relative flex h-full items-center justify-between gap-4">
+            <span className="flex items-center gap-3">
+              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                activeTab === 'issues' ? 'bg-white/15 text-amber-300' : 'bg-amber-50 text-amber-600'
+              }`}>
+                <AlertTriangle className="h-6 w-6" />
+              </span>
+              <span>
+                <span className={`block text-sm sm:text-base font-extrabold ${
+                  activeTab === 'issues' ? 'text-white' : 'text-slate-900'
+                }`}>Issue Escalation</span>
+                <span className={`mt-1 block text-xs ${
+                  activeTab === 'issues' ? 'text-purple-100' : 'text-slate-500'
+                }`}>Report and track stock issues</span>
+              </span>
+            </span>
+            <span className={`relative text-xl sm:text-2xl font-black tabular-nums ${
+              activeTab === 'issues' ? 'text-white' : 'text-amber-600'
+            }`}>{escalations.length}</span>
+          </span>
         </button>
       </div>
 
@@ -645,17 +667,17 @@ export const TeamPortalPage: React.FC = () => {
           className="space-y-6"
         >
           {/* Controls Bar: Search, Category Filter, Stock Status Filter, + Add Product */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 flex-1 min-w-0">
+          <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-2 flex-1 min-w-0">
               {/* Search */}
-              <div className="relative flex-1 min-w-[220px]">
+              <div className="relative col-span-2 md:col-span-3 xl:col-span-2 min-w-0">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search products by SKU, name, brand, or bin (e.g. RPI-5, BIN-A01)..."
                   value={stockSearch}
                   onChange={(e) => setStockSearch(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#561269]"
                 />
                 {stockSearch && (
                   <button
@@ -671,7 +693,7 @@ export const TeamPortalPage: React.FC = () => {
               <select
                 value={selectedCategoryFilter}
                 onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white"
+                className="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:bg-white"
               >
                 <option value="All">All Categories ({categories.length})</option>
                 {categories.map((c) => (
@@ -685,7 +707,7 @@ export const TeamPortalPage: React.FC = () => {
               <select
                 value={stockStatusFilter}
                 onChange={(e) => setStockStatusFilter(e.target.value as any)}
-                className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white"
+                className="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:bg-white"
               >
                 <option value="all">All Stock Statuses</option>
                 <option value="in_stock">In Stock (&gt;20 pcs)</option>
@@ -698,7 +720,7 @@ export const TeamPortalPage: React.FC = () => {
                 value={stockPriceSort}
                 onChange={(e) => setStockPriceSort(e.target.value as typeof stockPriceSort)}
                 aria-label="Sort products by price"
-                className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white"
+                className="col-span-2 md:col-span-3 xl:col-span-1 w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:bg-white"
               >
                 <option value="default">Sort by Price</option>
                 <option value="high_to_low">Price: Highest to Lowest</option>
@@ -712,7 +734,7 @@ export const TeamPortalPage: React.FC = () => {
                 onChange={(e) => setMinimumPrice(e.target.value)}
                 aria-label="Minimum price in rupees"
                 placeholder="Min price (₹)"
-                className="w-28 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white"
+                className="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:bg-white"
               />
               <input
                 type="number"
@@ -722,16 +744,16 @@ export const TeamPortalPage: React.FC = () => {
                 onChange={(e) => setMaximumPrice(e.target.value)}
                 aria-label="Maximum price in rupees"
                 placeholder="Max price (₹)"
-                className="w-28 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white"
+                className="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:bg-white"
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={syncAllProductsToFirebase}
                 disabled={isProductSyncing}
                 id="sync-catalog-firebase-btn"
-                className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0"
+                className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0"
                 title="Upload and synchronize entire product catalog to Firebase Cloud Firestore"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isProductSyncing ? 'animate-spin' : ''}`} />
@@ -741,10 +763,10 @@ export const TeamPortalPage: React.FC = () => {
               <button
                 onClick={handleOpenAddProduct}
                 id="add-product-action-btn"
-                className="bg-[#561269] hover:bg-[#460e56] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer shrink-0"
+                className="bg-[#561269] hover:bg-[#460e56] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4 text-[#FF6B00]" />
-                <span>+ Add Product</span>
+                <span>Add Product</span>
               </button>
             </div>
           </div>
@@ -1685,7 +1707,7 @@ export const TeamPortalPage: React.FC = () => {
             <div className="flex justify-between items-start border-b pb-4">
               <div>
                 <h2 className="text-xl font-extrabold text-[#561269]">SEMIX LABS WAREHOUSE DISPATCH SLIP</h2>
-                <p className="text-xs text-slate-500 font-mono">ESD QA Pass • Station: BLR-WH-BAY-03</p>
+                <p className="text-xs text-slate-500 font-mono">ESD QA Pass • Warehouse Dispatch</p>
               </div>
               <span className="text-sm font-bold font-mono bg-slate-100 p-2 rounded text-slate-900">
                 {printModalOrder.id}

@@ -48,11 +48,10 @@ export const ContactPage: React.FC = () => {
     const isAbout = location.pathname === '/about' || location.hash.startsWith('#about');
     setActiveTab(isAbout ? 'about' : 'contact');
 
-    const targetId =
-      location.hash === '#about' ? 'about-us'
-        : location.hash === '#contact' ? 'contact-desk'
-          : location.hash.slice(1) || (isAbout ? 'about-us' : '');
-    if (targetId) {
+    const targetId = location.hash === '#about' ? 'about-us'
+      : location.hash === '#contact' ? 'contact-desk'
+        : location.hash.slice(1);
+    if (targetId && targetId !== 'about-us' && targetId !== 'contact-desk') {
       window.requestAnimationFrame(() => {
         document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
@@ -92,7 +91,7 @@ export const ContactPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-10">
         
         {/* Navigation Switcher Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-3 sm:pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-6 sm:gap-4 border-b border-slate-200 pb-6 sm:pb-4">
           <div className="flex items-center gap-3">
             <span className={`relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-white shadow-md sm:h-12 sm:w-12 ${
               activeTab === 'about'
@@ -114,10 +113,10 @@ export const ContactPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex w-full items-center gap-0.5 p-0.5 bg-slate-200/80 rounded-lg sm:w-auto sm:gap-0 sm:p-1 sm:rounded-xl">
+          <div className="flex w-full items-center gap-1.5 p-1 bg-slate-200/80 rounded-lg sm:w-auto sm:gap-0 sm:p-1 sm:rounded-xl">
             <button
               onClick={() => {
-                navigate('/about#about-us');
+                navigate('/about');
               }}
               className={`flex-1 justify-center px-3 py-2.5 rounded-md text-xs leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-1.5 ${
                 activeTab === 'about'
@@ -130,7 +129,7 @@ export const ContactPage: React.FC = () => {
             </button>
             <button
               onClick={() => {
-                navigate('/contact#contact-desk');
+                navigate('/contact');
               }}
               className={`flex-1 justify-center px-3 py-2.5 rounded-md text-xs leading-tight sm:flex-none sm:px-3.5 sm:py-1.5 sm:rounded-lg sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-1.5 ${
                 activeTab === 'contact'
@@ -422,14 +421,50 @@ export const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Contact Form & Quick Sourcing Shortcuts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-              {/* Form */}
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-8 shadow-xs">
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Send Us an Engineering Message</h3>
-                <p className="text-xs text-slate-500 mb-4 sm:mb-6">
-                  Fill out the form below and an applications engineer will review your project specifications.
+            {/* Warehouse details and bulk enquiry shortcut */}
+            <div className="flex flex-col gap-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-6">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <Clock className="h-4 w-4 text-[#561269]" />
+                  <span>Warehouse Timings</span>
+                </h4>
+                <div className="space-y-2 text-xs text-slate-600">
+                  <div className="flex justify-between border-b border-slate-100 pb-1">
+                    <span>Monday – Friday:</span>
+                    <span className="font-semibold text-slate-800">8:30 AM – 8:00 PM</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-1">
+                    <span>Saturday:</span>
+                    <span className="font-semibold text-slate-800">9:00 AM – 6:00 PM</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500">
+                    <span>Sunday:</span>
+                    <span className="font-semibold text-amber-600">Dispatch Only</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-2xl bg-gradient-to-br from-[#561269] to-[#380847] p-4 text-white shadow-md sm:p-6">
+                <h4 className="flex items-center gap-2 text-base font-bold text-white">
+                  <Sparkles className="h-4 w-4 text-[#FF6B00]" />
+                  <span>Need Bulk Components?</span>
+                </h4>
+                <p className="text-xs leading-relaxed text-purple-200">
+                  Source multiple components for your bill of materials with CSV upload and volume pricing.
                 </p>
+                <Link
+                  to="/bulk-enquiry"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B00] px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-[#e05e00]"
+                >
+                  <span>Launch Bulk Enquiry Desk</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Engineering Message Form */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-8">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Send Us an Engineering Message</h3>
 
                 {submitted ? (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-8 text-center space-y-3">
@@ -456,7 +491,6 @@ export const ContactPage: React.FC = () => {
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="e.g. Rahul Patil"
                           className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:border-[#561269] focus:ring-1 focus:ring-[#561269] outline-hidden"
                         />
                       </div>
@@ -467,7 +501,6 @@ export const ContactPage: React.FC = () => {
                           required
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          placeholder="e.g. rahul@example.com"
                           className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:border-[#561269] focus:ring-1 focus:ring-[#561269] outline-hidden"
                         />
                       </div>
@@ -480,7 +513,6 @@ export const ContactPage: React.FC = () => {
                           type="tel"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          placeholder="e.g. +91 98765 43210"
                           className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:border-[#561269] focus:ring-1 focus:ring-[#561269] outline-hidden"
                         />
                       </div>
@@ -507,7 +539,6 @@ export const ContactPage: React.FC = () => {
                         rows={4}
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                        placeholder="Tell us what you're working on or what components you are looking for..."
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:border-[#561269] focus:ring-1 focus:ring-[#561269] outline-hidden"
                       />
                     </div>
@@ -522,48 +553,6 @@ export const ContactPage: React.FC = () => {
                   </form>
                 )}
               </div>
-
-              {/* Quick Hub Links & Timings */}
-              <div className="space-y-4">
-                <div className="bg-gradient-to-br from-[#561269] to-[#380847] text-white rounded-2xl p-4 sm:p-6 shadow-md space-y-3 sm:space-y-4">
-                  <h4 className="text-base font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#FF6B00]" />
-                    <span>Need Bulk Components?</span>
-                  </h4>
-                  <p className="text-xs text-purple-200 leading-relaxed">
-                    If you have a multi-component bill of materials, use our dedicated Bulk Enquiry desk to upload CSVs and get discounted reel volume pricing.
-                  </p>
-                  <Link
-                    to="/bulk-enquiry"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#FF6B00] hover:bg-[#e05e00] text-white text-xs font-bold rounded-xl shadow-md transition-all"
-                  >
-                    <span>Launch Bulk Enquiry Desk</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[#561269]" />
-                    <span>Warehouse Timings</span>
-                  </h4>
-                  <div className="text-xs text-slate-600 space-y-2">
-                    <div className="flex justify-between border-b border-slate-100 pb-1">
-                      <span>Monday – Friday:</span>
-                      <span className="font-semibold text-slate-800">8:30 AM – 8:00 PM</span>
-                    </div>
-                    <div className="flex justify-between border-b border-slate-100 pb-1">
-                      <span>Saturday:</span>
-                      <span className="font-semibold text-slate-800">9:00 AM – 6:00 PM</span>
-                    </div>
-                    <div className="flex justify-between text-slate-500">
-                      <span>Sunday:</span>
-                      <span className="text-amber-600 font-semibold">Dispatch Only</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </section>
         )}
       </div>

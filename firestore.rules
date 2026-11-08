@@ -198,7 +198,8 @@ service cloud.firestore {
     }
 
     match /users/{userId}/private/{documentId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId) || (documentId == 'teamProfile' && isAdmin());
+      allow write: if isOwner(userId);
     }
 
     match /search_analytics/{recordId} {

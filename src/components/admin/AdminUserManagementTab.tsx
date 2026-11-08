@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { CreateUserModal } from './CreateUserModal';
 import { EditUserModal } from './EditUserModal';
+import { TeamMemberProfileModal } from './TeamMemberProfileModal';
 import { 
   Users, 
   UserPlus, 
@@ -28,7 +29,8 @@ import {
   AlertTriangle,
   ArrowUpDown,
   MoreVertical,
-  ChevronRight
+  ChevronRight,
+  Contact
 } from 'lucide-react';
 
 export const AdminUserManagementTab: React.FC = () => {
@@ -45,6 +47,7 @@ export const AdminUserManagementTab: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createInitialRole, setCreateInitialRole] = useState<'team' | 'seller' | 'customer'>('seller');
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
+  const [viewingTeamProfile, setViewingTeamProfile] = useState<AuthUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<AuthUser | null>(null);
 
   // Filters and search
@@ -530,6 +533,16 @@ export const AdminUserManagementTab: React.FC = () => {
                       {/* 6. Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {user.role === 'team' && (
+                            <button
+                              onClick={() => setViewingTeamProfile(user)}
+                              className="p-1.5 rounded-lg text-[#561269] transition-colors hover:bg-purple-50"
+                              title={`View private profile for ${user.name}`}
+                              aria-label={`View private profile for ${user.name}`}
+                            >
+                              <Contact className="h-4 w-4" />
+                            </button>
+                          )}
                           {/* Quick Switch to User */}
                           <button
                             onClick={() => switchUser(user)}
@@ -654,6 +667,13 @@ export const AdminUserManagementTab: React.FC = () => {
         isOpen={!!editingUser}
         onClose={() => setEditingUser(null)}
       />
+
+      {viewingTeamProfile && (
+        <TeamMemberProfileModal
+          user={viewingTeamProfile}
+          onClose={() => setViewingTeamProfile(null)}
+        />
+      )}
     </div>
   );
 };

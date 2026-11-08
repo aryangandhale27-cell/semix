@@ -884,10 +884,8 @@ export const AdminOrdersTab: React.FC<AdminOrdersTabProps> = ({
         </button>
       </div>
 
-      {/* Filter and Search Controls */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* Search */}
-        <div className="relative flex-1">
+      {/* Order Search */}
+      <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -896,46 +894,6 @@ export const AdminOrdersTab: React.FC<AdminOrdersTabProps> = ({
             placeholder="Search by Order ID, Customer Name, City, or SKU..."
             className="w-full text-xs pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#561269] focus:border-[#561269]"
           />
-        </div>
-
-        {/* Tab pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
-              filter === 'all' ? 'bg-[#561269] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            All ({orders.length})
-          </button>
-          <button
-            onClick={() => setFilter('pending')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-              filter === 'pending' 
-                ? 'bg-amber-600 text-white' 
-                : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Pending Assignment ({pendingOrders.length})</span>
-          </button>
-          <button
-            onClick={() => setFilter('active')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
-              filter === 'active' ? 'bg-[#561269] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Active ({activeAssignedOrders.length})
-          </button>
-          <button
-            onClick={() => setFilter('delivered')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
-              filter === 'delivered' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Delivered ({deliveredOrders.length})
-          </button>
-        </div>
       </div>
 
       {/* Orders List */}

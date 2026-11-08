@@ -11,7 +11,6 @@ import {
   Sparkles, 
   Flame, 
   Cpu, 
-  FileSpreadsheet, 
   ShieldCheck, 
   Zap, 
   Truck,
@@ -201,44 +200,37 @@ export const HomePage: React.FC = () => {
       {/* 2. Featured Categories Section - Split-Card Vibrant Orange Grid */}
       <ExploreCategories categories={categories} />
 
-      {/* 3. BOM Tool Teaser Banner - Compact on mobile */}
-      <section id="bom-tool-teaser" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-r from-[#561269] via-[#380847] to-[#380847] rounded-xl sm:rounded-2xl p-4 sm:p-8 text-white relative overflow-hidden shadow-lg border border-[#561269]/30">
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-orange-500/20 to-transparent pointer-events-none"></div>
+      {/* 3. College Project Callout */}
+      <section id="college-projects-teaser" className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="relative overflow-hidden rounded-2xl border border-[#561269]/20 bg-gradient-to-br from-[#561269] via-[#461052] to-[#260831] p-4 text-white shadow-lg shadow-purple-950/10 sm:rounded-3xl sm:p-7">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-fuchsia-400/15 blur-3xl sm:h-64 sm:w-64" />
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-1/4 h-24 w-24 rounded-full bg-orange-400/10 blur-2xl" />
 
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
-            <div className="max-w-xl">
-              <div className="inline-flex items-center gap-1.5 bg-[#FF6B00] text-white text-[9px] sm:text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md mb-1.5 sm:mb-2">
-                <FileSpreadsheet className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>Engineer & Maker Tool</span>
+          <div className="relative flex items-center gap-3 sm:gap-5">
+            <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-orange-300 shadow-inner sm:flex">
+              <Cpu className="h-7 w-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-orange-200/20 bg-orange-400/15 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-orange-200 sm:text-[10px]">
+                <Sparkles className="h-3 w-3" />
+                <span>For students & makers</span>
               </div>
-              <h3 className="text-base sm:text-2xl font-extrabold text-white tracking-tight">
-                Bill of Materials (BOM) Auto-Matcher
+              <h3 className="text-base font-extrabold tracking-tight sm:text-2xl">
+                Building a college project?
               </h3>
-              <p className="text-[11px] sm:text-sm text-purple-200 mt-1 sm:mt-1.5 leading-snug sm:leading-relaxed">
-                Paste your project parts list or upload CSV. Our algorithmic engine instantly maps part codes to stock inventory, calculates multi-tier volume discounts, and adds all components with 1-click.
+              <p className="mt-1 text-[11px] leading-relaxed text-purple-100 sm:mt-1.5 sm:text-sm">
+                Turn your idea into a working prototype with the right components and expert support.
               </p>
             </div>
-
-            <div className="flex flex-row items-center gap-2 sm:gap-3 shrink-0 w-full sm:w-auto">
-              <Link
-                to="/bulk-enquiry"
-                id="launch-bulk-enquiry-banner-btn"
-                className="flex-1 sm:flex-initial justify-center bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs sm:text-sm px-3.5 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer"
-              >
-                <span>Bulk Enquiry</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-              <Link
-                to="/bom-tool"
-                id="launch-bom-tool-btn"
-                className="flex-1 sm:flex-initial justify-center bg-[#FF6B00] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-4 py-2 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl shadow-lg shadow-orange-950/30 flex items-center gap-1.5 sm:gap-2 transition-all hover:scale-105 cursor-pointer"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>BOM Tool</span>
-                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </Link>
-            </div>
+            <Link
+              to="/bulk-enquiry?mode=custom-project"
+              id="explore-college-projects-btn"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#FF6B00] px-3 py-2.5 text-[11px] font-extrabold text-white shadow-md shadow-orange-950/25 transition-colors hover:bg-orange-600 sm:gap-2 sm:px-5 sm:py-3 sm:text-sm"
+            >
+              <span className="sm:hidden">Explore</span>
+              <span className="hidden sm:inline">Explore Projects</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
