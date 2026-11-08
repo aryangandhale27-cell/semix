@@ -449,10 +449,10 @@ export const TeamPortalPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="mb-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+          <div className="mb-3 flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
             <span>Top contributors</span>
             {topContributor && (
-              <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-700">
+              <span className="max-w-[55%] truncate rounded-full bg-[#561269]/10 px-2 py-1 text-[10px] font-black normal-case tracking-normal text-[#561269]">
                 {topContributor.name}
               </span>
             )}
@@ -468,25 +468,41 @@ export const TeamPortalPage: React.FC = () => {
             ) : lifetimeTeamProductCounts.map((member) => (
               <div
                 key={`${member.email || member.name}-${member.role}`}
-                className={`flex items-center justify-between rounded-xl border px-3 py-2.5 lg:px-2.5 lg:py-2 transition-all ${member.rank === 1 ? 'border-[#561269]/30 bg-gradient-to-r from-[#561269]/8 via-[#561269]/5 to-transparent shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}
+                className={`group flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 lg:px-2.5 lg:py-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${
+                  member.rank === 1
+                    ? 'border-[#561269]/25 bg-gradient-to-r from-[#561269]/[0.08] via-white to-white shadow-sm shadow-[#561269]/5'
+                    : 'border-slate-200/80 bg-white hover:border-[#561269]/20'
+                }`}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-black ${member.rank === 1 ? 'bg-[#561269] text-white shadow-sm' : member.rank <= 3 ? 'bg-slate-200 text-slate-700' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-black ring-1 ring-inset ${
+                    member.rank === 1
+                      ? 'bg-[#561269] text-white ring-[#561269] shadow-sm shadow-[#561269]/20'
+                      : member.rank === 2
+                        ? 'bg-[#561269]/15 text-[#561269] ring-[#561269]/20'
+                        : member.rank === 3
+                          ? 'bg-[#561269]/[0.07] text-[#561269]/80 ring-[#561269]/15'
+                          : 'bg-slate-50 text-slate-500 ring-slate-200'
+                  }`}>
                     {member.rank}
                   </span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-bold text-slate-800">{member.name}</p>
+                      <p className="truncate text-sm font-bold text-slate-900">{member.name}</p>
                       {member.rank === 1 && (
-                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">
-                          Top
+                        <span className="rounded-full bg-[#561269]/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-[#561269]">
+                          Leader
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-[10px] text-slate-500">{member.email || 'no email on file'} • {member.role}</p>
+                    <p className="truncate text-[10px] text-slate-500">{member.email || 'no email on file'} <span className="text-slate-300">•</span> <span className="capitalize">{member.role}</span></p>
                   </div>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${member.rank === 1 ? 'bg-[#561269] text-white' : 'bg-[#561269]/10 text-[#561269]'}`}>
+                <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold tabular-nums ${
+                  member.rank === 1
+                    ? 'bg-[#561269] text-white shadow-sm'
+                    : 'bg-[#561269]/[0.07] text-[#561269] group-hover:bg-[#561269]/10'
+                }`}>
                   {member.count}
                 </span>
               </div>
@@ -789,9 +805,6 @@ export const TeamPortalPage: React.FC = () => {
                     Firebase Live
                   </span>
                 </h3>
-                <p className="text-[11px] text-slate-400">
-                  Products added or updated by team members are automatically saved to Firebase Firestore (<code className="font-mono text-slate-600">semix-ai-stdio/products</code>).
-                </p>
               </div>
             </div>
 
