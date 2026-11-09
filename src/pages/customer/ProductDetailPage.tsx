@@ -104,6 +104,41 @@ export const ProductDetailPage: React.FC = () => {
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState('');
   const lightboxHistoryPushed = useRef(false);
+  const galleryTouchStart = useRef<{ x: number; y: number } | null>(null);
+  const suppressGalleryClickUntil = useRef(0);
+
+  const handleGalleryTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) {
+      galleryTouchStart.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+    galleryTouchStart.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleGalleryTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const start = galleryTouchStart.current;
+    const touch = event.changedTouches[0];
+    galleryTouchStart.current = null;
+    if (!start || !touch || images.length < 2) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+    suppressGalleryClickUntil.current = Date.now() + 400;
+    setSelectedImgIdx((current) => (current + (deltaX < 0 ? 1 : -1) + images.length) % images.length);
+  };
+
+  const handleGalleryImageClick = (event: React.MouseEvent<HTMLImageElement>) => {
+    if (Date.now() < suppressGalleryClickUntil.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    openLightbox();
+  };
 
   useEffect(() => {
     if (!productId || product) return;
@@ -421,7 +456,12 @@ export const ProductDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start">
         {/* Left Image Gallery */}
         <div className="lg:col-span-5 space-y-3 sm:space-y-4">
-          <div className="group bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 relative overflow-hidden aspect-[4/3] sm:aspect-square flex items-center justify-center lg:max-w-[420px] lg:mx-auto">
+          <div
+            className="group touch-pan-y bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 relative overflow-hidden aspect-[4/3] sm:aspect-square flex items-center justify-center lg:max-w-[420px] lg:mx-auto"
+            onTouchStart={handleGalleryTouchStart}
+            onTouchEnd={handleGalleryTouchEnd}
+            onTouchCancel={() => { galleryTouchStart.current = null; }}
+          >
             {product.isNew && (
               <span className="absolute top-4 left-4 bg-cyan-600 text-white text-xs font-extrabold uppercase px-2.5 py-1 rounded-md shadow-xs z-10">
                 New Arrival
@@ -486,7 +526,7 @@ export const ProductDetailPage: React.FC = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 0.2 }}
-                  onClick={openLightbox}
+                  onClick={handleGalleryImageClick}
                   className="max-h-64 sm:max-h-72 w-full object-contain mix-blend-multiply cursor-zoom-in transition-all"
                 />
               </AnimatePresence>
@@ -1043,8 +1083,11 @@ export const ProductDetailPage: React.FC = () => {
 
             {/* Lightbox Center Stage */}
             <div 
-              className="relative flex-1 flex items-center justify-center my-4 overflow-hidden" 
+              className="relative flex-1 touch-pan-y flex items-center justify-center my-4 overflow-hidden"
               onClick={(e) => e.stopPropagation()}
+              onTouchStart={handleGalleryTouchStart}
+              onTouchEnd={handleGalleryTouchEnd}
+              onTouchCancel={() => { galleryTouchStart.current = null; }}
             >
               {images.length > 1 && (
                 <button
