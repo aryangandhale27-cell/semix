@@ -767,9 +767,6 @@ export const ShopPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
                       <span className="font-bold text-[#561269]">{product.brand}</span>
-                      <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
-                        {product.sku}
-                      </span>
                     </div>
                     <h3 className="font-bold text-sm text-slate-900 hover:text-[#561269]">
                       {product.name}
