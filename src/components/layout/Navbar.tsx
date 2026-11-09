@@ -15,6 +15,9 @@ import {
   User,
   Boxes,
   FileText,
+  ClipboardList,
+  CircuitBoard,
+  Headset,
   Home,
   Store,
   Info
@@ -210,35 +213,35 @@ export const Navbar: React.FC = () => {
           <div id="mobile-service-links" className="lg:hidden flex flex-1 items-center justify-between gap-0.5 min-w-0 overflow-hidden no-scrollbar">
             <Link
               to="/bulk-enquiry"
-              className={`flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
+              className={`flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-sm whitespace-nowrap transition-colors ${
                 isActive('/bulk-enquiry') && !isCustomProjectPage
                   ? 'bg-white/15 text-white'
                   : 'text-purple-100 hover:bg-white/10 hover:text-white'
               }`}
             >
-              <FileText className="w-2.5 h-2.5 text-amber-300" />
+              <ClipboardList className="w-3 h-3 text-amber-300" strokeWidth={2.25} />
               Bulk
             </Link>
             <Link
               to="/bulk-enquiry?mode=custom-project"
-              className={`flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
+              className={`flex min-w-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-sm whitespace-nowrap transition-colors ${
                 isCustomProjectPage
                   ? 'bg-white/15 text-white'
                   : 'text-purple-100 hover:bg-white/10 hover:text-white'
               }`}
             >
-              <Layers className="w-2.5 h-2.5 text-cyan-300" />
+              <CircuitBoard className="w-3 h-3 text-cyan-300" strokeWidth={2.25} />
               Projects
             </Link>
             <Link
               to="/contact"
-              className={`flex shrink-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-[10px] whitespace-nowrap transition-colors ${
+              className={`flex shrink-0 items-center gap-0.5 px-1 py-1.5 rounded-md font-semibold text-sm whitespace-nowrap transition-colors ${
                 isActive('/contact')
                   ? 'bg-white/15 text-white'
                   : 'text-purple-100 hover:bg-white/10 hover:text-white'
               }`}
             >
-              <PhoneCall className="w-2.5 h-2.5 text-emerald-300" />
+              <Headset className="w-3 h-3 text-emerald-300" strokeWidth={2.25} />
               Contact Us
             </Link>
           </div>
