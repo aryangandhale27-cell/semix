@@ -63,6 +63,8 @@ export const ShopPage: React.FC = () => {
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const pageRequestId = React.useRef(0);
+  const pageScrollPending = React.useRef(false);
+  const resultsHeadingRef = React.useRef<HTMLHeadingElement>(null);
   const pageProducts = productPages[currentPage - 1] || [];
   const featuredProducts = searchQuery.trim() ? null : products;
 
@@ -311,8 +313,18 @@ export const ShopPage: React.FC = () => {
     sortBy,
   ]);
 
+  useEffect(() => {
+    if (!pageScrollPending.current) return;
+    pageScrollPending.current = false;
+    const heading = resultsHeadingRef.current;
+    if (!heading) return;
+    const headingTop = heading.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo(0, Math.max(0, headingTop - 112));
+  }, [currentPage]);
+
   const changePage = async (direction: -1 | 1) => {
     if (direction === -1) {
+      pageScrollPending.current = true;
       setCurrentPage((page) => Math.max(1, page - 1));
       setHasMoreProducts(Boolean(pageCursors[currentPage - 1]));
       return;
@@ -322,6 +334,7 @@ export const ShopPage: React.FC = () => {
     const nextPageNumber = currentPage + 1;
     const cachedPage = productPages[nextPageNumber - 1];
     if (cachedPage) {
+      pageScrollPending.current = true;
       setCurrentPage(nextPageNumber);
       setHasMoreProducts(Boolean(pageCursors[nextPageNumber]));
       return;
@@ -359,6 +372,7 @@ export const ShopPage: React.FC = () => {
         setPageCursors((cursors) => [...cursors, result.nextCursor]);
         setHasMoreProducts(result.hasMore);
       }
+      pageScrollPending.current = true;
       setCurrentPage(nextPageNumber);
     } catch (error) {
       if (requestId !== pageRequestId.current) return;
@@ -392,7 +406,7 @@ export const ShopPage: React.FC = () => {
               </>
             )}
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-[#561269]">
+          <h1 ref={resultsHeadingRef} className="scroll-mt-24 text-xl sm:text-2xl font-extrabold text-[#561269]">
             {selectedCategory === 'All' ? 'Complete Electronics Catalog' : selectedCategory}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
