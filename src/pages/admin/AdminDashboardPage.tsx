@@ -262,35 +262,46 @@ export const AdminDashboardPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-5 sm:space-y-8">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-violet-100 bg-white p-3.5 text-slate-900 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-5">
+      <div className="relative overflow-hidden rounded-2xl border border-violet-100 bg-white p-3.5 text-slate-900 shadow-sm sm:p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 text-[#561269]">
             <ShieldAlert className="h-5 w-5" />
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Admin Portal</h1>
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Admin Portal</h1>
         </div>
-        <div className="mt-3 flex w-full items-center gap-2 sm:mt-0 sm:w-auto sm:gap-3">
+      </div>
+
+      <section aria-labelledby="admin-quick-actions-title" className="rounded-2xl border border-slate-200 bg-gradient-to-r from-violet-50 via-white to-orange-50 p-3 shadow-sm sm:p-4">
+        <div className="mb-2.5 flex items-center gap-2 sm:mb-3">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B00]" aria-hidden="true" />
+          <h2 id="admin-quick-actions-title" className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Quick Actions</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:max-w-2xl sm:gap-3">
           <button
             type="button"
             onClick={() => {
               setActiveTab('orders');
               setOpenAddOrderRequest(true);
             }}
-            className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl border border-[#561269] bg-[#561269] px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#460e56] sm:min-h-12 sm:flex-none sm:px-5 sm:py-3 sm:text-sm"
+            className="group flex min-h-14 min-w-0 items-center gap-2 rounded-xl border border-violet-200 bg-white px-2.5 py-2.5 text-left text-xs font-bold text-slate-800 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#561269]/40 hover:shadow-md sm:min-h-16 sm:gap-3 sm:px-4 sm:text-sm"
           >
-            <ShoppingBag className="h-5 w-5" />
-            <span>Add Order</span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-[#561269] transition-colors group-hover:bg-[#561269] group-hover:text-white sm:h-10 sm:w-10">
+              <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
+            </span>
+            <span className="min-w-0 truncate">Add Order</span>
           </button>
           <button
             type="button"
             onClick={() => setIsAddProductOpen(true)}
-            className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl border border-[#561269] bg-[#561269] px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#460e56] sm:min-h-12 sm:flex-none sm:px-5 sm:py-3 sm:text-sm"
+            className="group flex min-h-14 min-w-0 items-center gap-2 rounded-xl border border-orange-200 bg-white px-2.5 py-2.5 text-left text-xs font-bold text-slate-800 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-400 hover:shadow-md sm:min-h-16 sm:gap-3 sm:px-4 sm:text-sm"
           >
-            <Plus className="h-5 w-5" />
-            <span>Add Component</span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-[#F15C00] transition-colors group-hover:bg-[#FF6B00] group-hover:text-white sm:h-10 sm:w-10">
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+            </span>
+            <span className="min-w-0 truncate">Add Component</span>
           </button>
         </div>
-      </div>
+      </section>
 
       {/* Real-time Dynamic Firestore KPI Cards Row */}
       <AdminKpiCardsRow
@@ -353,23 +364,32 @@ export const AdminDashboardPage: React.FC = () => {
           </button>
 
           {adminSectionsOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 max-h-[min(70vh,32rem)] w-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/15">
-              {[
-                ['orders', 'Orders & Seller Assignment'],
-                ['coupons', 'Coupons & Discounts'],
-                ['users', 'User Management'],
-                ['bonuses', 'Sellers → Bonuses'],
-                ['banners', 'Homepage Banners'],
-                ['categories', 'Category Images'],
-                ['audit_logs', 'Audit & Activity Logs'],
-                ['financials', 'Sales & Financials'],
-                ['analytics', 'Analytics & Sales Breakdown'],
-                ['catalog', 'Catalog & Product Management'],
-                ['staff', 'Staff & Role Access'],
-                ['collect_payment', 'Collect Payment'],
-                ['uploaded_lists', 'Uploaded Electronics Lists'],
-                ['custom_projects', 'Custom Project Requests'],
-              ].map(([value, label]) => (
+            <div className="absolute right-0 top-full z-50 mt-2 max-h-[min(70vh,34rem)] w-80 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/20 ring-1 ring-slate-900/5 sm:w-[22rem]">
+              <div className="mb-1.5 flex items-center justify-between border-b border-slate-100 px-3 pb-2.5 pt-1.5">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#FF6B00]">Workspace</p>
+                  <p className="mt-0.5 text-xs font-bold text-slate-900">Admin sections</p>
+                </div>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-[#561269]">
+                  <LayoutGrid className="h-4 w-4" />
+                </span>
+              </div>
+              {([
+                ['orders', 'Orders & Seller Assignment', Package],
+                ['coupons', 'Coupons & Discounts', Tag],
+                ['users', 'User Management', Users],
+                ['bonuses', 'Sellers → Bonuses', Award],
+                ['banners', 'Homepage Banners', ImageIcon],
+                ['categories', 'Category Images', FolderTree],
+                ['audit_logs', 'Audit & Activity Logs', ShieldAlert],
+                ['financials', 'Sales & Financials', DollarSign],
+                ['analytics', 'Analytics & Sales Breakdown', BarChart3],
+                ['catalog', 'Catalog & Product Management', Cpu],
+                ['staff', 'Staff & Role Access', Store],
+                ['collect_payment', 'Collect Payment', DollarSign],
+                ['uploaded_lists', 'Uploaded Electronics Lists', ShoppingBag],
+                ['custom_projects', 'Custom Project Requests', Sparkles],
+              ] as const).map(([value, label, Icon]) => (
                 <button
                   key={value}
                   type="button"
@@ -377,13 +397,21 @@ export const AdminDashboardPage: React.FC = () => {
                     setActiveTab(value as typeof activeTab);
                     setAdminSectionsOpen(false);
                   }}
-                  className={`block w-full rounded-xl px-3 py-2.5 text-left text-xs font-bold transition-colors ${
+                  className={`group flex min-h-11 w-full items-center gap-3 rounded-xl px-2.5 text-left text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
                     activeTab === value
-                      ? 'bg-violet-100 text-[#561269]'
+                      ? 'bg-[#561269] text-white shadow-sm shadow-[#561269]/20'
                       : 'text-slate-700 hover:bg-violet-50 hover:text-[#561269]'
                   }`}
                 >
-                  {label}
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                    activeTab === value
+                      ? 'border-white/15 bg-white/15 text-white'
+                      : 'border-slate-200 bg-slate-50 text-violet-700 group-hover:border-violet-100 group-hover:bg-white'
+                  }`}>
+                    <Icon className="h-4 w-4" strokeWidth={2} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                  {activeTab === value && <CheckCircle2 className="h-4 w-4 shrink-0 text-violet-200" />}
                 </button>
               ))}
             </div>
